@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as AuthenticatedIndexRouteImport } from './routes/_authenticated/index'
+import { Route as AuthenticatedSondagesRouteImport } from './routes/_authenticated/sondages'
 import { Route as AuthenticatedRecommandationsRouteImport } from './routes/_authenticated/recommandations'
 import { Route as AuthenticatedMembresRouteImport } from './routes/_authenticated/membres'
 
@@ -27,6 +28,11 @@ const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
 const AuthenticatedIndexRoute = AuthenticatedIndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedSondagesRoute = AuthenticatedSondagesRouteImport.update({
+  id: '/sondages',
+  path: '/sondages',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedRecommandationsRoute =
@@ -46,11 +52,13 @@ export interface FileRoutesByFullPath {
   '/auth': typeof AuthRoute
   '/membres': typeof AuthenticatedMembresRoute
   '/recommandations': typeof AuthenticatedRecommandationsRoute
+  '/sondages': typeof AuthenticatedSondagesRoute
 }
 export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/membres': typeof AuthenticatedMembresRoute
   '/recommandations': typeof AuthenticatedRecommandationsRoute
+  '/sondages': typeof AuthenticatedSondagesRoute
   '/': typeof AuthenticatedIndexRoute
 }
 export interface FileRoutesById {
@@ -59,19 +67,21 @@ export interface FileRoutesById {
   '/auth': typeof AuthRoute
   '/_authenticated/membres': typeof AuthenticatedMembresRoute
   '/_authenticated/recommandations': typeof AuthenticatedRecommandationsRoute
+  '/_authenticated/sondages': typeof AuthenticatedSondagesRoute
   '/_authenticated/': typeof AuthenticatedIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/auth' | '/membres' | '/recommandations'
+  fullPaths: '/' | '/auth' | '/membres' | '/recommandations' | '/sondages'
   fileRoutesByTo: FileRoutesByTo
-  to: '/auth' | '/membres' | '/recommandations' | '/'
+  to: '/auth' | '/membres' | '/recommandations' | '/sondages' | '/'
   id:
     | '__root__'
     | '/_authenticated'
     | '/auth'
     | '/_authenticated/membres'
     | '/_authenticated/recommandations'
+    | '/_authenticated/sondages'
     | '/_authenticated/'
   fileRoutesById: FileRoutesById
 }
@@ -103,6 +113,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/sondages': {
+      id: '/_authenticated/sondages'
+      path: '/sondages'
+      fullPath: '/sondages'
+      preLoaderRoute: typeof AuthenticatedSondagesRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/recommandations': {
       id: '/_authenticated/recommandations'
       path: '/recommandations'
@@ -123,12 +140,14 @@ declare module '@tanstack/react-router' {
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedMembresRoute: typeof AuthenticatedMembresRoute
   AuthenticatedRecommandationsRoute: typeof AuthenticatedRecommandationsRoute
+  AuthenticatedSondagesRoute: typeof AuthenticatedSondagesRoute
   AuthenticatedIndexRoute: typeof AuthenticatedIndexRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedMembresRoute: AuthenticatedMembresRoute,
   AuthenticatedRecommandationsRoute: AuthenticatedRecommandationsRoute,
+  AuthenticatedSondagesRoute: AuthenticatedSondagesRoute,
   AuthenticatedIndexRoute: AuthenticatedIndexRoute,
 }
 
