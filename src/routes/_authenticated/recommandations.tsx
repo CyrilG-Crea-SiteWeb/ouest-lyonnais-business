@@ -120,6 +120,8 @@ function RecosPage() {
       });
   }, [recos, semainesMap]);
 
+  const aValider = useMemo(() => recos.filter((r) => r.type === "merci_business" && !r.valide), [recos]);
+
   return (
     <div className="space-y-6">
       <header>
@@ -128,6 +130,27 @@ function RecosPage() {
           Saisie rapide rattachée à la semaine en cours.
         </p>
       </header>
+
+      {isBureau && aValider.length > 0 && (
+        <Card className="border-amber-300 bg-amber-50/50">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base flex items-center gap-2">
+              <ClipboardCheck className="h-4 w-4" />
+              À valider ({aValider.length})
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="pt-0 divide-y">
+            {aValider.map((r) => (
+              <AValiderRow
+                key={r.id}
+                reco={r}
+                emetteur={membresMap[r.membre_id]}
+                cible={r.membre_cible_id ? membresMap[r.membre_cible_id] : undefined}
+              />
+            ))}
+          </CardContent>
+        </Card>
+      )}
 
       <RecoForm
         membres={membres.filter((m) => m.id !== profile?.id)}
