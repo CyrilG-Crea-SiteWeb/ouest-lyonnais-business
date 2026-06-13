@@ -15,6 +15,7 @@ import { Route as AuthenticatedIndexRouteImport } from './routes/_authenticated/
 import { Route as AuthenticatedSondagesRouteImport } from './routes/_authenticated/sondages'
 import { Route as AuthenticatedRecommandationsRouteImport } from './routes/_authenticated/recommandations'
 import { Route as AuthenticatedMembresRouteImport } from './routes/_authenticated/membres'
+import { Route as AuthenticatedEvenementsRouteImport } from './routes/_authenticated/evenements'
 
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
@@ -46,16 +47,23 @@ const AuthenticatedMembresRoute = AuthenticatedMembresRouteImport.update({
   path: '/membres',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedEvenementsRoute = AuthenticatedEvenementsRouteImport.update({
+  id: '/evenements',
+  path: '/evenements',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof AuthenticatedIndexRoute
   '/auth': typeof AuthRoute
+  '/evenements': typeof AuthenticatedEvenementsRoute
   '/membres': typeof AuthenticatedMembresRoute
   '/recommandations': typeof AuthenticatedRecommandationsRoute
   '/sondages': typeof AuthenticatedSondagesRoute
 }
 export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
+  '/evenements': typeof AuthenticatedEvenementsRoute
   '/membres': typeof AuthenticatedMembresRoute
   '/recommandations': typeof AuthenticatedRecommandationsRoute
   '/sondages': typeof AuthenticatedSondagesRoute
@@ -65,6 +73,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
+  '/_authenticated/evenements': typeof AuthenticatedEvenementsRoute
   '/_authenticated/membres': typeof AuthenticatedMembresRoute
   '/_authenticated/recommandations': typeof AuthenticatedRecommandationsRoute
   '/_authenticated/sondages': typeof AuthenticatedSondagesRoute
@@ -72,13 +81,26 @@ export interface FileRoutesById {
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/auth' | '/membres' | '/recommandations' | '/sondages'
+  fullPaths:
+    | '/'
+    | '/auth'
+    | '/evenements'
+    | '/membres'
+    | '/recommandations'
+    | '/sondages'
   fileRoutesByTo: FileRoutesByTo
-  to: '/auth' | '/membres' | '/recommandations' | '/sondages' | '/'
+  to:
+    | '/auth'
+    | '/evenements'
+    | '/membres'
+    | '/recommandations'
+    | '/sondages'
+    | '/'
   id:
     | '__root__'
     | '/_authenticated'
     | '/auth'
+    | '/_authenticated/evenements'
     | '/_authenticated/membres'
     | '/_authenticated/recommandations'
     | '/_authenticated/sondages'
@@ -134,10 +156,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedMembresRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/evenements': {
+      id: '/_authenticated/evenements'
+      path: '/evenements'
+      fullPath: '/evenements'
+      preLoaderRoute: typeof AuthenticatedEvenementsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
   }
 }
 
 interface AuthenticatedRouteRouteChildren {
+  AuthenticatedEvenementsRoute: typeof AuthenticatedEvenementsRoute
   AuthenticatedMembresRoute: typeof AuthenticatedMembresRoute
   AuthenticatedRecommandationsRoute: typeof AuthenticatedRecommandationsRoute
   AuthenticatedSondagesRoute: typeof AuthenticatedSondagesRoute
@@ -145,6 +175,7 @@ interface AuthenticatedRouteRouteChildren {
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
+  AuthenticatedEvenementsRoute: AuthenticatedEvenementsRoute,
   AuthenticatedMembresRoute: AuthenticatedMembresRoute,
   AuthenticatedRecommandationsRoute: AuthenticatedRecommandationsRoute,
   AuthenticatedSondagesRoute: AuthenticatedSondagesRoute,
