@@ -73,7 +73,7 @@ function RecosPage() {
     queryFn: async (): Promise<Reco[]> => {
       const { data, error } = await supabase
         .from("recommandations")
-        .select("id, type, membre_id, membre_cible_id, contact_externe, montant, semaine_id, created_at")
+        .select("id, type, membre_id, membre_cible_id, contact_externe, montant, valide, semaine_id, created_at")
         .order("created_at", { ascending: false });
       if (error) throw error;
       return (data ?? []) as Reco[];
