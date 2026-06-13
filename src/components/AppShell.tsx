@@ -104,7 +104,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         >
           <Menu className="h-5 w-5" />
         </button>
-        <OlbLogo className="h-8" variant="light" />
+        <OlbLogo className="h-9 w-auto" />
         <div className="w-9" />
       </header>
 
