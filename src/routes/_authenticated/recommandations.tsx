@@ -403,3 +403,58 @@ function RecoRow({
     </div>
   );
 }
+
+function AValiderRow({
+  reco,
+  emetteur,
+  cible,
+}: {
+  reco: Reco;
+  emetteur?: MembreLite;
+  cible?: MembreLite;
+}) {
+  const qc = useQueryClient();
+  const emName = emetteur ? `${emetteur.prenom} ${emetteur.nom}` : "—";
+  const cibleName = cible ? `${cible.prenom} ${cible.nom}` : "—";
+
+  const validate = useMutation({
+    mutationFn: async () => {
+      const { error } = await supabase
+        .from("recommandations")
+        .update({ valide: true })
+        .eq("id", reco.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Montant validé");
+      qc.invalidateQueries({ queryKey: ["recos", "list"] });
+    },
+    onError: (e) => toast.error(e instanceof Error ? e.message : "Erreur"),
+  });
+
+  return (
+    <div className="flex items-center gap-3 py-3">
+      <div className="h-8 w-8 rounded-md flex items-center justify-center shrink-0 bg-fuchsia-100 text-fuchsia-800">
+        <Euro className="h-4 w-4" />
+      </div>
+      <div className="min-w-0 flex-1">
+        <div className="flex flex-wrap items-center gap-2">
+          <Badge variant="outline" className="text-[10px]">Merci</Badge>
+          {reco.montant != null && (
+            <Badge className="text-[10px]">
+              {new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR" }).format(Number(reco.montant))}
+            </Badge>
+          )}
+        </div>
+        <p className="text-sm mt-0.5 truncate">{cibleName} → {emName}</p>
+      </div>
+      <Button
+        size="sm"
+        disabled={validate.isPending}
+        onClick={() => validate.mutate()}
+      >
+        {validate.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Valider"}
+      </Button>
+    </div>
+  );
+}
