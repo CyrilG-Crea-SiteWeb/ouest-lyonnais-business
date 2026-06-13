@@ -93,10 +93,10 @@ export const updateMembreRoleStatut = createServerFn({ method: "POST" })
     const callerRole = await getCallerRole(context);
     assertAdmin(callerRole);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const patch: Record<string, string> = {};
+    const patch: { role?: "membre" | "bureau" | "admin"; statut?: "actif" | "inactif" } = {};
     if (data.role) patch.role = data.role;
     if (data.statut) patch.statut = data.statut;
-    if (Object.keys(patch).length === 0) return { ok: true };
+    if (!patch.role && !patch.statut) return { ok: true };
     const { error } = await supabaseAdmin.from("membres").update(patch).eq("id", data.id);
     if (error) throw new Error(error.message);
     return { ok: true };
