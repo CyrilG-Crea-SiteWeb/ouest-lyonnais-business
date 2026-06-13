@@ -18,7 +18,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 import {
-  Handshake, Users2, UserPlus, Euro, Trash2, Loader2, Check,
+  Handshake, Users2, UserPlus, Euro, Trash2, Loader2, Check, ClipboardCheck,
 } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/recommandations")({
