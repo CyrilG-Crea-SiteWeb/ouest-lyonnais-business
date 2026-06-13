@@ -14,6 +14,7 @@ import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/
 import { Route as AuthenticatedIndexRouteImport } from './routes/_authenticated/index'
 import { Route as AuthenticatedSondagesRouteImport } from './routes/_authenticated/sondages'
 import { Route as AuthenticatedRecommandationsRouteImport } from './routes/_authenticated/recommandations'
+import { Route as AuthenticatedMonProfilRouteImport } from './routes/_authenticated/mon-profil'
 import { Route as AuthenticatedMembresRouteImport } from './routes/_authenticated/membres'
 import { Route as AuthenticatedEvenementsRouteImport } from './routes/_authenticated/evenements'
 
@@ -42,6 +43,11 @@ const AuthenticatedRecommandationsRoute =
     path: '/recommandations',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedMonProfilRoute = AuthenticatedMonProfilRouteImport.update({
+  id: '/mon-profil',
+  path: '/mon-profil',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedMembresRoute = AuthenticatedMembresRouteImport.update({
   id: '/membres',
   path: '/membres',
@@ -58,6 +64,7 @@ export interface FileRoutesByFullPath {
   '/auth': typeof AuthRoute
   '/evenements': typeof AuthenticatedEvenementsRoute
   '/membres': typeof AuthenticatedMembresRoute
+  '/mon-profil': typeof AuthenticatedMonProfilRoute
   '/recommandations': typeof AuthenticatedRecommandationsRoute
   '/sondages': typeof AuthenticatedSondagesRoute
 }
@@ -65,6 +72,7 @@ export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/evenements': typeof AuthenticatedEvenementsRoute
   '/membres': typeof AuthenticatedMembresRoute
+  '/mon-profil': typeof AuthenticatedMonProfilRoute
   '/recommandations': typeof AuthenticatedRecommandationsRoute
   '/sondages': typeof AuthenticatedSondagesRoute
   '/': typeof AuthenticatedIndexRoute
@@ -75,6 +83,7 @@ export interface FileRoutesById {
   '/auth': typeof AuthRoute
   '/_authenticated/evenements': typeof AuthenticatedEvenementsRoute
   '/_authenticated/membres': typeof AuthenticatedMembresRoute
+  '/_authenticated/mon-profil': typeof AuthenticatedMonProfilRoute
   '/_authenticated/recommandations': typeof AuthenticatedRecommandationsRoute
   '/_authenticated/sondages': typeof AuthenticatedSondagesRoute
   '/_authenticated/': typeof AuthenticatedIndexRoute
@@ -86,6 +95,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/evenements'
     | '/membres'
+    | '/mon-profil'
     | '/recommandations'
     | '/sondages'
   fileRoutesByTo: FileRoutesByTo
@@ -93,6 +103,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/evenements'
     | '/membres'
+    | '/mon-profil'
     | '/recommandations'
     | '/sondages'
     | '/'
@@ -102,6 +113,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/_authenticated/evenements'
     | '/_authenticated/membres'
+    | '/_authenticated/mon-profil'
     | '/_authenticated/recommandations'
     | '/_authenticated/sondages'
     | '/_authenticated/'
@@ -149,6 +161,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedRecommandationsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/mon-profil': {
+      id: '/_authenticated/mon-profil'
+      path: '/mon-profil'
+      fullPath: '/mon-profil'
+      preLoaderRoute: typeof AuthenticatedMonProfilRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/membres': {
       id: '/_authenticated/membres'
       path: '/membres'
@@ -169,6 +188,7 @@ declare module '@tanstack/react-router' {
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedEvenementsRoute: typeof AuthenticatedEvenementsRoute
   AuthenticatedMembresRoute: typeof AuthenticatedMembresRoute
+  AuthenticatedMonProfilRoute: typeof AuthenticatedMonProfilRoute
   AuthenticatedRecommandationsRoute: typeof AuthenticatedRecommandationsRoute
   AuthenticatedSondagesRoute: typeof AuthenticatedSondagesRoute
   AuthenticatedIndexRoute: typeof AuthenticatedIndexRoute
@@ -177,6 +197,7 @@ interface AuthenticatedRouteRouteChildren {
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedEvenementsRoute: AuthenticatedEvenementsRoute,
   AuthenticatedMembresRoute: AuthenticatedMembresRoute,
+  AuthenticatedMonProfilRoute: AuthenticatedMonProfilRoute,
   AuthenticatedRecommandationsRoute: AuthenticatedRecommandationsRoute,
   AuthenticatedSondagesRoute: AuthenticatedSondagesRoute,
   AuthenticatedIndexRoute: AuthenticatedIndexRoute,

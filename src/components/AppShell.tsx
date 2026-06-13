@@ -9,11 +9,14 @@ import {
   LogOut,
   Menu,
   X,
+  UserCircle,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { OlbLogo } from "./OlbLogo";
 import { Button } from "./ui/button";
+import { Badge } from "./ui/badge";
 import { cn } from "@/lib/utils";
+import { useProfile } from "@/hooks/use-profile";
 
 const NAV = [
   { to: "/", label: "Tableau de bord", icon: LayoutDashboard },
@@ -21,12 +24,14 @@ const NAV = [
   { to: "/recommandations", label: "Recommandations", icon: HandshakeIcon },
   { to: "/sondages", label: "Sondages", icon: Vote },
   { to: "/evenements", label: "Événements", icon: CalendarDays },
+  { to: "/mon-profil", label: "Mon profil", icon: UserCircle },
 ] as const;
 
 export function AppShell({ children }: { children: ReactNode }) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const navigate = useNavigate();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const { data: profile } = useProfile();
 
   async function handleLogout() {
     await supabase.auth.signOut();
@@ -35,9 +40,19 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   const navContent = (
     <>
-      <div className="px-4 py-5 border-b border-sidebar-border">
-        <OlbLogo className="h-12" variant="light" />
+      <div className="px-4 py-5 border-b border-sidebar-border bg-white/5">
+        <OlbLogo className="h-14 w-auto" />
       </div>
+      {profile && (
+        <div className="px-4 py-3 border-b border-sidebar-border">
+          <p className="text-sm font-semibold text-sidebar-foreground truncate">
+            {profile.prenom} {profile.nom}
+          </p>
+          <Badge variant="outline" className="mt-1 capitalize border-sidebar-border text-sidebar-foreground">
+            {profile.role}
+          </Badge>
+        </div>
+      )}
       <nav className="flex-1 overflow-y-auto p-3 space-y-1">
         {NAV.map((item) => {
           const active = pathname === item.to;
@@ -89,7 +104,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         >
           <Menu className="h-5 w-5" />
         </button>
-        <OlbLogo className="h-8" variant="light" />
+        <OlbLogo className="h-9 w-auto" />
         <div className="w-9" />
       </header>
 
