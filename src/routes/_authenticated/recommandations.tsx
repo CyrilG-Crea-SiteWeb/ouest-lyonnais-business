@@ -18,7 +18,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 import {
-  Handshake, Users2, UserPlus, Euro, Trash2, Loader2, Check,
+  Handshake, Users2, UserPlus, Euro, Trash2, Loader2, Check, ClipboardCheck,
 } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/recommandations")({
@@ -35,6 +35,7 @@ type Reco = {
   membre_cible_id: string | null;
   contact_externe: string | null;
   montant: number | null;
+  valide: boolean;
   semaine_id: number;
   created_at: string;
 };
@@ -72,7 +73,7 @@ function RecosPage() {
     queryFn: async (): Promise<Reco[]> => {
       const { data, error } = await supabase
         .from("recommandations")
-        .select("id, type, membre_id, membre_cible_id, contact_externe, montant, semaine_id, created_at")
+        .select("id, type, membre_id, membre_cible_id, contact_externe, montant, valide, semaine_id, created_at")
         .order("created_at", { ascending: false });
       if (error) throw error;
       return (data ?? []) as Reco[];
@@ -119,6 +120,8 @@ function RecosPage() {
       });
   }, [recos, semainesMap]);
 
+  const aValider = useMemo(() => recos.filter((r) => r.type === "merci_business" && !r.valide), [recos]);
+
   return (
     <div className="space-y-6">
       <header>
@@ -127,6 +130,27 @@ function RecosPage() {
           Saisie rapide rattachée à la semaine en cours.
         </p>
       </header>
+
+      {isBureau && aValider.length > 0 && (
+        <Card className="border-amber-300 bg-amber-50/50">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base flex items-center gap-2">
+              <ClipboardCheck className="h-4 w-4" />
+              À valider ({aValider.length})
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="pt-0 divide-y">
+            {aValider.map((r) => (
+              <AValiderRow
+                key={r.id}
+                reco={r}
+                emetteur={membresMap[r.membre_id]}
+                cible={r.membre_cible_id ? membresMap[r.membre_cible_id] : undefined}
+              />
+            ))}
+          </CardContent>
+        </Card>
+      )}
 
       <RecoForm
         membres={membres.filter((m) => m.id !== profile?.id)}
@@ -376,6 +400,61 @@ function RecoRow({
           </AlertDialogContent>
         </AlertDialog>
       )}
+    </div>
+  );
+}
+
+function AValiderRow({
+  reco,
+  emetteur,
+  cible,
+}: {
+  reco: Reco;
+  emetteur?: MembreLite;
+  cible?: MembreLite;
+}) {
+  const qc = useQueryClient();
+  const emName = emetteur ? `${emetteur.prenom} ${emetteur.nom}` : "—";
+  const cibleName = cible ? `${cible.prenom} ${cible.nom}` : "—";
+
+  const validate = useMutation({
+    mutationFn: async () => {
+      const { error } = await supabase
+        .from("recommandations")
+        .update({ valide: true })
+        .eq("id", reco.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Montant validé");
+      qc.invalidateQueries({ queryKey: ["recos", "list"] });
+    },
+    onError: (e) => toast.error(e instanceof Error ? e.message : "Erreur"),
+  });
+
+  return (
+    <div className="flex items-center gap-3 py-3">
+      <div className="h-8 w-8 rounded-md flex items-center justify-center shrink-0 bg-fuchsia-100 text-fuchsia-800">
+        <Euro className="h-4 w-4" />
+      </div>
+      <div className="min-w-0 flex-1">
+        <div className="flex flex-wrap items-center gap-2">
+          <Badge variant="outline" className="text-[10px]">Merci</Badge>
+          {reco.montant != null && (
+            <Badge className="text-[10px]">
+              {new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR" }).format(Number(reco.montant))}
+            </Badge>
+          )}
+        </div>
+        <p className="text-sm mt-0.5 truncate">{cibleName} → {emName}</p>
+      </div>
+      <Button
+        size="sm"
+        disabled={validate.isPending}
+        onClick={() => validate.mutate()}
+      >
+        {validate.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Valider"}
+      </Button>
     </div>
   );
 }
