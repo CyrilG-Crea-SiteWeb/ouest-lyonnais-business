@@ -9,11 +9,14 @@ import {
   LogOut,
   Menu,
   X,
+  UserCircle,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { OlbLogo } from "./OlbLogo";
 import { Button } from "./ui/button";
+import { Badge } from "./ui/badge";
 import { cn } from "@/lib/utils";
+import { useProfile } from "@/hooks/use-profile";
 
 const NAV = [
   { to: "/", label: "Tableau de bord", icon: LayoutDashboard },
@@ -21,6 +24,7 @@ const NAV = [
   { to: "/recommandations", label: "Recommandations", icon: HandshakeIcon },
   { to: "/sondages", label: "Sondages", icon: Vote },
   { to: "/evenements", label: "Événements", icon: CalendarDays },
+  { to: "/mon-profil", label: "Mon profil", icon: UserCircle },
 ] as const;
 
 export function AppShell({ children }: { children: ReactNode }) {
