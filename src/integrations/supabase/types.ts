@@ -14,16 +14,441 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      commentaires: {
+        Row: {
+          contenu_id: number
+          created_at: string
+          id: number
+          membre_id: string
+          parent_id: number | null
+          texte: string
+          type_contenu: Database["public"]["Enums"]["type_contenu"]
+        }
+        Insert: {
+          contenu_id: number
+          created_at?: string
+          id?: never
+          membre_id: string
+          parent_id?: number | null
+          texte: string
+          type_contenu: Database["public"]["Enums"]["type_contenu"]
+        }
+        Update: {
+          contenu_id?: number
+          created_at?: string
+          id?: never
+          membre_id?: string
+          parent_id?: number | null
+          texte?: string
+          type_contenu?: Database["public"]["Enums"]["type_contenu"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "commentaires_membre_id_fkey"
+            columns: ["membre_id"]
+            isOneToOne: false
+            referencedRelation: "membres"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "commentaires_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "commentaires"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      evenements: {
+        Row: {
+          capacite: number | null
+          created_at: string
+          createur_id: string
+          date_event: string
+          description: string | null
+          id: number
+          lieu: string | null
+          titre: string
+        }
+        Insert: {
+          capacite?: number | null
+          created_at?: string
+          createur_id: string
+          date_event: string
+          description?: string | null
+          id?: never
+          lieu?: string | null
+          titre: string
+        }
+        Update: {
+          capacite?: number | null
+          created_at?: string
+          createur_id?: string
+          date_event?: string
+          description?: string | null
+          id?: never
+          lieu?: string | null
+          titre?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "evenements_createur_id_fkey"
+            columns: ["createur_id"]
+            isOneToOne: false
+            referencedRelation: "membres"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      inscriptions: {
+        Row: {
+          created_at: string
+          evenement_id: number
+          id: number
+          membre_id: string
+          statut: Database["public"]["Enums"]["statut_inscription"]
+        }
+        Insert: {
+          created_at?: string
+          evenement_id: number
+          id?: never
+          membre_id: string
+          statut?: Database["public"]["Enums"]["statut_inscription"]
+        }
+        Update: {
+          created_at?: string
+          evenement_id?: number
+          id?: never
+          membre_id?: string
+          statut?: Database["public"]["Enums"]["statut_inscription"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inscriptions_evenement_id_fkey"
+            columns: ["evenement_id"]
+            isOneToOne: false
+            referencedRelation: "evenements"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inscriptions_membre_id_fkey"
+            columns: ["membre_id"]
+            isOneToOne: false
+            referencedRelation: "membres"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      membres: {
+        Row: {
+          categorie: string | null
+          created_at: string
+          date_entree: string
+          email: string
+          entreprise: string | null
+          id: string
+          nom: string
+          photo_url: string | null
+          prenom: string
+          role: Database["public"]["Enums"]["role_membre"]
+          statut: Database["public"]["Enums"]["statut_membre"]
+          telephone: string | null
+        }
+        Insert: {
+          categorie?: string | null
+          created_at?: string
+          date_entree?: string
+          email: string
+          entreprise?: string | null
+          id: string
+          nom: string
+          photo_url?: string | null
+          prenom: string
+          role?: Database["public"]["Enums"]["role_membre"]
+          statut?: Database["public"]["Enums"]["statut_membre"]
+          telephone?: string | null
+        }
+        Update: {
+          categorie?: string | null
+          created_at?: string
+          date_entree?: string
+          email?: string
+          entreprise?: string | null
+          id?: string
+          nom?: string
+          photo_url?: string | null
+          prenom?: string
+          role?: Database["public"]["Enums"]["role_membre"]
+          statut?: Database["public"]["Enums"]["statut_membre"]
+          telephone?: string | null
+        }
+        Relationships: []
+      }
+      options_sondage: {
+        Row: {
+          id: number
+          libelle: string
+          sondage_id: number
+        }
+        Insert: {
+          id?: never
+          libelle: string
+          sondage_id: number
+        }
+        Update: {
+          id?: never
+          libelle?: string
+          sondage_id?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "options_sondage_sondage_id_fkey"
+            columns: ["sondage_id"]
+            isOneToOne: false
+            referencedRelation: "sondages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      recommandations: {
+        Row: {
+          contact_externe: string | null
+          created_at: string
+          id: number
+          membre_cible_id: string | null
+          membre_id: string
+          montant: number | null
+          notes: string | null
+          semaine_id: number
+          type: Database["public"]["Enums"]["type_recommandation"]
+          valide: boolean
+        }
+        Insert: {
+          contact_externe?: string | null
+          created_at?: string
+          id?: never
+          membre_cible_id?: string | null
+          membre_id: string
+          montant?: number | null
+          notes?: string | null
+          semaine_id: number
+          type: Database["public"]["Enums"]["type_recommandation"]
+          valide?: boolean
+        }
+        Update: {
+          contact_externe?: string | null
+          created_at?: string
+          id?: never
+          membre_cible_id?: string | null
+          membre_id?: string
+          montant?: number | null
+          notes?: string | null
+          semaine_id?: number
+          type?: Database["public"]["Enums"]["type_recommandation"]
+          valide?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recommandations_membre_cible_id_fkey"
+            columns: ["membre_cible_id"]
+            isOneToOne: false
+            referencedRelation: "membres"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recommandations_membre_id_fkey"
+            columns: ["membre_id"]
+            isOneToOne: false
+            referencedRelation: "membres"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recommandations_semaine_id_fkey"
+            columns: ["semaine_id"]
+            isOneToOne: false
+            referencedRelation: "semaines"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      semaines: {
+        Row: {
+          date_debut: string
+          date_fin: string
+          id: number
+          libelle: string
+        }
+        Insert: {
+          date_debut: string
+          date_fin: string
+          id?: never
+          libelle: string
+        }
+        Update: {
+          date_debut?: string
+          date_fin?: string
+          id?: never
+          libelle?: string
+        }
+        Relationships: []
+      }
+      sondages: {
+        Row: {
+          created_at: string
+          createur_id: string
+          date_limite: string | null
+          id: number
+          question: string
+          statut: Database["public"]["Enums"]["statut_sondage"]
+          titre: string
+        }
+        Insert: {
+          created_at?: string
+          createur_id: string
+          date_limite?: string | null
+          id?: never
+          question: string
+          statut?: Database["public"]["Enums"]["statut_sondage"]
+          titre: string
+        }
+        Update: {
+          created_at?: string
+          createur_id?: string
+          date_limite?: string | null
+          id?: never
+          question?: string
+          statut?: Database["public"]["Enums"]["statut_sondage"]
+          titre?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sondages_createur_id_fkey"
+            columns: ["createur_id"]
+            isOneToOne: false
+            referencedRelation: "membres"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      votes: {
+        Row: {
+          created_at: string
+          id: number
+          membre_id: string
+          option_id: number
+          sondage_id: number
+        }
+        Insert: {
+          created_at?: string
+          id?: never
+          membre_id: string
+          option_id: number
+          sondage_id: number
+        }
+        Update: {
+          created_at?: string
+          id?: never
+          membre_id?: string
+          option_id?: number
+          sondage_id?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "votes_membre_id_fkey"
+            columns: ["membre_id"]
+            isOneToOne: false
+            referencedRelation: "membres"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "votes_option_id_fkey"
+            columns: ["option_id"]
+            isOneToOne: false
+            referencedRelation: "options_sondage"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "votes_sondage_id_fkey"
+            columns: ["sondage_id"]
+            isOneToOne: false
+            referencedRelation: "sondages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
-      [_ in never]: never
+      v_palmares_semaine: {
+        Row: {
+          ca_valide: number | null
+          membre: string | null
+          membre_id: string | null
+          nb_recos: number | null
+          nb_tete_a_tete: number | null
+          rang: number | null
+          semaine_id: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recommandations_membre_id_fkey"
+            columns: ["membre_id"]
+            isOneToOne: false
+            referencedRelation: "membres"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recommandations_semaine_id_fkey"
+            columns: ["semaine_id"]
+            isOneToOne: false
+            referencedRelation: "semaines"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      v_stats_membre_semaine: {
+        Row: {
+          ca_valide: number | null
+          membre_id: string | null
+          nb_merci: number | null
+          nb_reco_externe: number | null
+          nb_reco_interne: number | null
+          nb_tete_a_tete: number | null
+          semaine_id: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recommandations_membre_id_fkey"
+            columns: ["membre_id"]
+            isOneToOne: false
+            referencedRelation: "membres"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recommandations_semaine_id_fkey"
+            columns: ["semaine_id"]
+            isOneToOne: false
+            referencedRelation: "semaines"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
-      [_ in never]: never
+      est_admin: { Args: never; Returns: boolean }
+      est_bureau: { Args: never; Returns: boolean }
+      get_or_create_semaine: { Args: { p_date?: string }; Returns: number }
     }
     Enums: {
-      [_ in never]: never
+      role_membre: "admin" | "bureau" | "membre"
+      statut_inscription: "present" | "absent" | "peut_etre"
+      statut_membre: "actif" | "inactif"
+      statut_sondage: "ouvert" | "cloture"
+      type_contenu: "recommandation" | "sondage" | "evenement"
+      type_recommandation:
+        | "tete_a_tete"
+        | "reco_interne"
+        | "reco_externe"
+        | "merci_business"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +575,18 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      role_membre: ["admin", "bureau", "membre"],
+      statut_inscription: ["present", "absent", "peut_etre"],
+      statut_membre: ["actif", "inactif"],
+      statut_sondage: ["ouvert", "cloture"],
+      type_contenu: ["recommandation", "sondage", "evenement"],
+      type_recommandation: [
+        "tete_a_tete",
+        "reco_interne",
+        "reco_externe",
+        "merci_business",
+      ],
+    },
   },
 } as const
