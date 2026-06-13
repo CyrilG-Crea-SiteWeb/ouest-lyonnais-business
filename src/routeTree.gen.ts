@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as AuthenticatedIndexRouteImport } from './routes/_authenticated/index'
+import { Route as AuthenticatedRecommandationsRouteImport } from './routes/_authenticated/recommandations'
 import { Route as AuthenticatedMembresRouteImport } from './routes/_authenticated/membres'
 
 const AuthRoute = AuthRouteImport.update({
@@ -28,6 +29,12 @@ const AuthenticatedIndexRoute = AuthenticatedIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedRecommandationsRoute =
+  AuthenticatedRecommandationsRouteImport.update({
+    id: '/recommandations',
+    path: '/recommandations',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedMembresRoute = AuthenticatedMembresRouteImport.update({
   id: '/membres',
   path: '/membres',
@@ -38,10 +45,12 @@ export interface FileRoutesByFullPath {
   '/': typeof AuthenticatedIndexRoute
   '/auth': typeof AuthRoute
   '/membres': typeof AuthenticatedMembresRoute
+  '/recommandations': typeof AuthenticatedRecommandationsRoute
 }
 export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/membres': typeof AuthenticatedMembresRoute
+  '/recommandations': typeof AuthenticatedRecommandationsRoute
   '/': typeof AuthenticatedIndexRoute
 }
 export interface FileRoutesById {
@@ -49,18 +58,20 @@ export interface FileRoutesById {
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
   '/_authenticated/membres': typeof AuthenticatedMembresRoute
+  '/_authenticated/recommandations': typeof AuthenticatedRecommandationsRoute
   '/_authenticated/': typeof AuthenticatedIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/auth' | '/membres'
+  fullPaths: '/' | '/auth' | '/membres' | '/recommandations'
   fileRoutesByTo: FileRoutesByTo
-  to: '/auth' | '/membres' | '/'
+  to: '/auth' | '/membres' | '/recommandations' | '/'
   id:
     | '__root__'
     | '/_authenticated'
     | '/auth'
     | '/_authenticated/membres'
+    | '/_authenticated/recommandations'
     | '/_authenticated/'
   fileRoutesById: FileRoutesById
 }
@@ -92,6 +103,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/recommandations': {
+      id: '/_authenticated/recommandations'
+      path: '/recommandations'
+      fullPath: '/recommandations'
+      preLoaderRoute: typeof AuthenticatedRecommandationsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/membres': {
       id: '/_authenticated/membres'
       path: '/membres'
@@ -104,11 +122,13 @@ declare module '@tanstack/react-router' {
 
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedMembresRoute: typeof AuthenticatedMembresRoute
+  AuthenticatedRecommandationsRoute: typeof AuthenticatedRecommandationsRoute
   AuthenticatedIndexRoute: typeof AuthenticatedIndexRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedMembresRoute: AuthenticatedMembresRoute,
+  AuthenticatedRecommandationsRoute: AuthenticatedRecommandationsRoute,
   AuthenticatedIndexRoute: AuthenticatedIndexRoute,
 }
 
