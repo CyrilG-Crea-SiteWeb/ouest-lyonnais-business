@@ -35,6 +35,7 @@ type Reco = {
   membre_cible_id: string | null;
   contact_externe: string | null;
   montant: number | null;
+  valide: boolean;
   semaine_id: number;
   created_at: string;
 };
