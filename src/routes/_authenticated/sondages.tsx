@@ -278,6 +278,7 @@ function SondageCard({
           {total} vote{total > 1 ? "s" : ""}
           {canVote && myVote && " — cliquez sur une autre option pour changer votre vote"}
         </p>
+        <Comments typeContenu="sondage" contenuId={sondage.id} />
       </CardContent>
     </Card>
   );
