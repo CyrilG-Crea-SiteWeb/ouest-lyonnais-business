@@ -46,9 +46,9 @@ type MembreLite = { id: string; nom: string; prenom: string; entreprise: string 
 
 const TYPE_META: Record<RecoType, { label: string; short: string; icon: typeof Handshake; color: string }> = {
   tete_a_tete:    { label: "Tête-à-tête",            short: "T-à-T",   icon: Users2,    color: "bg-blue-100 text-blue-800" },
-  reco_interne:   { label: "Recommandation interne", short: "Interne", icon: Handshake, color: "bg-emerald-100 text-emerald-800" },
-  reco_externe:   { label: "Recommandation externe", short: "Externe", icon: UserPlus,  color: "bg-amber-100 text-amber-800" },
-  merci_business: { label: "Merci pour le business", short: "Merci",   icon: Euro,      color: "bg-fuchsia-100 text-fuchsia-800" },
+  reco_interne:   { label: "Reco interne", short: "Interne", icon: Handshake, color: "bg-emerald-100 text-emerald-800" },
+  reco_externe:   { label: "Reco externe", short: "Externe", icon: UserPlus,  color: "bg-amber-100 text-amber-800" },
+  merci_business: { label: "Thx U 4 Pepette", short: "Merci",   icon: Euro,      color: "bg-fuchsia-100 text-fuchsia-800" },
 };
 
 function RecosPage() {
