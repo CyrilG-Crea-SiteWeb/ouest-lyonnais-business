@@ -387,6 +387,7 @@ function EvenementCard({
             )}
           </div>
         )}
+        <Comments typeContenu="evenement" contenuId={ev.id} />
       </CardContent>
     </Card>
   );
