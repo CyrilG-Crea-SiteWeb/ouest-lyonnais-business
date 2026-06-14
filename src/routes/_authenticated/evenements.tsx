@@ -30,6 +30,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
+import { Comments } from "@/components/Comments";
 
 export const Route = createFileRoute("/_authenticated/evenements")({
   head: () => ({ meta: [{ title: "Événements — OLB" }] }),
