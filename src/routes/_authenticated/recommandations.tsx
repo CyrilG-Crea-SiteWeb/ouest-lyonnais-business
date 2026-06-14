@@ -17,6 +17,7 @@ import {
   AlertDialogTitle, AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
+import { Comments } from "@/components/Comments";
 import {
   Handshake, Users2, UserPlus, Euro, Trash2, Loader2, Check, ClipboardCheck,
 } from "lucide-react";
@@ -361,45 +362,48 @@ function RecoRow({
   });
 
   return (
-    <div className="flex items-center gap-3 py-3">
-      <div className={"h-8 w-8 rounded-md flex items-center justify-center shrink-0 " + meta.color}>
-        <Icon className="h-4 w-4" />
-      </div>
-      <div className="min-w-0 flex-1">
-        <div className="flex flex-wrap items-center gap-2">
-          <Badge variant="outline" className="text-[10px]">{meta.short}</Badge>
-          {reco.montant != null && (
-            <Badge className="text-[10px]">
-              {new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR" }).format(Number(reco.montant))}
-            </Badge>
-          )}
+    <div className="py-3 border-b last:border-b-0">
+      <div className="flex items-center gap-3">
+        <div className={"h-8 w-8 rounded-md flex items-center justify-center shrink-0 " + meta.color}>
+          <Icon className="h-4 w-4" />
         </div>
-        <p className="text-sm mt-0.5 truncate">{description}</p>
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <Badge variant="outline" className="text-[10px]">{meta.short}</Badge>
+            {reco.montant != null && (
+              <Badge className="text-[10px]">
+                {new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR" }).format(Number(reco.montant))}
+              </Badge>
+            )}
+          </div>
+          <p className="text-sm mt-0.5 truncate">{description}</p>
+        </div>
+        {canEdit && (
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button size="icon" variant="ghost" className="h-8 w-8 text-muted-foreground hover:text-destructive">
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Supprimer cette recommandation ?</AlertDialogTitle>
+                <AlertDialogDescription>Cette action est définitive.</AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Annuler</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={() => del.mutate()}
+                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                >
+                  Supprimer
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        )}
       </div>
-      {canEdit && (
-        <AlertDialog>
-          <AlertDialogTrigger asChild>
-            <Button size="icon" variant="ghost" className="h-8 w-8 text-muted-foreground hover:text-destructive">
-              <Trash2 className="h-4 w-4" />
-            </Button>
-          </AlertDialogTrigger>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Supprimer cette recommandation ?</AlertDialogTitle>
-              <AlertDialogDescription>Cette action est définitive.</AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>Annuler</AlertDialogCancel>
-              <AlertDialogAction
-                onClick={() => del.mutate()}
-                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              >
-                Supprimer
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
-      )}
+      <Comments typeContenu="recommandation" contenuId={reco.id} />
     </div>
   );
 }

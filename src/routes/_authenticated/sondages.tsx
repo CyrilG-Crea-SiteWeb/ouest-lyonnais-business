@@ -30,6 +30,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
+import { Comments } from "@/components/Comments";
 
 export const Route = createFileRoute("/_authenticated/sondages")({
   head: () => ({ meta: [{ title: "Sondages — OLB" }] }),
@@ -277,6 +278,7 @@ function SondageCard({
           {total} vote{total > 1 ? "s" : ""}
           {canVote && myVote && " — cliquez sur une autre option pour changer votre vote"}
         </p>
+        <Comments typeContenu="sondage" contenuId={sondage.id} />
       </CardContent>
     </Card>
   );
