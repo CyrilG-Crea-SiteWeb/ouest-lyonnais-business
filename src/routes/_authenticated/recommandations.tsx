@@ -17,6 +17,7 @@ import {
   AlertDialogTitle, AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
+import { Comments } from "@/components/Comments";
 import {
   Handshake, Users2, UserPlus, Euro, Trash2, Loader2, Check, ClipboardCheck,
 } from "lucide-react";
