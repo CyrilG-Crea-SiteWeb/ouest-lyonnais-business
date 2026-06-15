@@ -273,7 +273,7 @@ function Dashboard() {
             onClick={() => {
               if (!palmares?.length) return;
               exportPalmaresPdf({
-                semaineLibelle: `Semaine #${semaineId}`,
+                semaineLibelle: semaineCourante?.libelle ?? `Semaine #${semaineId}`,
                 rows: palmares.map((r: any) => ({
                   rang: r.rang,
                   membre: r.membre,
