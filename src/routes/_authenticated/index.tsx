@@ -5,7 +5,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Users, HandshakeIcon, Euro, Trophy, Coffee } from "lucide-react";
+import { Users, HandshakeIcon, Euro, Trophy, Coffee, Download } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { exportPalmaresPdf } from "@/lib/exports";
 import {
   ResponsiveContainer,
   LineChart,
@@ -245,12 +247,34 @@ function Dashboard() {
 
       {/* Palmarès */}
       <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Trophy className="h-5 w-5" style={{ color: ORANGE }} />
-            Palmarès de la semaine
-          </CardTitle>
-          <CardDescription>Classement par CA validé</CardDescription>
+        <CardHeader className="flex flex-row items-start justify-between gap-3">
+          <div>
+            <CardTitle className="flex items-center gap-2">
+              <Trophy className="h-5 w-5" style={{ color: ORANGE }} />
+              Palmarès de la semaine
+            </CardTitle>
+            <CardDescription>Classement par CA validé</CardDescription>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={!palmares?.length}
+            onClick={() => {
+              if (!palmares?.length) return;
+              exportPalmaresPdf({
+                semaineLibelle: `Semaine #${semaineId}`,
+                rows: palmares.map((r: any) => ({
+                  rang: r.rang,
+                  membre: r.membre,
+                  nb_recos: Number(r.nb_recos ?? 0),
+                  nb_tete_a_tete: Number(r.nb_tete_a_tete ?? 0),
+                  ca_valide: Number(r.ca_valide ?? 0),
+                })),
+              });
+            }}
+          >
+            <Download className="h-4 w-4 mr-2" /> PDF
+          </Button>
         </CardHeader>
         <CardContent className="p-0">
           {!palmares?.length ? (
