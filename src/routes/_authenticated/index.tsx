@@ -44,6 +44,17 @@ function Dashboard() {
     },
   });
 
+  const { data: semaineCourante } = useQuery({
+    enabled: !!semaineId,
+    queryKey: ["semaine", "info", semaineId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("semaines").select("libelle").eq("id", semaineId!).single();
+      if (error) throw error;
+      return data;
+    },
+  });
+
   // Recos de la semaine courante (pour KPI groupe)
   const { data: recosSemaine } = useQuery({
     enabled: !!semaineId,
