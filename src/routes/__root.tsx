@@ -89,12 +89,18 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "twitter:description", content: "Application pour les membres OLB" },
       { property: "og:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/hwfYxCZX1MfA0POB3hSk4775ZTG3/social-images/social-1781382109287-LOGO-OLB.webp" },
       { name: "twitter:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/hwfYxCZX1MfA0POB3hSk4775ZTG3/social-images/social-1781382109287-LOGO-OLB.webp" },
+      { name: "theme-color", content: "#006875" },
+      { name: "apple-mobile-web-app-capable", content: "yes" },
+      { name: "apple-mobile-web-app-status-bar-style", content: "default" },
+      { name: "apple-mobile-web-app-title", content: "OLB" },
     ],
     links: [
       {
         rel: "stylesheet",
         href: appCss,
       },
+      { rel: "manifest", href: "/manifest.json" },
+      { rel: "apple-touch-icon", href: "/icon-192.png" },
     ],
   }),
   shellComponent: RootShell,
