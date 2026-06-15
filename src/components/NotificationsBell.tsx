@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Bell } from "lucide-react";
+import { Bell, Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useProfile } from "@/hooks/use-profile";
 import { Button } from "@/components/ui/button";
@@ -92,6 +92,17 @@ export function NotificationsBell() {
     onSuccess: () => qc.invalidateQueries({ queryKey: key }),
   });
 
+  const supprimer = useMutation({
+    mutationFn: async (id: number) => {
+      const { error } = await supabase
+        .from("notifications")
+        .delete()
+        .eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: key }),
+  });
+
   async function ouvrir(n: Notification) {
     if (!n.lu) await marquerLue.mutateAsync(n.id);
     setOpen(false);
@@ -139,26 +150,38 @@ export function NotificationsBell() {
               </p>
             )}
             {notifications.map((n) => (
-              <button
+              <div
                 key={n.id}
-                onClick={() => ouvrir(n)}
-                className={`flex w-full flex-col items-start gap-0.5 border-b px-3 py-2.5 text-left transition-colors hover:bg-muted ${
+                className={`flex items-stretch border-b transition-colors hover:bg-muted ${
                   n.lu ? "opacity-60" : ""
                 }`}
               >
-                <span className="flex items-center gap-2 text-sm font-medium">
-                  {!n.lu && (
-                    <span className="h-2 w-2 shrink-0 rounded-full bg-accent" />
-                  )}
-                  {n.titre}
-                </span>
-                <span className="text-xs text-muted-foreground">
-                  {new Date(n.created_at).toLocaleString("fr-FR", {
-                    dateStyle: "short",
-                    timeStyle: "short",
-                  })}
-                </span>
-              </button>
+                <button
+                  onClick={() => ouvrir(n)}
+                  className="flex flex-1 flex-col items-start gap-0.5 px-3 py-2.5 text-left"
+                >
+                  <span className="flex items-center gap-2 text-sm font-medium">
+                    {!n.lu && (
+                      <span className="h-2 w-2 shrink-0 rounded-full bg-accent" />
+                    )}
+                    {n.titre}
+                  </span>
+                  <span className="text-xs text-muted-foreground">
+                    {new Date(n.created_at).toLocaleString("fr-FR", {
+                      dateStyle: "short",
+                      timeStyle: "short",
+                    })}
+                  </span>
+                </button>
+                <button
+                  onClick={() => supprimer.mutate(n.id)}
+                  disabled={supprimer.isPending}
+                  aria-label="Supprimer la notification"
+                  className="flex shrink-0 items-center px-3 text-muted-foreground transition-colors hover:text-destructive"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </button>
+              </div>
             ))}
           </div>
         </div>
