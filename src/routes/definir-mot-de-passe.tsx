@@ -54,12 +54,22 @@ function DefinirMotDePassePage() {
     try {
       const { error } = await supabase.auth.updateUser({ password });
       if (error) throw error;
-      // Marque le drapeau : le membre a désormais défini son mot de passe.
-      // Sans ça, le garde-fou (beforeLoad) le renverrait en boucle ici.
-      const { data: u } = await supabase.auth.getUser();
-      if (u.user) {
-        await supabase.from("membres").update({ mdp_defini: true }).eq("id", u.user.id);
-      }
+
+      // Marque le drapeau mdp_defini = true, mais SANS bloquer la suite :
+      // dans le contexte d'un lien de reset, cet update peut rester en
+      // attente. On le lance "à part" et on ne l'attend pas pour continuer.
+      supabase.auth.getUser().then(({ data: u }) => {
+        if (u.user) {
+          supabase
+            .from("membres")
+            .update({ mdp_defini: true })
+            .eq("id", u.user.id)
+            .then(({ error: e2 }) => {
+              if (e2) console.error("maj mdp_defini:", e2.message);
+            });
+        }
+      });
+
       toast.success("Mot de passe défini. Vous pouvez vous connecter partout.");
       navigate({ to: "/" });
     } catch (err: unknown) {
