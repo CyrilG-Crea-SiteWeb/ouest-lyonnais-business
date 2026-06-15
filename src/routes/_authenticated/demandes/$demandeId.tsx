@@ -65,7 +65,7 @@ function DemandeDetailPage() {
       const { data, error } = await supabase
         .from("demandes")
         .select(
-          "id, titre, description, lien, statut, cible_tous, membre_id, created_at, membres(prenom, nom, photo_url)",
+          "id, titre, description, lien, statut, cible_tous, membre_id, created_at, membres!demandes_membre_id_fkey(prenom, nom, photo_url)",
         )
         .eq("id", id)
         .single();
@@ -81,7 +81,7 @@ function DemandeDetailPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("demandes_cibles")
-        .select("membre_id, membres(prenom, nom)")
+        .select("membre_id, membres!demandes_cibles_membre_id_fkey(prenom, nom)")
         .eq("demande_id", id);
       if (error) throw error;
       return data as unknown as {
