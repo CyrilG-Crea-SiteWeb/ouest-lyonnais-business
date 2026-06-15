@@ -77,38 +77,62 @@ function Dashboard() {
       ?.filter((r: any) => r.type === "merci_business" && r.valide)
       .reduce((s: number, r: any) => s + Number(r.montant ?? 0), 0) ?? 0;
 
-  // Evolution par semaine (12 dernières)
+  // Evolution par année OLB (juin -> juin), regroupée par mois
   const { data: evolution } = useQuery({
-    queryKey: ["dashboard", "evolution"],
+    queryKey: ["dashboard", "evolution-annee"],
     queryFn: async () => {
+      // Bornes de l'année OLB en cours : 1er juin -> 1er juin suivant
+      const now = new Date();
+      const anneeDebut = now.getMonth() >= 5 ? now.getFullYear() : now.getFullYear() - 1;
+      const debut = `${anneeDebut}-06-01`;
+      const fin = `${anneeDebut + 1}-06-01`;
+
+      // Semaines de l'année OLB
       const { data: semaines, error: e1 } = await supabase
         .from("semaines")
-        .select("id, libelle, date_debut")
-        .order("date_debut", { ascending: false })
-        .limit(12);
+        .select("id, date_debut")
+        .gte("date_debut", debut)
+        .lt("date_debut", fin)
+        .order("date_debut", { ascending: true });
       if (e1) throw e1;
       const ids = (semaines ?? []).map((s) => s.id);
-      if (!ids.length) return [];
+
+      // 12 mois de juin à mai (libellés FR courts)
+      const moisOrdre = [5, 6, 7, 8, 9, 10, 11, 0, 1, 2, 3, 4];
+      const moisLabels = ["Juin", "Juil", "Août", "Sept", "Oct", "Nov", "Déc", "Janv", "Févr", "Mars", "Avr", "Mai"];
+      const buckets = moisOrdre.map((m, i) => ({
+        mois: moisLabels[i],
+        moisNum: m,
+        recommandations: 0,
+        ca: 0,
+      }));
+
+      if (!ids.length) return buckets;
+
       const { data: recos, error: e2 } = await supabase
         .from("recommandations")
         .select("type, montant, valide, semaine_id")
         .in("semaine_id", ids);
       if (e2) throw e2;
-      return (semaines ?? [])
-        .slice()
-        .reverse()
-        .map((s) => {
-          const rs = (recos ?? []).filter((r: any) => r.semaine_id === s.id);
-          return {
-            semaine: s.libelle?.replace("Semaine du ", "") ?? String(s.id),
-            recommandations: rs.filter(
-              (r: any) => r.type === "reco_interne" || r.type === "reco_externe",
-            ).length,
-            ca: rs
-              .filter((r: any) => r.type === "merci_business" && r.valide)
-              .reduce((sum: number, r: any) => sum + Number(r.montant ?? 0), 0),
-          };
-        });
+
+      const moisParSemaine = new Map<number, number>();
+      (semaines ?? []).forEach((s) => {
+        moisParSemaine.set(s.id, new Date(s.date_debut as string).getMonth());
+      });
+
+      (recos ?? []).forEach((r: any) => {
+        const moisNum = moisParSemaine.get(r.semaine_id);
+        if (moisNum === undefined) return;
+        const b = buckets.find((x) => x.moisNum === moisNum);
+        if (!b) return;
+        if (r.type === "reco_interne" || r.type === "reco_externe") {
+          b.recommandations += 1;
+        } else if (r.type === "merci_business" && r.valide) {
+          b.ca += Number(r.montant ?? 0);
+        }
+      });
+
+      return buckets;
     },
   });
 
@@ -144,6 +168,7 @@ function Dashboard() {
   });
 
   const [selectedMembre, setSelectedMembre] = useState<string | undefined>();
+  const [triPalmares, setTriPalmares] = useState<"ca" | "recos" | "tete">("ca");
   const membreId = selectedMembre ?? profile?.id;
 
   const { data: statsIndiv } = useQuery({
@@ -167,12 +192,15 @@ function Dashboard() {
       ).length;
       const recosRecues = recues.filter((r: any) => r.type === "reco_interne").length;
       const teteATete = donnees.filter((r: any) => r.type === "tete_a_tete").length;
-      // CA apporté = "merci_business" où le membre est émetteur (membre_id) — c'est celui qui dit merci.
-      // CA apporté au membre = sommes "merci" où membre_cible_id = membre (le bénéficiaire reçoit du business)
-      const caApporte = recues
+      // CA apporté AUX autres = "merci_business" validés où le membre est l'émetteur (membre_id).
+      const caApporte = donnees
         .filter((r: any) => r.type === "merci_business" && r.valide)
         .reduce((s: number, r: any) => s + Number(r.montant ?? 0), 0);
-      return { recosDonnees, recosRecues, teteATete, caApporte };
+      // CA perçu PAR le membre = "merci_business" validés où il est le bénéficiaire (membre_cible_id).
+      const caPercu = recues
+        .filter((r: any) => r.type === "merci_business" && r.valide)
+        .reduce((s: number, r: any) => s + Number(r.montant ?? 0), 0);
+      return { recosDonnees, recosRecues, teteATete, caApporte, caPercu };
     },
   });
 
@@ -181,13 +209,22 @@ function Dashboard() {
     { label: "Recommandations (semaine)", value: nbRecos, icon: HandshakeIcon },
     { label: "CA validé (semaine)", value: euros(caValide), icon: Euro },
   ];
+  
+  const palmaresTrie = (palmares ?? [])
+    .slice()
+    .sort((a: any, b: any) => {
+      if (triPalmares === "recos") return Number(b.nb_recos ?? 0) - Number(a.nb_recos ?? 0);
+      if (triPalmares === "tete") return Number(b.nb_tete_a_tete ?? 0) - Number(a.nb_tete_a_tete ?? 0);
+      return Number(b.ca_valide ?? 0) - Number(a.ca_valide ?? 0);
+    })
+    .map((row: any, i: number) => ({ ...row, rangAffiche: i + 1 }));
 
   return (
     <div className="space-y-6">
       <header>
         <h1 className="text-2xl md:text-3xl font-bold text-foreground">Tableau de bord</h1>
         <p className="text-sm text-muted-foreground mt-1">
-          Indicateurs de la semaine BNI en cours et évolution du groupe.
+          Indicateurs de la semaine OLB en cours et évolution du groupe.
         </p>
       </header>
 
@@ -209,15 +246,15 @@ function Dashboard() {
       {/* Évolution */}
       <Card>
         <CardHeader>
-          <CardTitle>Évolution par semaine</CardTitle>
-          <CardDescription>12 dernières semaines — recommandations et CA validé</CardDescription>
+          <CardTitle>Évolution sur l'année OLB</CardTitle>
+          <CardDescription>De juin à mai — recommandations et CA par mois</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="h-72 w-full">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={evolution ?? []} margin={{ top: 10, right: 16, left: 0, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                <XAxis dataKey="semaine" tick={{ fontSize: 11 }} />
+                <XAxis dataKey="mois" tick={{ fontSize: 11 }} />
                 <YAxis yAxisId="left" tick={{ fontSize: 11 }} stroke={TEAL} />
                 <YAxis
                   yAxisId="right"
@@ -228,7 +265,7 @@ function Dashboard() {
                 />
                 <Tooltip
                   formatter={(value: any, name: string) =>
-                    name === "CA validé (€)" ? euros(Number(value)) : value
+                    name === "CA (€)" ? euros(Number(value)) : value
                   }
                 />
                 <Legend wrapperStyle={{ fontSize: 12 }} />
@@ -245,7 +282,7 @@ function Dashboard() {
                   yAxisId="right"
                   type="monotone"
                   dataKey="ca"
-                  name="CA validé (€)"
+                  name="CA (€)"
                   stroke={ORANGE}
                   strokeWidth={2}
                   dot={{ r: 3 }}
@@ -259,12 +296,24 @@ function Dashboard() {
       {/* Palmarès */}
       <Card>
         <CardHeader className="flex flex-row items-start justify-between gap-3">
-          <div>
+          <div className="space-y-2">
             <CardTitle className="flex items-center gap-2">
               <Trophy className="h-5 w-5" style={{ color: ORANGE }} />
               Palmarès de la semaine
             </CardTitle>
-            <CardDescription>Classement par CA validé</CardDescription>
+            <CardDescription>
+              Classement par {triPalmares === "ca" ? "CA" : triPalmares === "recos" ? "recommandations" : "tête-à-tête"}
+            </CardDescription>
+            <Select value={triPalmares} onValueChange={(v) => setTriPalmares(v as any)}>
+              <SelectTrigger className="w-full md:w-56">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="ca">Chiffre d'affaires</SelectItem>
+                <SelectItem value="recos">Recommandations</SelectItem>
+                <SelectItem value="tete">Tête-à-tête</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
           <Button
             variant="outline"
@@ -292,13 +341,13 @@ function Dashboard() {
             <p className="px-6 pb-6 text-sm text-muted-foreground">Aucune donnée pour cette semaine.</p>
           ) : (
             <ul className="divide-y">
-              {palmares.map((row: any) => (
+              {palmaresTrie.map((row: any) => (
                 <li key={row.membre_id} className="flex items-center gap-3 px-4 py-3">
                   <span
                     className="inline-flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold text-white"
-                    style={{ background: row.rang <= 3 ? ORANGE : TEAL }}
+                    style={{ background: row.rangAffiche <= 3 ? ORANGE : TEAL }}
                   >
-                    {row.rang}
+                    {row.rangAffiche}
                   </span>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium truncate">{row.membre}</p>
@@ -341,11 +390,12 @@ function Dashboard() {
           </Select>
 
           {membreId && statsIndiv && (
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
               <MiniStat label="Recos données" value={statsIndiv.recosDonnees} color={TEAL} />
               <MiniStat label="Recos reçues" value={statsIndiv.recosRecues} color={TEAL} />
               <MiniStat label="Tête-à-tête" value={statsIndiv.teteATete} color={TEAL} />
               <MiniStat label="CA apporté" value={euros(statsIndiv.caApporte)} color={ORANGE} />
+              <MiniStat label="CA perçu" value={euros(statsIndiv.caPercu)} color={ORANGE} />
             </div>
           )}
 
