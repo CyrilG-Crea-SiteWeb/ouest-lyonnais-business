@@ -13,6 +13,8 @@ import {
   Inbox,
 } from "lucide-react";
 import { NotificationsBell } from "./NotificationsBell";
+import { HelpButton } from "./HelpButton";
+import { AddToHomeScreenButton } from "./AddToHomeScreenButton";
 import { supabase } from "@/integrations/supabase/client";
 import { OlbLogo } from "./OlbLogo";
 import { Button } from "./ui/button";
@@ -56,8 +58,22 @@ export function AppShell({ children }: { children: ReactNode }) {
               {profile.role}
             </Badge>
           </div>
-          {/* Cloche de notifications (visible en desktop) */}
-          <NotificationsBell />
+          {/* Cloche + aide + installation (visible en desktop) */}
+          <div className="flex items-center gap-1">
+            <AddToHomeScreenButton />
+            <HelpButton title="Aide" ariaLabel="Aide générale">
+              <p>
+                Bienvenue sur l'application OLB. Utilisez le menu pour naviguer
+                entre le tableau de bord, les membres, les recommandations, les
+                sondages, les événements et les demandes.
+              </p>
+              <p>
+                Le bouton « Installer l'app » ajoute un raccourci sur l'écran
+                d'accueil de votre téléphone, pour un accès en un clic.
+              </p>
+            </HelpButton>
+            <NotificationsBell />
+          </div>
         </div>
       )}
       <nav className="flex-1 overflow-y-auto p-3 space-y-1">
@@ -112,8 +128,21 @@ export function AppShell({ children }: { children: ReactNode }) {
           <Menu className="h-5 w-5" />
         </button>
         <OlbLogo className="h-9 w-auto" />
-        {/* Cloche de notifications (visible en mobile, remplace l'espace vide) */}
-        <NotificationsBell />
+        {/* Cloche + aide + installation (mobile) */}
+        <div className="flex items-center gap-1">
+          <AddToHomeScreenButton />
+          <HelpButton title="Aide" ariaLabel="Aide générale">
+            <p>
+              Bienvenue sur l'application OLB. Utilisez le menu pour naviguer
+              entre les sections.
+            </p>
+            <p>
+              Le bouton « Installer l'app » ajoute un raccourci sur l'écran
+              d'accueil de votre téléphone.
+            </p>
+          </HelpButton>
+          <NotificationsBell />
+        </div>
       </header>
 
       {/* Mobile drawer */}

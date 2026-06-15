@@ -19,6 +19,7 @@ import {
 import { toast } from "sonner";
 import { Comments } from "@/components/Comments";
 import { ExportRecos } from "@/components/ExportRecos";
+import { HelpButton } from "@/components/HelpButton";
 import {
   Handshake, Users2, UserPlus, Euro, Trash2, Loader2, Check, ClipboardCheck,
 } from "lucide-react";
@@ -127,7 +128,22 @@ function RecosPage() {
   return (
     <div className="space-y-6">
       <header>
-        <h1 className="text-2xl md:text-3xl font-bold">Recommandations</h1>
+        <div className="flex items-center gap-2">
+          <h1 className="text-2xl md:text-3xl font-bold">Recommandations</h1>
+          <HelpButton title="Comment fonctionne cette page" ariaLabel="Aide Recommandations">
+            <p>Choisissez le type de saisie selon votre activité :</p>
+            <ul className="list-disc space-y-1 pl-5">
+              <li><strong>Tête-à-tête</strong> : vous avez rencontré un membre en individuel.</li>
+              <li><strong>Reco interne</strong> : vous recommandez un membre du groupe.</li>
+              <li><strong>Reco externe</strong> : vous recommandez un contact hors groupe.</li>
+              <li><strong>Merci pour le business</strong> : un membre vous a apporté du CA (indiquez le montant).</li>
+            </ul>
+            <p>
+              Chaque saisie est automatiquement rattachée à la semaine en cours.
+              Vous voyez l'historique de tous, mais ne modifiez que vos propres entrées.
+            </p>
+          </HelpButton>
+        </div>
         <p className="text-sm text-muted-foreground mt-1">
           Saisie rapide rattachée à la semaine en cours.
         </p>

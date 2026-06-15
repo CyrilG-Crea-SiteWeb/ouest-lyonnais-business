@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Plus, LinkIcon, ChevronDown } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
+import { HelpButton } from "@/components/HelpButton";
 import {
   Card,
   CardHeader,
@@ -153,7 +154,23 @@ function DemandesPage() {
     <div className="space-y-6">
       <header className="flex items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl md:text-3xl font-bold">Demandes spécifiques</h1>
+          <div className="flex items-center gap-2">
+            <h1 className="text-2xl md:text-3xl font-bold">Demandes spécifiques</h1>
+            <HelpButton title="Comment fonctionne cette page" ariaLabel="Aide Demandes">
+              <p>
+                Publiez une demande visible par le groupe : un besoin, une
+                recherche de contact, un service. Choisissez de notifier tout le
+                monde ou seulement certains membres.
+              </p>
+              <p>
+                Les membres concernés reçoivent une notification (cloche + email).
+                Le statut passe d'<strong>ouverte</strong> à <strong>résolue</strong>{" "}
+                ou <strong>clôturée</strong>. Les demandes clôturées sont
+                regroupées en bas.
+              </p>
+              <p>Vous pouvez commenter et répondre sous chaque demande.</p>
+            </HelpButton>
+          </div>
           <p className="text-sm text-muted-foreground mt-1">
             Publiez une demande au groupe et suivez les réponses.
           </p>
