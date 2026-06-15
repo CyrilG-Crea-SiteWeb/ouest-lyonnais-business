@@ -3,11 +3,16 @@ import { useMemo, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useProfile, hasRole } from "@/hooks/use-profile";
+import { creerNotificationsSafe } from "@/lib/notifications";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Collapsible, CollapsibleContent, CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
@@ -22,6 +27,7 @@ import { ExportRecos } from "@/components/ExportRecos";
 import { HelpButton } from "@/components/HelpButton";
 import {
   Handshake, Users2, UserPlus, Euro, Trash2, Loader2, Check, ClipboardCheck,
+  ChevronRight,
 } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/recommandations")({
@@ -40,6 +46,7 @@ type Reco = {
   montant: number | null;
   valide: boolean;
   semaine_id: number;
+  notes: string | null;
   created_at: string;
 };
 
@@ -52,6 +59,12 @@ const TYPE_META: Record<RecoType, { label: string; short: string; icon: typeof H
   reco_externe:   { label: "Reco externe", short: "Externe", icon: UserPlus,  color: "bg-amber-100 text-amber-800" },
   merci_business: { label: "Thx U 4 Pepette", short: "Merci",   icon: Euro,      color: "bg-fuchsia-100 text-fuchsia-800" },
 };
+
+// ---- Helpers de regroupement par année / mois ----
+const MOIS_FR = [
+  "Janvier", "Février", "Mars", "Avril", "Mai", "Juin",
+  "Juillet", "Août", "Septembre", "Octobre", "Novembre", "Décembre",
+];
 
 function RecosPage() {
   const { data: profile } = useProfile();
@@ -76,10 +89,26 @@ function RecosPage() {
     queryFn: async (): Promise<Reco[]> => {
       const { data, error } = await supabase
         .from("recommandations")
-        .select("id, type, membre_id, membre_cible_id, contact_externe, montant, valide, semaine_id, created_at")
+        .select("id, type, membre_id, membre_cible_id, contact_externe, montant, valide, semaine_id, notes, created_at")
         .order("created_at", { ascending: false });
       if (error) throw error;
       return (data ?? []) as Reco[];
+    },
+  });
+
+  // Participants des tête-à-tête (table de liaison reco_participants).
+  const { data: participantsMap = {} } = useQuery({
+    queryKey: ["reco_participants", "all"],
+    queryFn: async (): Promise<Record<number, string[]>> => {
+      const { data, error } = await supabase
+        .from("reco_participants")
+        .select("recommandation_id, membre_id");
+      if (error) throw error;
+      const map: Record<number, string[]> = {};
+      (data ?? []).forEach((row: any) => {
+        (map[row.recommandation_id] ??= []).push(row.membre_id);
+      });
+      return map;
     },
   });
 
@@ -106,22 +135,56 @@ function RecosPage() {
     return m;
   }, [membres]);
 
-  // Group recos by semaine, sorted by week date desc
-  const grouped = useMemo(() => {
-    const groups = new Map<number, Reco[]>();
+  // Hiérarchie Année > Mois > Semaine, basée sur la date de début de semaine.
+  const annees = useMemo(() => {
+    // 1. regrouper les recos par semaine
+    const parSemaine = new Map<number, Reco[]>();
     recos.forEach((r) => {
-      const arr = groups.get(r.semaine_id) ?? [];
+      const arr = parSemaine.get(r.semaine_id) ?? [];
       arr.push(r);
-      groups.set(r.semaine_id, arr);
+      parSemaine.set(r.semaine_id, arr);
     });
-    return Array.from(groups.entries())
-      .map(([id, items]) => ({ id, items, semaine: semainesMap[id] }))
-      .sort((a, b) => {
-        const da = a.semaine?.date_debut ?? "";
-        const db = b.semaine?.date_debut ?? "";
-        return db.localeCompare(da);
-      });
+
+    // 2. construire la structure année > mois > semaines
+    type SemaineGroup = { id: number; semaine?: Semaine; items: Reco[]; debut: string };
+    type MoisGroup = { mois: number; annee: number; semaines: SemaineGroup[] };
+    type AnneeGroup = { annee: number; mois: MoisGroup[] };
+
+    const anneeMap = new Map<number, Map<number, SemaineGroup[]>>();
+
+    Array.from(parSemaine.entries()).forEach(([id, items]) => {
+      const semaine = semainesMap[id];
+      const debut = semaine?.date_debut ?? "";
+      const d = debut ? new Date(debut) : new Date(0);
+      const annee = d.getFullYear();
+      const mois = d.getMonth(); // 0-11
+
+      if (!anneeMap.has(annee)) anneeMap.set(annee, new Map());
+      const moisMap = anneeMap.get(annee)!;
+      if (!moisMap.has(mois)) moisMap.set(mois, []);
+      moisMap.get(mois)!.push({ id, semaine, items, debut });
+    });
+
+    // 3. trier : années desc, mois desc, semaines desc
+    const result: AnneeGroup[] = Array.from(anneeMap.entries())
+      .sort((a, b) => b[0] - a[0])
+      .map(([annee, moisMap]) => ({
+        annee,
+        mois: Array.from(moisMap.entries())
+          .sort((a, b) => b[0] - a[0])
+          .map(([mois, semaines]) => ({
+            mois,
+            annee,
+            semaines: semaines.sort((a, b) => b.debut.localeCompare(a.debut)),
+          })),
+      }));
+
+    return result;
   }, [recos, semainesMap]);
+
+  const now = new Date();
+  const anneeCourante = now.getFullYear();
+  const moisCourant = now.getMonth();
 
   const aValider = useMemo(() => recos.filter((r) => r.type === "merci_business" && !r.valide), [recos]);
 
@@ -133,9 +196,9 @@ function RecosPage() {
           <HelpButton title="Comment fonctionne cette page" ariaLabel="Aide Recommandations">
             <p>Choisissez le type de saisie selon votre activité :</p>
             <ul className="list-disc space-y-1 pl-5">
-              <li><strong>Tête-à-tête</strong> : vous avez rencontré un membre en individuel.</li>
-              <li><strong>Reco interne</strong> : vous recommandez un membre du groupe.</li>
-              <li><strong>Reco externe</strong> : vous recommandez un contact hors groupe.</li>
+              <li><strong>Tête-à-tête</strong> : vous avez rencontré un ou plusieurs membres. Sélectionnez tous les participants.</li>
+              <li><strong>Reco interne</strong> : vous recommandez un membre du groupe. Cochez « Je me recommande » si c'est vous que vous recommandez auprès de ce membre.</li>
+              <li><strong>Reco externe</strong> : vous transmettez un contact hors groupe à un membre destinataire.</li>
               <li><strong>Merci pour le business</strong> : un membre vous a apporté du CA (indiquez le montant).</li>
             </ul>
             <p>
@@ -172,8 +235,10 @@ function RecosPage() {
 
       <RecoForm
         membres={membres.filter((m) => m.id !== profile?.id)}
+        allMembres={membres}
         onCreated={() => {
           qc.invalidateQueries({ queryKey: ["recos", "list"] });
+          qc.invalidateQueries({ queryKey: ["reco_participants", "all"] });
         }}
       />
 
@@ -181,28 +246,21 @@ function RecosPage() {
         <h2 className="text-lg font-semibold">Historique</h2>
         {isLoading ? (
           <p className="text-sm text-muted-foreground">Chargement…</p>
-        ) : grouped.length === 0 ? (
+        ) : annees.length === 0 ? (
           <Card><CardContent className="p-6 text-sm text-muted-foreground">Aucune recommandation.</CardContent></Card>
         ) : (
-          grouped.map((g) => (
-            <Card key={g.id}>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-sm font-semibold text-primary">
-                  {g.semaine?.libelle ?? `Semaine #${g.id}`}
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="pt-0 divide-y">
-                {g.items.map((r) => (
-                  <RecoRow
-                    key={r.id}
-                    reco={r}
-                    emetteur={membresMap[r.membre_id]}
-                    cible={r.membre_cible_id ? membresMap[r.membre_cible_id] : undefined}
-                    canEdit={isBureau || r.membre_id === profile?.id}
-                  />
-                ))}
-              </CardContent>
-            </Card>
+          annees.map((a) => (
+            <AnneeBlock
+              key={a.annee}
+              annee={a.annee}
+              mois={a.mois}
+              defaultOpen={a.annee === anneeCourante}
+              moisCourant={a.annee === anneeCourante ? moisCourant : -1}
+              membresMap={membresMap}
+              participantsMap={participantsMap}
+              profileId={profile?.id}
+              isBureau={isBureau}
+            />
           ))
         )}
       </section>
@@ -212,12 +270,128 @@ function RecosPage() {
   );
 }
 
-function RecoForm({ membres, onCreated }: { membres: MembreLite[]; onCreated: () => void }) {
+// ---- Bloc Année (repliable) ----
+function AnneeBlock({
+  annee, mois, defaultOpen, moisCourant, membresMap, participantsMap, profileId, isBureau,
+}: {
+  annee: number;
+  mois: { mois: number; annee: number; semaines: { id: number; semaine?: Semaine; items: Reco[]; debut: string }[] }[];
+  defaultOpen: boolean;
+  moisCourant: number;
+  membresMap: Record<string, MembreLite>;
+  participantsMap: Record<number, string[]>;
+  profileId?: string;
+  isBureau: boolean;
+}) {
+  const [open, setOpen] = useState(defaultOpen);
+  const total = mois.reduce((acc, m) => acc + m.semaines.reduce((s, sem) => s + sem.items.length, 0), 0);
+
+  return (
+    <Collapsible open={open} onOpenChange={setOpen}>
+      <CollapsibleTrigger asChild>
+        <button className="flex w-full items-center gap-2 rounded-lg border bg-card px-4 py-3 text-left hover:bg-accent transition-colors">
+          <ChevronRight className={"h-5 w-5 shrink-0 transition-transform " + (open ? "rotate-90" : "")} />
+          <span className="text-lg font-bold">{annee}</span>
+          <Badge variant="outline" className="ml-auto">{total}</Badge>
+        </button>
+      </CollapsibleTrigger>
+      <CollapsibleContent className="space-y-3 pl-2 pt-3 md:pl-4">
+        {mois.map((m) => (
+          <MoisBlock
+            key={m.mois}
+            mois={m.mois}
+            semaines={m.semaines}
+            defaultOpen={m.mois === moisCourant}
+            membresMap={membresMap}
+            participantsMap={participantsMap}
+            profileId={profileId}
+            isBureau={isBureau}
+          />
+        ))}
+      </CollapsibleContent>
+    </Collapsible>
+  );
+}
+
+// ---- Bloc Mois (repliable) ----
+function MoisBlock({
+  mois, semaines, defaultOpen, membresMap, participantsMap, profileId, isBureau,
+}: {
+  mois: number;
+  semaines: { id: number; semaine?: Semaine; items: Reco[]; debut: string }[];
+  defaultOpen: boolean;
+  membresMap: Record<string, MembreLite>;
+  participantsMap: Record<number, string[]>;
+  profileId?: string;
+  isBureau: boolean;
+}) {
+  const [open, setOpen] = useState(defaultOpen);
+  const total = semaines.reduce((s, sem) => s + sem.items.length, 0);
+
+  return (
+    <Collapsible open={open} onOpenChange={setOpen}>
+      <CollapsibleTrigger asChild>
+        <button className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left hover:bg-accent transition-colors">
+          <ChevronRight className={"h-4 w-4 shrink-0 transition-transform " + (open ? "rotate-90" : "")} />
+          <span className="font-semibold">{MOIS_FR[mois]}</span>
+          <Badge variant="outline" className="ml-auto text-[10px]">{total}</Badge>
+        </button>
+      </CollapsibleTrigger>
+      <CollapsibleContent className="space-y-4 pt-2">
+        {semaines.map((g) => (
+          <Card key={g.id}>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-semibold text-primary">
+                {g.semaine?.libelle ?? `Semaine #${g.id}`}
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="pt-0 divide-y">
+              {g.items.map((r) => (
+                <RecoRow
+                  key={r.id}
+                  reco={r}
+                  emetteur={membresMap[r.membre_id]}
+                  cible={r.membre_cible_id ? membresMap[r.membre_cible_id] : undefined}
+                  participants={(participantsMap[r.id] ?? []).map((id) => membresMap[id]).filter(Boolean)}
+                  canEdit={isBureau || r.membre_id === profileId}
+                />
+              ))}
+            </CardContent>
+          </Card>
+        ))}
+      </CollapsibleContent>
+    </Collapsible>
+  );
+}
+
+function RecoForm({
+  membres, allMembres, onCreated,
+}: {
+  membres: MembreLite[];      // sans soi-même (pour T-à-T, reco interne classique, reco externe, merci)
+  allMembres: MembreLite[];   // avec soi-même (non utilisé ici mais dispo si besoin)
+  onCreated: () => void;
+}) {
   const { data: profile } = useProfile();
   const [type, setType] = useState<RecoType>("tete_a_tete");
-  const [membreCible, setMembreCible] = useState<string>("");
+  const [membreCible, setMembreCible] = useState<string>("");          // reco interne / externe / merci
+  const [participants, setParticipants] = useState<string[]>([]);       // tête-à-tête (multi)
+  const [autoReco, setAutoReco] = useState(false);                      // reco interne : "je me recommande"
   const [contactExterne, setContactExterne] = useState("");
   const [montant, setMontant] = useState("");
+
+  const resetFields = () => {
+    setMembreCible("");
+    setParticipants([]);
+    setAutoReco(false);
+    setContactExterne("");
+    setMontant("");
+  };
+
+  const toggleParticipant = (id: string) => {
+    setParticipants((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
+    );
+  };
 
   const mutation = useMutation({
     mutationFn: async () => {
@@ -230,36 +404,92 @@ function RecoForm({ membres, onCreated }: { membres: MembreLite[]; onCreated: ()
         membre_id: profile.id,
         semaine_id: semaineId,
       };
-      if (type === "reco_externe") {
+
+      if (type === "tete_a_tete") {
+        if (participants.length === 0) throw new Error("Sélectionnez au moins un membre");
+        // 1 seule ligne (compte pour 1 dans les stats), participants en liaison.
+      } else if (type === "reco_externe") {
         if (!contactExterne.trim()) throw new Error("Nom du contact externe requis");
+        if (!membreCible) throw new Error("Sélectionnez le membre destinataire");
         payload.contact_externe = contactExterne.trim();
+        payload.membre_cible_id = membreCible;
       } else {
+        // reco_interne ou merci_business
         if (!membreCible) throw new Error("Sélectionnez un membre");
         payload.membre_cible_id = membreCible;
+        if (type === "reco_interne" && autoReco) {
+          payload.notes = "auto_reco";
+        }
       }
+
       if (type === "merci_business") {
         const m = Number(montant.replace(",", "."));
         if (!isFinite(m) || m <= 0) throw new Error("Montant invalide");
         payload.montant = m;
       }
-      const { error } = await supabase.from("recommandations").insert(payload);
+
+      // Insertion principale (on récupère l'id pour la liaison + notifications).
+      const { data: inserted, error } = await supabase
+        .from("recommandations")
+        .insert(payload)
+        .select("id")
+        .single();
       if (error) throw error;
+      const recoId = inserted!.id as number;
+
+      // Tête-à-tête : insérer les participants dans la table de liaison.
+      if (type === "tete_a_tete") {
+        const rows = participants.map((membre_id) => ({
+          recommandation_id: recoId,
+          membre_id,
+        }));
+        const { error: partErr } = await supabase.from("reco_participants").insert(rows);
+        if (partErr) throw partErr;
+      }
+
+      // Notifications (best-effort, ne bloque pas la saisie).
+      const emName = `${profile.prenom} ${profile.nom}`;
+      if (type === "reco_interne") {
+        const titre = autoReco
+          ? `${emName} s'est recommandé auprès de vous`
+          : `Nouvelle reco de ${emName}`;
+        await creerNotificationsSafe({
+          typeContenu: "recommandation",
+          contenuId: recoId,
+          titre,
+          membreIds: [membreCible],
+          exclureId: profile.id,
+        });
+      } else if (type === "reco_externe") {
+        await creerNotificationsSafe({
+          typeContenu: "recommandation",
+          contenuId: recoId,
+          titre: `${emName} vous transmet un contact : ${contactExterne.trim()}`,
+          membreIds: [membreCible],
+          exclureId: profile.id,
+        });
+      } else if (type === "tete_a_tete") {
+        await creerNotificationsSafe({
+          typeContenu: "recommandation",
+          contenuId: recoId,
+          titre: `${emName} a noté un tête-à-tête avec vous`,
+          membreIds: participants,
+          exclureId: profile.id,
+        });
+      }
     },
     onSuccess: () => {
       toast.success("Recommandation enregistrée");
-      setMembreCible("");
-      setContactExterne("");
-      setMontant("");
+      resetFields();
       onCreated();
     },
     onError: (e) => toast.error(e instanceof Error ? e.message : "Erreur"),
   });
 
-  const needsMembre = type !== "reco_externe";
   const needsMontant = type === "merci_business";
   const membreLabel =
-    type === "tete_a_tete" ? "Membre rencontré" :
-    type === "reco_interne" ? "Membre destinataire" :
+    type === "reco_interne" ? (autoReco ? "Membre auprès de qui vous vous recommandez" : "Membre destinataire") :
+    type === "reco_externe" ? "Membre destinataire" :
     "Membre émetteur";
 
   return (
@@ -281,7 +511,7 @@ function RecoForm({ membres, onCreated }: { membres: MembreLite[]; onCreated: ()
                 <button
                   key={t}
                   type="button"
-                  onClick={() => setType(t)}
+                  onClick={() => { setType(t); }}
                   className={
                     "flex items-center gap-2 rounded-lg border p-3 text-left text-sm transition-colors " +
                     (active
@@ -297,7 +527,63 @@ function RecoForm({ membres, onCreated }: { membres: MembreLite[]; onCreated: ()
             })}
           </div>
 
-          {needsMembre && (
+          {/* TÊTE-À-TÊTE : sélection multiple de participants */}
+          {type === "tete_a_tete" && (
+            <div className="space-y-2">
+              <Label>Membres rencontrés ({participants.length} sélectionné{participants.length > 1 ? "s" : ""})</Label>
+              <div className="max-h-56 overflow-y-auto rounded-lg border divide-y">
+                {membres.map((m) => {
+                  const checked = participants.includes(m.id);
+                  return (
+                    <button
+                      key={m.id}
+                      type="button"
+                      onClick={() => toggleParticipant(m.id)}
+                      className="flex w-full items-center gap-3 px-3 py-2.5 text-left text-sm hover:bg-accent transition-colors"
+                    >
+                      <Checkbox checked={checked} className="pointer-events-none" />
+                      <span className="truncate">
+                        {m.prenom} {m.nom}{m.entreprise ? ` — ${m.entreprise}` : ""}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Un tête-à-tête à plusieurs compte pour 1 dans vos statistiques. Chaque participant déclare le sien de son côté.
+              </p>
+            </div>
+          )}
+
+          {/* RECO INTERNE : case "je me recommande" + sélecteur membre */}
+          {type === "reco_interne" && (
+            <>
+              <button
+                type="button"
+                onClick={() => setAutoReco((v) => !v)}
+                className="flex w-full items-center gap-3 rounded-lg border p-3 text-left text-sm hover:bg-accent transition-colors"
+              >
+                <Checkbox checked={autoReco} className="pointer-events-none" />
+                <span>Je me recommande auprès de ce membre</span>
+              </button>
+              <div className="space-y-1.5">
+                <Label>{membreLabel}</Label>
+                <Select value={membreCible} onValueChange={setMembreCible}>
+                  <SelectTrigger><SelectValue placeholder="Choisir un membre…" /></SelectTrigger>
+                  <SelectContent>
+                    {membres.map((m) => (
+                      <SelectItem key={m.id} value={m.id}>
+                        {m.prenom} {m.nom}{m.entreprise ? ` — ${m.entreprise}` : ""}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </>
+          )}
+
+          {/* MERCI BUSINESS : sélecteur membre émetteur */}
+          {type === "merci_business" && (
             <div className="space-y-1.5">
               <Label>{membreLabel}</Label>
               <Select value={membreCible} onValueChange={setMembreCible}>
@@ -313,17 +599,33 @@ function RecoForm({ membres, onCreated }: { membres: MembreLite[]; onCreated: ()
             </div>
           )}
 
+          {/* RECO EXTERNE : contact + membre destinataire */}
           {type === "reco_externe" && (
-            <div className="space-y-1.5">
-              <Label htmlFor="contact">Nom du contact</Label>
-              <Input
-                id="contact"
-                value={contactExterne}
-                onChange={(e) => setContactExterne(e.target.value)}
-                placeholder="Prénom Nom / Société"
-                maxLength={200}
-              />
-            </div>
+            <>
+              <div className="space-y-1.5">
+                <Label htmlFor="contact">Nom du contact</Label>
+                <Input
+                  id="contact"
+                  value={contactExterne}
+                  onChange={(e) => setContactExterne(e.target.value)}
+                  placeholder="Prénom Nom / Société"
+                  maxLength={200}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label>{membreLabel}</Label>
+                <Select value={membreCible} onValueChange={setMembreCible}>
+                  <SelectTrigger><SelectValue placeholder="À qui transmettez-vous ce contact ?" /></SelectTrigger>
+                  <SelectContent>
+                    {membres.map((m) => (
+                      <SelectItem key={m.id} value={m.id}>
+                        {m.prenom} {m.nom}{m.entreprise ? ` — ${m.entreprise}` : ""}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </>
           )}
 
           {needsMontant && (
@@ -349,11 +651,12 @@ function RecoForm({ membres, onCreated }: { membres: MembreLite[]; onCreated: ()
 }
 
 function RecoRow({
-  reco, emetteur, cible, canEdit,
+  reco, emetteur, cible, participants = [], canEdit,
 }: {
   reco: Reco;
   emetteur?: MembreLite;
   cible?: MembreLite;
+  participants?: MembreLite[];
   canEdit: boolean;
 }) {
   const qc = useQueryClient();
@@ -361,11 +664,19 @@ function RecoRow({
   const Icon = meta.icon;
   const emName = emetteur ? `${emetteur.prenom} ${emetteur.nom}` : "—";
   const cibleName = cible ? `${cible.prenom} ${cible.nom}` : reco.contact_externe ?? "—";
+  const isAutoReco = reco.type === "reco_interne" && reco.notes === "auto_reco";
+
+  // Pour le tête-à-tête : lister les participants (sinon retomber sur membre_cible_id).
+  const participantsName =
+    participants.length > 0
+      ? participants.map((p) => `${p.prenom} ${p.nom}`).join(", ")
+      : cibleName;
 
   const description =
-    reco.type === "tete_a_tete" ? `${emName} ↔ ${cibleName}` :
-    reco.type === "reco_interne" ? `${emName} → ${cibleName}` :
-    reco.type === "reco_externe" ? `${emName} → ${cibleName} (externe)` :
+    reco.type === "tete_a_tete" ? `${emName} ↔ ${participantsName}` :
+    reco.type === "reco_interne"
+      ? (isAutoReco ? `${emName} s'est recommandé auprès de ${cibleName}` : `${emName} → ${cibleName}`) :
+    reco.type === "reco_externe" ? `${emName} → ${cibleName} (externe) → ${reco.contact_externe ?? ""}` :
     `${cibleName} → ${emName}`; // merci : emetteur du remerciement est membre_id, le membre cible a apporté le business
 
   const del = useMutation({
@@ -376,6 +687,7 @@ function RecoRow({
     onSuccess: () => {
       toast.success("Supprimé");
       qc.invalidateQueries({ queryKey: ["recos", "list"] });
+      qc.invalidateQueries({ queryKey: ["reco_participants", "all"] });
     },
     onError: (e) => toast.error(e instanceof Error ? e.message : "Erreur"),
   });
@@ -389,6 +701,7 @@ function RecoRow({
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
             <Badge variant="outline" className="text-[10px]">{meta.short}</Badge>
+            {isAutoReco && <Badge variant="outline" className="text-[10px]">Auto</Badge>}
             {reco.montant != null && (
               <Badge className="text-[10px]">
                 {new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR" }).format(Number(reco.montant))}
