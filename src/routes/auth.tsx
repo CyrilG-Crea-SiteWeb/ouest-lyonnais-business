@@ -15,7 +15,7 @@ export const Route = createFileRoute("/auth")({
 
 function AuthPage() {
   const navigate = useNavigate();
-  const [mode, setMode] = useState<"signin" | "signup">("signin");
+  const [mode, setMode] = useState<"signin" | "signup" | "reset">("signin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [prenom, setPrenom] = useState("");
@@ -37,7 +37,7 @@ function AuthPage() {
         if (error) throw error;
         toast.success("Connexion réussie");
         navigate({ to: "/" });
-      } else {
+      } else if (mode === "signup") {
         const { error } = await supabase.auth.signUp({
           email,
           password,
@@ -48,6 +48,14 @@ function AuthPage() {
         });
         if (error) throw error;
         toast.success("Compte créé. Vérifiez votre email.");
+      } else {
+        // mode === "reset" : envoi du lien de réinitialisation.
+        const { error } = await supabase.auth.resetPasswordForEmail(email, {
+          redirectTo: `${window.location.origin}/definir-mot-de-passe`,
+        });
+        if (error) throw error;
+        toast.success("Si un compte existe, un email de réinitialisation vient d'être envoyé.");
+        setMode("signin");
       }
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : "Erreur");
@@ -55,6 +63,9 @@ function AuthPage() {
       setLoading(false);
     }
   }
+
+  const titre =
+    mode === "signin" ? "Connexion" : mode === "signup" ? "Créer un compte" : "Mot de passe oublié";
 
   return (
     <div className="min-h-screen w-full flex items-center justify-center bg-background px-4 py-8">
@@ -64,11 +75,11 @@ function AuthPage() {
         </div>
         <Card className="p-6 space-y-5 shadow-md">
           <div className="space-y-1 text-center">
-            <h1 className="text-xl font-bold text-foreground">
-              {mode === "signin" ? "Connexion" : "Créer un compte"}
-            </h1>
+            <h1 className="text-xl font-bold text-foreground">{titre}</h1>
             <p className="text-sm text-muted-foreground">
-              Espace réservé aux membres OLB
+              {mode === "reset"
+                ? "Saisissez votre email pour recevoir un lien de réinitialisation."
+                : "Espace réservé aux membres OLB"}
             </p>
           </div>
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -88,21 +99,48 @@ function AuthPage() {
               <Label htmlFor="email">Email</Label>
               <Input id="email" type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
             </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="password">Mot de passe</Label>
-              <Input id="password" type="password" autoComplete={mode === "signin" ? "current-password" : "new-password"} value={password} onChange={(e) => setPassword(e.target.value)} required minLength={6} />
-            </div>
+            {mode !== "reset" && (
+              <div className="space-y-1.5">
+                <Label htmlFor="password">Mot de passe</Label>
+                <Input id="password" type="password" autoComplete={mode === "signin" ? "current-password" : "new-password"} value={password} onChange={(e) => setPassword(e.target.value)} required minLength={6} />
+              </div>
+            )}
+            {mode === "signin" && (
+              <button
+                type="button"
+                onClick={() => setMode("reset")}
+                className="block text-left text-sm text-primary hover:underline"
+              >
+                Mot de passe oublié ?
+              </button>
+            )}
             <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? "Veuillez patienter…" : mode === "signin" ? "Se connecter" : "Créer mon compte"}
+              {loading
+                ? "Veuillez patienter…"
+                : mode === "signin"
+                ? "Se connecter"
+                : mode === "signup"
+                ? "Créer mon compte"
+                : "Envoyer le lien"}
             </Button>
           </form>
-          <button
-            type="button"
-            onClick={() => setMode(mode === "signin" ? "signup" : "signin")}
-            className="block w-full text-center text-sm text-primary hover:underline"
-          >
-            {mode === "signin" ? "Pas encore de compte ? S'inscrire" : "Déjà inscrit ? Se connecter"}
-          </button>
+          {mode === "reset" ? (
+            <button
+              type="button"
+              onClick={() => setMode("signin")}
+              className="block w-full text-center text-sm text-primary hover:underline"
+            >
+              Retour à la connexion
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setMode(mode === "signin" ? "signup" : "signin")}
+              className="block w-full text-center text-sm text-primary hover:underline"
+            >
+              {mode === "signin" ? "Pas encore de compte ? S'inscrire" : "Déjà inscrit ? Se connecter"}
+            </button>
+          )}
         </Card>
       </div>
     </div>
