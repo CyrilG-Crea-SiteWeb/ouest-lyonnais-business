@@ -709,7 +709,7 @@ function RecoRow({
 
   return (
     <div className="py-3 border-b last:border-b-0">
-      <div className="flex items-center gap-3">
+      <div className="flex items-start gap-3">
         <div className={"h-8 w-8 rounded-md flex items-center justify-center shrink-0 " + meta.color}>
           <Icon className="h-4 w-4" />
         </div>
@@ -723,7 +723,7 @@ function RecoRow({
               </Badge>
             )}
           </div>
-          <p className="text-sm mt-0.5 truncate">{description}</p>
+          <p className="text-sm mt-0.5 break-words">{description}</p>
         </div>
         {canEdit && (
           <AlertDialog>
