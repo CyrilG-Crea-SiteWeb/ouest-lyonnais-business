@@ -47,13 +47,17 @@ export function AppShell({ children }: { children: ReactNode }) {
         <OlbLogo className="h-14 w-auto" />
       </div>
       {profile && (
-        <div className="px-4 py-3 border-b border-sidebar-border">
-          <p className="text-sm font-semibold text-sidebar-foreground truncate">
-            {profile.prenom} {profile.nom}
-          </p>
-          <Badge variant="outline" className="mt-1 capitalize border-sidebar-border text-sidebar-foreground">
-            {profile.role}
-          </Badge>
+        <div className="px-4 py-3 border-b border-sidebar-border flex items-center justify-between gap-2">
+          <div className="min-w-0">
+            <p className="text-sm font-semibold text-sidebar-foreground truncate">
+              {profile.prenom} {profile.nom}
+            </p>
+            <Badge variant="outline" className="mt-1 capitalize border-sidebar-border text-sidebar-foreground">
+              {profile.role}
+            </Badge>
+          </div>
+          {/* Cloche de notifications (visible en desktop) */}
+          <NotificationsBell />
         </div>
       )}
       <nav className="flex-1 overflow-y-auto p-3 space-y-1">
@@ -108,7 +112,8 @@ export function AppShell({ children }: { children: ReactNode }) {
           <Menu className="h-5 w-5" />
         </button>
         <OlbLogo className="h-9 w-auto" />
-        <div className="w-9" />
+        {/* Cloche de notifications (visible en mobile, remplace l'espace vide) */}
+        <NotificationsBell />
       </header>
 
       {/* Mobile drawer */}
