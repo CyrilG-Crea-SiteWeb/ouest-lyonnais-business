@@ -1,0 +1,30 @@
+{
+  "name": "Ouest Lyonnais Business",
+  "short_name": "OLB",
+  "description": "Application de gestion du groupe OLB",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#006875",
+  "theme_color": "#006875",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}
