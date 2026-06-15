@@ -59,6 +59,77 @@ export type Database = {
           },
         ]
       }
+      demandes: {
+        Row: {
+          cible_tous: boolean
+          created_at: string
+          description: string
+          id: number
+          lien: string | null
+          membre_id: string
+          statut: Database["public"]["Enums"]["statut_demande"]
+          titre: string
+        }
+        Insert: {
+          cible_tous?: boolean
+          created_at?: string
+          description: string
+          id?: never
+          lien?: string | null
+          membre_id: string
+          statut?: Database["public"]["Enums"]["statut_demande"]
+          titre: string
+        }
+        Update: {
+          cible_tous?: boolean
+          created_at?: string
+          description?: string
+          id?: never
+          lien?: string | null
+          membre_id?: string
+          statut?: Database["public"]["Enums"]["statut_demande"]
+          titre?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "demandes_membre_id_fkey"
+            columns: ["membre_id"]
+            isOneToOne: false
+            referencedRelation: "membres"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      demandes_cibles: {
+        Row: {
+          demande_id: number
+          membre_id: string
+        }
+        Insert: {
+          demande_id: number
+          membre_id: string
+        }
+        Update: {
+          demande_id?: number
+          membre_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "demandes_cibles_demande_id_fkey"
+            columns: ["demande_id"]
+            isOneToOne: false
+            referencedRelation: "demandes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "demandes_cibles_membre_id_fkey"
+            columns: ["membre_id"]
+            isOneToOne: false
+            referencedRelation: "membres"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       evenements: {
         Row: {
           capacite: number | null
@@ -183,6 +254,44 @@ export type Database = {
           telephone?: string | null
         }
         Relationships: []
+      }
+      notifications: {
+        Row: {
+          contenu_id: number
+          created_at: string
+          id: number
+          lu: boolean
+          membre_id: string
+          titre: string
+          type_contenu: Database["public"]["Enums"]["type_contenu"]
+        }
+        Insert: {
+          contenu_id: number
+          created_at?: string
+          id?: never
+          lu?: boolean
+          membre_id: string
+          titre: string
+          type_contenu: Database["public"]["Enums"]["type_contenu"]
+        }
+        Update: {
+          contenu_id?: number
+          created_at?: string
+          id?: never
+          lu?: boolean
+          membre_id?: string
+          titre?: string
+          type_contenu?: Database["public"]["Enums"]["type_contenu"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notifications_membre_id_fkey"
+            columns: ["membre_id"]
+            isOneToOne: false
+            referencedRelation: "membres"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       options_sondage: {
         Row: {
@@ -440,10 +549,11 @@ export type Database = {
     }
     Enums: {
       role_membre: "admin" | "bureau" | "membre"
+      statut_demande: "ouverte" | "resolue" | "cloturee"
       statut_inscription: "present" | "absent" | "peut_etre"
       statut_membre: "actif" | "inactif"
       statut_sondage: "ouvert" | "cloture"
-      type_contenu: "recommandation" | "sondage" | "evenement"
+      type_contenu: "recommandation" | "sondage" | "evenement" | "demande"
       type_recommandation:
         | "tete_a_tete"
         | "reco_interne"
@@ -577,10 +687,11 @@ export const Constants = {
   public: {
     Enums: {
       role_membre: ["admin", "bureau", "membre"],
+      statut_demande: ["ouverte", "resolue", "cloturee"],
       statut_inscription: ["present", "absent", "peut_etre"],
       statut_membre: ["actif", "inactif"],
       statut_sondage: ["ouvert", "cloture"],
-      type_contenu: ["recommandation", "sondage", "evenement"],
+      type_contenu: ["recommandation", "sondage", "evenement", "demande"],
       type_recommandation: [
         "tete_a_tete",
         "reco_interne",
