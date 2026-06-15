@@ -49,7 +49,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         <OlbLogo className="h-14 w-auto" />
       </div>
       {profile && (
-        <div className="px-4 py-3 border-b border-sidebar-border flex items-center justify-between gap-2">
+        <div className="px-4 py-3 border-b border-sidebar-border">
           <div className="min-w-0">
             <p className="text-sm font-semibold text-sidebar-foreground truncate">
               {profile.prenom} {profile.nom}
@@ -58,8 +58,6 @@ export function AppShell({ children }: { children: ReactNode }) {
               {profile.role}
             </Badge>
           </div>
-          {/* Cloche de notifications (visible en desktop) */}
-          <NotificationsBell />
         </div>
       )}
       <nav className="flex-1 overflow-y-auto p-3 space-y-1">
@@ -154,6 +152,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       <main className="md:pl-64">
         {/* Header horizontal (desktop) : aide + installation, alignés à droite */}
         <header className="hidden md:flex items-center justify-end gap-1 px-8 h-14 border-b border-border bg-background">
+          <NotificationsBell />
           <AddToHomeScreenButton />
           <HelpButton title="Aide" ariaLabel="Aide générale">
             <p>
