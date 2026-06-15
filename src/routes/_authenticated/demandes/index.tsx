@@ -65,7 +65,7 @@ function DemandesPage() {
       const { data, error } = await supabase
         .from("demandes")
         .select(
-          "id, titre, description, lien, statut, cible_tous, membre_id, created_at, membres(prenom, nom, photo_url)",
+          "id, titre, description, lien, statut, cible_tous, membre_id, created_at, membres!demandes_membre_id_fkey(prenom, nom, photo_url)",
         )
         .order("created_at", { ascending: false });
       if (error) throw error;
