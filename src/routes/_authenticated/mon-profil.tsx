@@ -26,6 +26,10 @@ function ProfilPage() {
   const [categorie, setCategorie] = useState("");
   const [telephone, setTelephone] = useState("");
   const [saving, setSaving] = useState(false);
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [changingPwd, setChangingPwd] = useState(false);
+  const [sendingLink, setSendingLink] = useState(false);
 
   useEffect(() => {
     if (!profile) return;
@@ -59,6 +63,46 @@ function ProfilPage() {
       toast.error(err instanceof Error ? err.message : "Erreur lors de la sauvegarde");
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function handleChangePassword(e: React.FormEvent) {
+    e.preventDefault();
+    if (newPassword !== confirmPassword) {
+      toast.error("Les deux mots de passe ne correspondent pas.");
+      return;
+    }
+    if (newPassword.length < 6) {
+      toast.error("Le mot de passe doit faire au moins 6 caractères.");
+      return;
+    }
+    setChangingPwd(true);
+    try {
+      const { error } = await supabase.auth.updateUser({ password: newPassword });
+      if (error) throw error;
+      setNewPassword("");
+      setConfirmPassword("");
+      toast.success("Mot de passe modifié.");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Erreur");
+    } finally {
+      setChangingPwd(false);
+    }
+  }
+
+  async function handleSendResetLink() {
+    if (!profile) return;
+    setSendingLink(true);
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(profile.email, {
+        redirectTo: `${window.location.origin}/definir-mot-de-passe`,
+      });
+      if (error) throw error;
+      toast.success("Email envoyé. Cliquez sur le lien pour changer votre mot de passe.");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Erreur");
+    } finally {
+      setSendingLink(false);
     }
   }
 
@@ -130,7 +174,39 @@ function ProfilPage() {
           </form>
         </CardContent>
       </Card>
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Sécurité — mot de passe</CardTitle>
+          <CardDescription>
+            Modifiez votre mot de passe directement, ou recevez un lien par email.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          <form onSubmit={handleChangePassword} className="space-y-4">
+            <div className="space-y-1.5">
+              <Label htmlFor="new-password">Nouveau mot de passe</Label>
+              <Input id="new-password" type="password" autoComplete="new-password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} minLength={6} />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="confirm-password">Confirmer le mot de passe</Label>
+              <Input id="confirm-password" type="password" autoComplete="new-password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} minLength={6} />
+            </div>
+            <Button type="submit" disabled={changingPwd || !newPassword}>
+              {changingPwd ? "Modification…" : "Changer mon mot de passe"}
+            </Button>
+          </form>
 
+          <div className="border-t pt-4">
+            <p className="text-sm text-muted-foreground mb-3">
+              Vous préférez confirmer par email ? Recevez un lien sécurisé sur {profile.email}.
+            </p>
+            <Button type="button" variant="outline" onClick={handleSendResetLink} disabled={sendingLink}>
+              {sendingLink ? "Envoi…" : "Recevoir un lien par email"}
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+      
       {isBureau && (
         <Card className="border-primary/30">
           <CardHeader>
