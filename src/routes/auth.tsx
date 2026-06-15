@@ -14,6 +14,27 @@ export const Route = createFileRoute("/auth")({
   component: AuthPage,
 });
 
+// Traduit les messages d'erreur Supabase en messages clairs en français.
+function messageErreur(brut: string): string {
+  const m = brut.toLowerCase();
+  if (m.includes("invalid login credentials")) {
+    return "Adresse email ou mot de passe incorrect.";
+  }
+  if (m.includes("email not confirmed")) {
+    return "Votre adresse email n'est pas encore confirmée. Vérifiez vos emails.";
+  }
+  if (m.includes("user already registered")) {
+    return "Un compte existe déjà avec cette adresse email.";
+  }
+  if (m.includes("password should be at least")) {
+    return "Le mot de passe doit faire au moins 6 caractères.";
+  }
+  if (m.includes("rate limit") || m.includes("too many")) {
+    return "Trop de tentatives. Patientez quelques minutes avant de réessayer.";
+  }
+  return "Une erreur est survenue. Réessayez.";
+}
+
 function AuthPage() {
   const navigate = useNavigate();
   const [mode, setMode] = useState<"signin" | "signup" | "reset">("signin");
@@ -23,6 +44,7 @@ function AuthPage() {
   const [nom, setNom] = useState("");
   const [loading, setLoading] = useState(false);
   const [resetEnvoye, setResetEnvoye] = useState(false);
+  const [erreur, setErreur] = useState<string | null>(null);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
@@ -30,14 +52,16 @@ function AuthPage() {
     });
   }, [navigate]);
 
-  // Réinitialise l'écran de confirmation quand on change de mode.
+  // Réinitialise l'écran de confirmation et l'erreur quand on change de mode.
   function changerMode(nouveau: "signin" | "signup" | "reset") {
     setResetEnvoye(false);
+    setErreur(null);
     setMode(nouveau);
   }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    setErreur(null);
     setLoading(true);
     try {
       if (mode === "signin") {
@@ -66,7 +90,7 @@ function AuthPage() {
         setResetEnvoye(true);
       }
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : "Erreur");
+      setErreur(messageErreur(err instanceof Error ? err.message : ""));
     } finally {
       setLoading(false);
     }
@@ -136,6 +160,14 @@ function AuthPage() {
                   <div className="space-y-1.5">
                     <Label htmlFor="password">Mot de passe</Label>
                     <Input id="password" type="password" autoComplete={mode === "signin" ? "current-password" : "new-password"} value={password} onChange={(e) => setPassword(e.target.value)} required minLength={6} />
+                  </div>
+                )}
+                {erreur && (
+                  <div
+                    role="alert"
+                    className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive"
+                  >
+                    {erreur}
                   </div>
                 )}
                 {mode === "signin" && (
