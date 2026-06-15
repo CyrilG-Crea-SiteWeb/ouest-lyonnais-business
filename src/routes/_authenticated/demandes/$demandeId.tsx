@@ -1,6 +1,6 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
-import { ArrowLeft, ExternalLink } from "lucide-react";
+import { ArrowLeft, ExternalLink, Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useProfile, hasRole } from "@/hooks/use-profile";
 import { Comments } from "@/components/Comments";
@@ -13,6 +13,17 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/demandes/$demandeId")({
@@ -58,6 +69,7 @@ function DemandeDetailPage() {
   const id = Number(demandeId);
   const { data: profile } = useProfile();
   const qc = useQueryClient();
+  const navigate = useNavigate();
 
   const q = useQuery({
     queryKey: ["demandes", "detail", id],
@@ -106,6 +118,22 @@ function DemandeDetailPage() {
     onError: (e: Error) => toast.error(e.message),
   });
 
+  const supprimer = useMutation({
+    mutationFn: async () => {
+      // Les ON DELETE CASCADE en base nettoient demandes_cibles et
+      // les commentaires liés. La policy RLS demandes_delete autorise
+      // l'auteur et le bureau/admin.
+      const { error } = await supabase.from("demandes").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["demandes"] });
+      toast.success("Demande supprimée");
+      navigate({ to: "/demandes" });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
   if (q.isLoading) {
     return <p className="text-sm text-muted-foreground">Chargement…</p>;
   }
@@ -134,15 +162,53 @@ function DemandeDetailPage() {
   const isAuteur = profile?.id === d.membre_id;
   const isBureau = hasRole(profile?.role, "bureau");
   const peutModifierStatut = isAuteur || isBureau;
+  // Suppression : auteur, bureau ou admin (couvert par la policy RLS).
+  const peutSupprimer = isAuteur || isBureau;
 
   return (
     <div className="space-y-6 max-w-3xl">
-      <Button asChild variant="ghost" size="sm" className="-ml-2">
-        <Link to="/demandes">
-          <ArrowLeft className="h-4 w-4" />
-          Retour
-        </Link>
-      </Button>
+      <div className="flex items-center justify-between gap-2">
+        <Button asChild variant="ghost" size="sm" className="-ml-2">
+          <Link to="/demandes">
+            <ArrowLeft className="h-4 w-4" />
+            Retour
+          </Link>
+        </Button>
+
+        {peutSupprimer && (
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-destructive hover:text-destructive hover:bg-destructive/10"
+              >
+                <Trash2 className="h-4 w-4" />
+                Supprimer
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Supprimer cette demande ?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Cette action est définitive. La demande « {d.titre} » ainsi que
+                  ses commentaires seront supprimés.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Annuler</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={() => supprimer.mutate()}
+                  disabled={supprimer.isPending}
+                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                >
+                  Supprimer
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        )}
+      </div>
 
       <Card>
         <CardHeader className="space-y-3">
