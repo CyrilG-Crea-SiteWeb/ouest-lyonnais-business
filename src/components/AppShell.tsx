@@ -58,22 +58,8 @@ export function AppShell({ children }: { children: ReactNode }) {
               {profile.role}
             </Badge>
           </div>
-          {/* Cloche + aide + installation (visible en desktop) */}
-          <div className="flex items-center gap-1">
-            <AddToHomeScreenButton />
-            <HelpButton title="Aide" ariaLabel="Aide générale">
-              <p>
-                Bienvenue sur l'application OLB. Utilisez le menu pour naviguer
-                entre le tableau de bord, les membres, les recommandations, les
-                sondages, les événements et les demandes.
-              </p>
-              <p>
-                Le bouton « Installer l'app » ajoute un raccourci sur l'écran
-                d'accueil de votre téléphone, pour un accès en un clic.
-              </p>
-            </HelpButton>
-            <NotificationsBell />
-          </div>
+          {/* Cloche de notifications (visible en desktop) */}
+          <NotificationsBell />
         </div>
       )}
       <nav className="flex-1 overflow-y-auto p-3 space-y-1">
@@ -166,6 +152,20 @@ export function AppShell({ children }: { children: ReactNode }) {
       )}
 
       <main className="md:pl-64">
+        {/* Header horizontal (desktop) : aide + installation, alignés à droite */}
+        <header className="hidden md:flex items-center justify-end gap-1 px-8 h-14 border-b border-border bg-background">
+          <AddToHomeScreenButton />
+          <HelpButton title="Aide" ariaLabel="Aide générale">
+            <p>
+              Bienvenue sur l'application OLB. Utilisez le menu de gauche pour
+              naviguer entre les sections.
+            </p>
+            <p>
+              Le bouton « Installer l'app » ajoute un raccourci sur l'écran
+              d'accueil de votre téléphone, pour un accès en un clic.
+            </p>
+          </HelpButton>
+        </header>
         <div className="px-4 py-6 md:px-8 md:py-8 max-w-6xl mx-auto">
           {children}
         </div>
