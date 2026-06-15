@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { Plus, LinkIcon } from "lucide-react";
+import { Plus, LinkIcon, ChevronDown } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import {
@@ -11,6 +11,11 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 
 export const Route = createFileRoute("/_authenticated/demandes/")({
   head: () => ({ meta: [{ title: "Demandes spécifiques — OLB" }] }),
@@ -58,6 +63,61 @@ const ORDRE_STATUT: Record<Statut, number> = {
   cloturee: 2,
 };
 
+// Carte d'une demande (réutilisée pour les actives et les clôturées).
+function DemandeCard({ d }: { d: DemandeListe }) {
+  const meta = STATUT_META[d.statut];
+  const auteur = d.membres;
+  const initiales = auteur
+    ? `${auteur.prenom?.[0] ?? ""}${auteur.nom?.[0] ?? ""}`.toUpperCase()
+    : "?";
+  return (
+    <Link
+      to="/demandes/$demandeId"
+      params={{ demandeId: String(d.id) }}
+      className="block"
+    >
+      <Card className="h-full transition-shadow hover:shadow-md">
+        <CardHeader className="space-y-2">
+          <div className="flex items-start justify-between gap-2">
+            <CardTitle className="text-base leading-tight">{d.titre}</CardTitle>
+            <Badge className={meta.className}>{meta.label}</Badge>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <p className="text-sm text-muted-foreground line-clamp-3 whitespace-pre-wrap">
+            {d.description}
+          </p>
+          {d.lien && (
+            <span className="inline-flex items-center gap-1 text-xs text-primary">
+              <LinkIcon className="h-3 w-3" />
+              Lien joint
+            </span>
+          )}
+          <div className="flex items-center justify-between gap-2 pt-1">
+            <div className="flex items-center gap-2 min-w-0">
+              <Avatar className="h-6 w-6">
+                {auteur?.photo_url && <AvatarImage src={auteur.photo_url} />}
+                <AvatarFallback className="text-[10px]">
+                  {initiales}
+                </AvatarFallback>
+              </Avatar>
+              <span className="text-xs text-muted-foreground truncate">
+                {auteur ? `${auteur.prenom} ${auteur.nom}` : "Membre"}
+              </span>
+            </div>
+            <span className="text-xs text-muted-foreground shrink-0">
+              {new Date(d.created_at).toLocaleDateString("fr-FR", {
+                day: "2-digit",
+                month: "short",
+              })}
+            </span>
+          </div>
+        </CardContent>
+      </Card>
+    </Link>
+  );
+}
+
 function DemandesPage() {
   const q = useQuery({
     queryKey: ["demandes", "liste"],
@@ -73,13 +133,21 @@ function DemandesPage() {
     },
   });
 
-  const demandes = (q.data ?? [])
+  // Actives (ouverte/résolue) : récentes en haut, ouvertes d'abord.
+  const actives = (q.data ?? [])
+    .filter((d) => d.statut !== "cloturee")
     .slice()
     .sort((a, b) => {
       const s = ORDRE_STATUT[a.statut] - ORDRE_STATUT[b.statut];
       if (s !== 0) return s;
       return b.created_at.localeCompare(a.created_at);
     });
+
+  // Clôturées : repliées en bas, plus récentes en haut.
+  const cloturees = (q.data ?? [])
+    .filter((d) => d.statut === "cloturee")
+    .slice()
+    .sort((a, b) => b.created_at.localeCompare(a.created_at));
 
   return (
     <div className="space-y-6">
@@ -108,7 +176,7 @@ function DemandesPage() {
         </p>
       )}
 
-      {q.data && demandes.length === 0 && (
+      {q.data && actives.length === 0 && cloturees.length === 0 && (
         <Card>
           <CardContent className="py-10 text-center text-sm text-muted-foreground">
             Aucune demande pour le moment. Soyez le premier à en publier une.
@@ -116,66 +184,36 @@ function DemandesPage() {
         </Card>
       )}
 
-      <div className="grid gap-4 sm:grid-cols-2">
-        {demandes.map((d) => {
-          const meta = STATUT_META[d.statut];
-          const auteur = d.membres;
-          const initiales = auteur
-            ? `${auteur.prenom?.[0] ?? ""}${auteur.nom?.[0] ?? ""}`.toUpperCase()
-            : "?";
-          return (
-            <Link
-              key={d.id}
-              to="/demandes/$demandeId"
-              params={{ demandeId: String(d.id) }}
-              className="block"
-            >
-              <Card className="h-full transition-shadow hover:shadow-md">
-                <CardHeader className="space-y-2">
-                  <div className="flex items-start justify-between gap-2">
-                    <CardTitle className="text-base leading-tight">
-                      {d.titre}
-                    </CardTitle>
-                    <Badge className={meta.className}>{meta.label}</Badge>
-                  </div>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  <p className="text-sm text-muted-foreground line-clamp-3 whitespace-pre-wrap">
-                    {d.description}
-                  </p>
-                  {d.lien && (
-                    <span className="inline-flex items-center gap-1 text-xs text-primary">
-                      <LinkIcon className="h-3 w-3" />
-                      Lien joint
-                    </span>
-                  )}
-                  <div className="flex items-center justify-between gap-2 pt-1">
-                    <div className="flex items-center gap-2 min-w-0">
-                      <Avatar className="h-6 w-6">
-                        {auteur?.photo_url && (
-                          <AvatarImage src={auteur.photo_url} />
-                        )}
-                        <AvatarFallback className="text-[10px]">
-                          {initiales}
-                        </AvatarFallback>
-                      </Avatar>
-                      <span className="text-xs text-muted-foreground truncate">
-                        {auteur ? `${auteur.prenom} ${auteur.nom}` : "Membre"}
-                      </span>
-                    </div>
-                    <span className="text-xs text-muted-foreground shrink-0">
-                      {new Date(d.created_at).toLocaleDateString("fr-FR", {
-                        day: "2-digit",
-                        month: "short",
-                      })}
-                    </span>
-                  </div>
-                </CardContent>
-              </Card>
-            </Link>
-          );
-        })}
-      </div>
+      {actives.length > 0 && (
+        <div className="grid gap-4 sm:grid-cols-2">
+          {actives.map((d) => (
+            <DemandeCard key={d.id} d={d} />
+          ))}
+        </div>
+      )}
+
+      {q.data && actives.length === 0 && cloturees.length > 0 && (
+        <p className="text-sm text-muted-foreground">
+          Aucune demande en cours. Les demandes clôturées sont listées
+          ci-dessous.
+        </p>
+      )}
+
+      {cloturees.length > 0 && (
+        <Collapsible className="border-t pt-4">
+          <CollapsibleTrigger className="group flex w-full items-center justify-between gap-2 rounded-md py-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground">
+            <span>Demandes clôturées ({cloturees.length})</span>
+            <ChevronDown className="h-4 w-4 transition-transform group-data-[state=open]:rotate-180" />
+          </CollapsibleTrigger>
+          <CollapsibleContent className="pt-4">
+            <div className="grid gap-4 sm:grid-cols-2">
+              {cloturees.map((d) => (
+                <DemandeCard key={d.id} d={d} />
+              ))}
+            </div>
+          </CollapsibleContent>
+        </Collapsible>
+      )}
     </div>
   );
 }
