@@ -9,7 +9,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Checkbox } from "@/components/ui/checkbox";
 import {
   Collapsible, CollapsibleContent, CollapsibleTrigger,
 } from "@/components/ui/collapsible";
@@ -65,6 +64,22 @@ const MOIS_FR = [
   "Janvier", "Février", "Mars", "Avril", "Mai", "Juin",
   "Juillet", "Août", "Septembre", "Octobre", "Novembre", "Décembre",
 ];
+
+// Case à cocher purement visuelle (le <button> parent gère le clic).
+// Évite d'imbriquer un <button> Radix dans un <button> (React #185).
+function FauxCheck({ checked }: { checked: boolean }) {
+  return (
+    <span
+      aria-hidden
+      className={
+        "flex h-4 w-4 shrink-0 items-center justify-center rounded border " +
+        (checked ? "border-primary bg-primary text-primary-foreground" : "border-input")
+      }
+    >
+      {checked && <Check className="h-3 w-3" />}
+    </span>
+  );
+}
 
 function RecosPage() {
   const { data: profile } = useProfile();
@@ -541,7 +556,7 @@ function RecoForm({
                       onClick={() => toggleParticipant(m.id)}
                       className="flex w-full items-center gap-3 px-3 py-2.5 text-left text-sm hover:bg-accent transition-colors"
                     >
-                      <Checkbox checked={checked} className="pointer-events-none" />
+                      <FauxCheck checked={checked} />
                       <span className="truncate">
                         {m.prenom} {m.nom}{m.entreprise ? ` — ${m.entreprise}` : ""}
                       </span>
@@ -563,7 +578,7 @@ function RecoForm({
                 onClick={() => setAutoReco((v) => !v)}
                 className="flex w-full items-center gap-3 rounded-lg border p-3 text-left text-sm hover:bg-accent transition-colors"
               >
-                <Checkbox checked={autoReco} className="pointer-events-none" />
+                <FauxCheck checked={autoReco} />
                 <span>Je me recommande auprès de ce membre</span>
               </button>
               <div className="space-y-1.5">
