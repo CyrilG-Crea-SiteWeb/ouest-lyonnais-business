@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 import { Comments } from "@/components/Comments";
+import { ExportRecos } from "@/components/ExportRecos";
 import {
   Handshake, Users2, UserPlus, Euro, Trash2, Loader2, Check, ClipboardCheck,
 } from "lucide-react";
@@ -189,6 +190,8 @@ function RecosPage() {
           ))
         )}
       </section>
+
+      {isBureau && <ExportRecos />}
     </div>
   );
 }
