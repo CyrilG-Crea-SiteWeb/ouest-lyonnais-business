@@ -10,7 +10,9 @@ import {
   Menu,
   X,
   UserCircle,
+  Inbox,
 } from "lucide-react";
+import { NotificationsBell } from "./NotificationsBell";
 import { supabase } from "@/integrations/supabase/client";
 import { OlbLogo } from "./OlbLogo";
 import { Button } from "./ui/button";
@@ -24,6 +26,7 @@ const NAV = [
   { to: "/recommandations", label: "Recommandations", icon: HandshakeIcon },
   { to: "/sondages", label: "Sondages", icon: Vote },
   { to: "/evenements", label: "Événements", icon: CalendarDays },
+  { to: "/demandes", label: "Demandes", icon: Inbox },
   { to: "/mon-profil", label: "Mon profil", icon: UserCircle },
 ] as const;
 

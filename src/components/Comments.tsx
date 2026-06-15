@@ -19,7 +19,8 @@ import {
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 
-export type TypeContenu = "recommandation" | "sondage" | "evenement";
+// MODIF OLB : ajout de "demande" pour brancher les commentaires sous les demandes.
+export type TypeContenu = "recommandation" | "sondage" | "evenement" | "demande";
 
 type Commentaire = {
   id: number;
