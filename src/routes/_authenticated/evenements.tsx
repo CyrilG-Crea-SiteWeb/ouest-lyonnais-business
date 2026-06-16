@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
+import { creerNotificationsSafe, getMembresActifsIds } from "@/lib/notifications";
 import {
   Dialog,
   DialogContent,
@@ -407,15 +408,27 @@ function CreateEvenementDialog() {
     mutationFn: async () => {
       if (!profile) throw new Error("Non connecté");
       if (!titre.trim() || !dateEvent) throw new Error("Titre et date requis");
-      const { error } = await supabase.from("evenements").insert({
+      const { data: ev, error } = await supabase.from("evenements").insert({
         titre: titre.trim(),
         date_event: new Date(dateEvent).toISOString(),
         lieu: lieu.trim() || null,
         description: description.trim() || null,
         capacite: capacite ? Number(capacite) : null,
         createur_id: profile.id,
-      });
+      })
+        .select("id")
+        .single();
       if (error) throw error;
+
+      // Notifier tous les membres actifs (créateur exclu).
+      const actifs = await getMembresActifsIds();
+      await creerNotificationsSafe({
+        typeContenu: "evenement",
+        contenuId: (ev as { id: number }).id,
+        titre: `Nouvel événement : ${titre.trim()}`,
+        membreIds: actifs,
+        exclureId: profile.id,
+      });
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["evenements"] });
