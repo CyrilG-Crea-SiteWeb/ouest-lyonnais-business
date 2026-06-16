@@ -30,6 +30,7 @@ function ProfilPage() {
   const [photo_url, setPhotoUrl] = useState("");
   const [entreprise, setEntreprise] = useState("");
   const [categorie, setCategorie] = useState("");
+  const [telephone, setTelephone] = useState("");
   const [siteInternet, setSiteInternet] = useState("");
   const [saving, setSaving] = useState(false);
   const [newPassword, setNewPassword] = useState("");
