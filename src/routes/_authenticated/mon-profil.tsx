@@ -11,7 +11,13 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { AvatarUpload } from "@/components/AvatarUpload";
 import { toast } from "sonner";
-import { Shield, ShieldCheck } from "lucide-react";
+import { Shield, ShieldCheck, Globe } from "lucide-react";
+
+function normaliseUrl(v: string): string | null {
+  const t = v.trim();
+  if (!t) return null;
+  return /^https?:\/\//i.test(t) ? t : `https://${t}`;
+}
 
 export const Route = createFileRoute("/_authenticated/mon-profil")({
   head: () => ({ meta: [{ title: "Mon profil — OLB" }] }),
@@ -24,7 +30,7 @@ function ProfilPage() {
   const [photo_url, setPhotoUrl] = useState("");
   const [entreprise, setEntreprise] = useState("");
   const [categorie, setCategorie] = useState("");
-  const [telephone, setTelephone] = useState("");
+  const [siteInternet, setSiteInternet] = useState("");
   const [saving, setSaving] = useState(false);
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -36,7 +42,7 @@ function ProfilPage() {
     setPhotoUrl(profile.photo_url ?? "");
     setEntreprise(profile.entreprise ?? "");
     setCategorie(profile.categorie ?? "");
-    setTelephone(profile.telephone ?? "");
+    setSiteInternet(profile.site_internet ?? "");
   }, [profile]);
 
   if (isLoading) return <p className="text-sm text-muted-foreground">Chargement…</p>;
@@ -54,6 +60,7 @@ function ProfilPage() {
           entreprise: entreprise || null,
           categorie: categorie || null,
           telephone: telephone || null,
+          site_internet: normaliseUrl(siteInternet),
         })
         .eq("id", profile.id);
       if (error) throw error;
@@ -127,7 +134,6 @@ function ProfilPage() {
       <Card>
         <CardHeader>
           <CardTitle className="text-base">Identité</CardTitle>
-          <CardDescription>Ces informations ne sont modifiables que par le bureau.</CardDescription>
         </CardHeader>
         <CardContent className="flex items-center gap-4">
           <Avatar className="h-16 w-16">
@@ -167,6 +173,19 @@ function ProfilPage() {
             <div className="space-y-1.5">
               <Label htmlFor="telephone">Téléphone</Label>
               <Input id="telephone" type="tel" value={telephone} onChange={(e) => setTelephone(e.target.value)} />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="site_internet" className="flex items-center gap-1.5">
+                <Globe className="h-3.5 w-3.5" /> Lien site internet
+              </Label>
+              <Input
+                id="site_internet"
+                type="url"
+                inputMode="url"
+                value={siteInternet}
+                onChange={(e) => setSiteInternet(e.target.value)}
+                placeholder="https://mon-entreprise.fr"
+              />
             </div>
             <Button type="submit" disabled={saving}>
               {saving ? "Enregistrement…" : "Enregistrer"}
