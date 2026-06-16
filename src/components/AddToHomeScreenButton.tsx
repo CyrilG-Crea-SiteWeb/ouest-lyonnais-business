@@ -54,7 +54,7 @@ export function AddToHomeScreenButton() {
         <button
           type="button"
           aria-label="Installer l'application sur l'écran d'accueil"
-          className="inline-flex items-center gap-2 rounded-full border border-primary/30 px-3 py-1.5 text-sm font-medium text-primary transition-colors hover:bg-primary/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+          className="inline-flex items-center gap-2 rounded-full border border-[#1F676F]/30 px-3 py-1.5 text-sm font-medium text-[#1F676F] transition-colors hover:bg-[#1F676F]/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
         >
           <Smartphone className="h-4 w-4" />
           <span className="hidden sm:inline">Installer l'app</span>

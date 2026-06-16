@@ -129,7 +129,7 @@ export function NotificationsBell() {
         variant="ghost"
         size="icon"
         onClick={() => setOpen((o) => !o)}
-        className="relative text-sidebar-foreground hover:bg-sidebar-accent"
+        className="relative text-[#1F676F] hover:bg-[#1F676F]/10 hover:text-[#1F676F]"
         aria-label="Notifications"
       >
         <Bell className="h-5 w-5" />
