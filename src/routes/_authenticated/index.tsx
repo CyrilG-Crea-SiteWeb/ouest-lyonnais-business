@@ -193,11 +193,11 @@ function Dashboard() {
       const recosRecues = recues.filter((r: any) => r.type === "reco_interne").length;
       const teteATete = donnees.filter((r: any) => r.type === "tete_a_tete").length;
       // CA apporté AUX autres = "merci_business" validés où le membre est l'émetteur (membre_id).
-      const caApporte = donnees
+      const caApporte = recues
         .filter((r: any) => r.type === "merci_business" && r.valide)
         .reduce((s: number, r: any) => s + Number(r.montant ?? 0), 0);
       // CA perçu PAR le membre = "merci_business" validés où il est le bénéficiaire (membre_cible_id).
-      const caPercu = recues
+      const caPercu = donnees
         .filter((r: any) => r.type === "merci_business" && r.valide)
         .reduce((s: number, r: any) => s + Number(r.montant ?? 0), 0);
       return { recosDonnees, recosRecues, teteATete, caApporte, caPercu };
