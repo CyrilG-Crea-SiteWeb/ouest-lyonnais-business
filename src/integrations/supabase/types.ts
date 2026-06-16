@@ -218,10 +218,12 @@ export type Database = {
           email: string
           entreprise: string | null
           id: string
+          mdp_defini: boolean
           nom: string
           photo_url: string | null
           prenom: string
           role: Database["public"]["Enums"]["role_membre"]
+          site_internet: string | null
           statut: Database["public"]["Enums"]["statut_membre"]
           telephone: string | null
         }
@@ -232,10 +234,12 @@ export type Database = {
           email: string
           entreprise?: string | null
           id: string
+          mdp_defini?: boolean
           nom: string
           photo_url?: string | null
           prenom: string
           role?: Database["public"]["Enums"]["role_membre"]
+          site_internet?: string | null
           statut?: Database["public"]["Enums"]["statut_membre"]
           telephone?: string | null
         }
@@ -246,10 +250,12 @@ export type Database = {
           email?: string
           entreprise?: string | null
           id?: string
+          mdp_defini?: boolean
           nom?: string
           photo_url?: string | null
           prenom?: string
           role?: Database["public"]["Enums"]["role_membre"]
+          site_internet?: string | null
           statut?: Database["public"]["Enums"]["statut_membre"]
           telephone?: string | null
         }
@@ -315,6 +321,36 @@ export type Database = {
             columns: ["sondage_id"]
             isOneToOne: false
             referencedRelation: "sondages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      reco_participants: {
+        Row: {
+          membre_id: string
+          recommandation_id: number
+        }
+        Insert: {
+          membre_id: string
+          recommandation_id: number
+        }
+        Update: {
+          membre_id?: string
+          recommandation_id?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reco_participants_membre_id_fkey"
+            columns: ["membre_id"]
+            isOneToOne: false
+            referencedRelation: "membres"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reco_participants_recommandation_id_fkey"
+            columns: ["recommandation_id"]
+            isOneToOne: false
+            referencedRelation: "recommandations"
             referencedColumns: ["id"]
           },
         ]
