@@ -148,7 +148,7 @@ function DemandeDetailPage() {
   }
 
   const d = q.data;
-  const meta = STATUT_META[d.statut];
+  const meta = STATUT_META[d.statut] ?? STATUT_META.ouverte;
   const auteur = d.membres;
   const initiales = auteur
     ? `${auteur.prenom?.[0] ?? ""}${auteur.nom?.[0] ?? ""}`.toUpperCase()
