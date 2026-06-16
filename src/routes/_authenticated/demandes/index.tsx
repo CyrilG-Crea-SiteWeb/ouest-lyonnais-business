@@ -23,7 +23,7 @@ export const Route = createFileRoute("/_authenticated/demandes/")({
   component: DemandesPage,
 });
 
-type Statut = "ouverte" | "resolue" | "cloturee";
+type Statut = "ouverte" | "cloturee";
 
 type DemandeListe = {
   id: number;
@@ -47,10 +47,6 @@ const STATUT_META: Record<Statut, { label: string; className: string }> = {
     label: "Ouverte",
     className: "bg-primary text-primary-foreground hover:bg-primary",
   },
-  resolue: {
-    label: "Résolue",
-    className: "bg-accent text-accent-foreground hover:bg-accent",
-  },
   cloturee: {
     label: "Clôturée",
     className: "bg-muted text-muted-foreground hover:bg-muted",
@@ -60,8 +56,7 @@ const STATUT_META: Record<Statut, { label: string; className: string }> = {
 // Ordre de tri des statuts : ouvertes d'abord.
 const ORDRE_STATUT: Record<Statut, number> = {
   ouverte: 0,
-  resolue: 1,
-  cloturee: 2,
+  cloturee: 1,
 };
 
 // Carte d'une demande (réutilisée pour les actives et les clôturées).
@@ -164,7 +159,8 @@ function DemandesPage() {
               </p>
               <p>
                 Les membres concernés reçoivent une notification (cloche + email).
-                Le statut passe d'<strong>ouverte</strong> à <strong>résolue</strong>{" "}
+                Le statut passe d'<strong>ouverte</strong> à{" "}
+                <strong>clôturée</strong>. Les demandes clôturées sont
                 ou <strong>clôturée</strong>. Les demandes clôturées sont
                 regroupées en bas.
               </p>
