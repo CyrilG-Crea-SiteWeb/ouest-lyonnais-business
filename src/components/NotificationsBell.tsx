@@ -5,6 +5,7 @@ import { Bell, Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useProfile } from "@/hooks/use-profile";
 import { Button } from "@/components/ui/button";
+import { activerPush, permissionPush } from "@/lib/push";
 
 type Notification = {
   id: number;
@@ -109,6 +110,17 @@ export function NotificationsBell() {
     navigate({ to: lienVers(n) });
   }
 
+  const [pushEtat, setPushEtat] = useState<NotificationPermission | "unsupported">(
+    () => permissionPush(),
+  );
+
+  async function activerNotifsPush() {
+    if (!profile) return;
+    const res = await activerPush(profile.id);
+    setPushEtat(permissionPush());
+    if (!res.ok && res.raison) alert(res.raison);
+  }
+
   if (!profile) return null;
 
   return (
@@ -143,6 +155,27 @@ export function NotificationsBell() {
               </Button>
             )}
           </div>
+          {pushEtat !== "granted" && (
+            <div className="border-b px-3 py-2">
+              {pushEtat === "unsupported" ? (
+                <p className="text-xs text-muted-foreground">
+                  Notifications non disponibles sur cet appareil.
+                </p>
+              ) : pushEtat === "denied" ? (
+                <p className="text-xs text-muted-foreground">
+                  Notifications bloquées. Active-les dans les réglages du navigateur.
+                </p>
+              ) : (
+                <Button
+                  size="sm"
+                  className="h-8 w-full bg-primary text-xs text-primary-foreground"
+                  onClick={activerNotifsPush}
+                >
+                  Activer les notifications sur cet appareil
+                </Button>
+              )}
+            </div>
+          )}
           <div className="max-h-96 overflow-y-auto">
             {notifications.length === 0 && (
               <p className="px-3 py-6 text-center text-sm text-muted-foreground">
