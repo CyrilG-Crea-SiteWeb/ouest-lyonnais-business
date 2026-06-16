@@ -61,7 +61,7 @@ const ORDRE_STATUT: Record<Statut, number> = {
 
 // Carte d'une demande (réutilisée pour les actives et les clôturées).
 function DemandeCard({ d }: { d: DemandeListe }) {
-  const meta = STATUT_META[d.statut];
+  const meta = STATUT_META[d.statut] ?? STATUT_META.ouverte;
   const auteur = d.membres;
   const initiales = auteur
     ? `${auteur.prenom?.[0] ?? ""}${auteur.nom?.[0] ?? ""}`.toUpperCase()
@@ -134,7 +134,7 @@ function DemandesPage() {
     .filter((d) => d.statut !== "cloturee")
     .slice()
     .sort((a, b) => {
-      const s = ORDRE_STATUT[a.statut] - ORDRE_STATUT[b.statut];
+      const s = (ORDRE_STATUT[a.statut] ?? 0) - (ORDRE_STATUT[b.statut] ?? 0);
       if (s !== 0) return s;
       return b.created_at.localeCompare(a.created_at);
     });
