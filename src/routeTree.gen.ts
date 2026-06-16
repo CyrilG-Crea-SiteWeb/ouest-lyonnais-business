@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as DefinirMotDePasseRouteImport } from './routes/definir-mot-de-passe'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as AuthenticatedIndexRouteImport } from './routes/_authenticated/index'
@@ -17,7 +18,15 @@ import { Route as AuthenticatedRecommandationsRouteImport } from './routes/_auth
 import { Route as AuthenticatedMonProfilRouteImport } from './routes/_authenticated/mon-profil'
 import { Route as AuthenticatedMembresRouteImport } from './routes/_authenticated/membres'
 import { Route as AuthenticatedEvenementsRouteImport } from './routes/_authenticated/evenements'
+import { Route as AuthenticatedDemandesIndexRouteImport } from './routes/_authenticated/demandes/index'
+import { Route as AuthenticatedDemandesNouvelleRouteImport } from './routes/_authenticated/demandes/nouvelle'
+import { Route as AuthenticatedDemandesDemandeIdRouteImport } from './routes/_authenticated/demandes/$demandeId'
 
+const DefinirMotDePasseRoute = DefinirMotDePasseRouteImport.update({
+  id: '/definir-mot-de-passe',
+  path: '/definir-mot-de-passe',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
   path: '/auth',
@@ -58,74 +67,124 @@ const AuthenticatedEvenementsRoute = AuthenticatedEvenementsRouteImport.update({
   path: '/evenements',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedDemandesIndexRoute =
+  AuthenticatedDemandesIndexRouteImport.update({
+    id: '/demandes/',
+    path: '/demandes/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedDemandesNouvelleRoute =
+  AuthenticatedDemandesNouvelleRouteImport.update({
+    id: '/demandes/nouvelle',
+    path: '/demandes/nouvelle',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedDemandesDemandeIdRoute =
+  AuthenticatedDemandesDemandeIdRouteImport.update({
+    id: '/demandes/$demandeId',
+    path: '/demandes/$demandeId',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof AuthenticatedIndexRoute
   '/auth': typeof AuthRoute
+  '/definir-mot-de-passe': typeof DefinirMotDePasseRoute
   '/evenements': typeof AuthenticatedEvenementsRoute
   '/membres': typeof AuthenticatedMembresRoute
   '/mon-profil': typeof AuthenticatedMonProfilRoute
   '/recommandations': typeof AuthenticatedRecommandationsRoute
   '/sondages': typeof AuthenticatedSondagesRoute
+  '/demandes/$demandeId': typeof AuthenticatedDemandesDemandeIdRoute
+  '/demandes/nouvelle': typeof AuthenticatedDemandesNouvelleRoute
+  '/demandes/': typeof AuthenticatedDemandesIndexRoute
 }
 export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
+  '/definir-mot-de-passe': typeof DefinirMotDePasseRoute
   '/evenements': typeof AuthenticatedEvenementsRoute
   '/membres': typeof AuthenticatedMembresRoute
   '/mon-profil': typeof AuthenticatedMonProfilRoute
   '/recommandations': typeof AuthenticatedRecommandationsRoute
   '/sondages': typeof AuthenticatedSondagesRoute
   '/': typeof AuthenticatedIndexRoute
+  '/demandes/$demandeId': typeof AuthenticatedDemandesDemandeIdRoute
+  '/demandes/nouvelle': typeof AuthenticatedDemandesNouvelleRoute
+  '/demandes': typeof AuthenticatedDemandesIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
+  '/definir-mot-de-passe': typeof DefinirMotDePasseRoute
   '/_authenticated/evenements': typeof AuthenticatedEvenementsRoute
   '/_authenticated/membres': typeof AuthenticatedMembresRoute
   '/_authenticated/mon-profil': typeof AuthenticatedMonProfilRoute
   '/_authenticated/recommandations': typeof AuthenticatedRecommandationsRoute
   '/_authenticated/sondages': typeof AuthenticatedSondagesRoute
   '/_authenticated/': typeof AuthenticatedIndexRoute
+  '/_authenticated/demandes/$demandeId': typeof AuthenticatedDemandesDemandeIdRoute
+  '/_authenticated/demandes/nouvelle': typeof AuthenticatedDemandesNouvelleRoute
+  '/_authenticated/demandes/': typeof AuthenticatedDemandesIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
     | '/auth'
+    | '/definir-mot-de-passe'
     | '/evenements'
     | '/membres'
     | '/mon-profil'
     | '/recommandations'
     | '/sondages'
+    | '/demandes/$demandeId'
+    | '/demandes/nouvelle'
+    | '/demandes/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/auth'
+    | '/definir-mot-de-passe'
     | '/evenements'
     | '/membres'
     | '/mon-profil'
     | '/recommandations'
     | '/sondages'
     | '/'
+    | '/demandes/$demandeId'
+    | '/demandes/nouvelle'
+    | '/demandes'
   id:
     | '__root__'
     | '/_authenticated'
     | '/auth'
+    | '/definir-mot-de-passe'
     | '/_authenticated/evenements'
     | '/_authenticated/membres'
     | '/_authenticated/mon-profil'
     | '/_authenticated/recommandations'
     | '/_authenticated/sondages'
     | '/_authenticated/'
+    | '/_authenticated/demandes/$demandeId'
+    | '/_authenticated/demandes/nouvelle'
+    | '/_authenticated/demandes/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AuthRoute: typeof AuthRoute
+  DefinirMotDePasseRoute: typeof DefinirMotDePasseRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/definir-mot-de-passe': {
+      id: '/definir-mot-de-passe'
+      path: '/definir-mot-de-passe'
+      fullPath: '/definir-mot-de-passe'
+      preLoaderRoute: typeof DefinirMotDePasseRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/auth': {
       id: '/auth'
       path: '/auth'
@@ -182,6 +241,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedEvenementsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/demandes/': {
+      id: '/_authenticated/demandes/'
+      path: '/demandes'
+      fullPath: '/demandes/'
+      preLoaderRoute: typeof AuthenticatedDemandesIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/demandes/nouvelle': {
+      id: '/_authenticated/demandes/nouvelle'
+      path: '/demandes/nouvelle'
+      fullPath: '/demandes/nouvelle'
+      preLoaderRoute: typeof AuthenticatedDemandesNouvelleRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/demandes/$demandeId': {
+      id: '/_authenticated/demandes/$demandeId'
+      path: '/demandes/$demandeId'
+      fullPath: '/demandes/$demandeId'
+      preLoaderRoute: typeof AuthenticatedDemandesDemandeIdRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
   }
 }
 
@@ -192,6 +272,9 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedRecommandationsRoute: typeof AuthenticatedRecommandationsRoute
   AuthenticatedSondagesRoute: typeof AuthenticatedSondagesRoute
   AuthenticatedIndexRoute: typeof AuthenticatedIndexRoute
+  AuthenticatedDemandesDemandeIdRoute: typeof AuthenticatedDemandesDemandeIdRoute
+  AuthenticatedDemandesNouvelleRoute: typeof AuthenticatedDemandesNouvelleRoute
+  AuthenticatedDemandesIndexRoute: typeof AuthenticatedDemandesIndexRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
@@ -201,6 +284,9 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedRecommandationsRoute: AuthenticatedRecommandationsRoute,
   AuthenticatedSondagesRoute: AuthenticatedSondagesRoute,
   AuthenticatedIndexRoute: AuthenticatedIndexRoute,
+  AuthenticatedDemandesDemandeIdRoute: AuthenticatedDemandesDemandeIdRoute,
+  AuthenticatedDemandesNouvelleRoute: AuthenticatedDemandesNouvelleRoute,
+  AuthenticatedDemandesIndexRoute: AuthenticatedDemandesIndexRoute,
 }
 
 const AuthenticatedRouteRouteWithChildren =
@@ -209,7 +295,18 @@ const AuthenticatedRouteRouteWithChildren =
 const rootRouteChildren: RootRouteChildren = {
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AuthRoute: AuthRoute,
+  DefinirMotDePasseRoute: DefinirMotDePasseRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
