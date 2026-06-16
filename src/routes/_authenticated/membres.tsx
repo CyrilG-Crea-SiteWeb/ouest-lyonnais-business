@@ -21,7 +21,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Mail, Phone, Plus, Pencil, Trash2, Search, Shield } from "lucide-react";
+import { Mail, Phone, Globe, Plus, Pencil, Trash2, Search, Shield } from "lucide-react";
 import { inviteMembre, updateMembre, updateMembreRoleStatut, deleteMembre } from "@/lib/membres.functions";
 
 export const Route = createFileRoute("/_authenticated/membres")({
@@ -38,6 +38,7 @@ type Membre = {
   entreprise: string | null;
   categorie: string | null;
   telephone: string | null;
+  site_internet: string | null;
   role: "admin" | "bureau" | "membre";
   statut: "actif" | "inactif";
 };
@@ -53,7 +54,7 @@ function MembresPage() {
     queryFn: async (): Promise<Membre[]> => {
       const { data, error } = await supabase
         .from("membres")
-        .select("id, nom, prenom, email, photo_url, entreprise, categorie, telephone, role, statut")
+        .select("id, nom, prenom, email, photo_url, entreprise, categorie, telephone, site_internet, role, statut")
         .order("nom", { ascending: true });
       if (error) throw error;
       return (data ?? []) as Membre[];
@@ -142,6 +143,13 @@ function MembreCard({ membre, canEdit, canAdmin }: { membre: Membre; canEdit: bo
               <a href={`tel:${membre.telephone}`}><Phone className="h-4 w-4" /></a>
             </Button>
           )}
+          {membre.site_internet && (
+            <Button asChild size="sm" variant="outline">
+              <a href={membre.site_internet} target="_blank" rel="noopener noreferrer" aria-label="Site internet">
+                <Globe className="h-4 w-4" />
+              </a>
+            </Button>
+          )}
           {canEdit && <EditDialog membre={membre} canAdmin={canAdmin} />}
           {canAdmin && <DeleteButton membre={membre} />}
         </div>
@@ -205,7 +213,7 @@ function EditDialog({ membre, canAdmin }: { membre: Membre; canAdmin: boolean })
   const [form, setForm] = useState({
     prenom: membre.prenom, nom: membre.nom,
     entreprise: membre.entreprise ?? "", categorie: membre.categorie ?? "",
-    telephone: membre.telephone ?? "", photo_url: membre.photo_url ?? "",
+    telephone: membre.telephone ?? "", photo_url: membre.photo_url ?? "", site_internet: membre.site_internet ?? "",
   });
   const [role, setRole] = useState<Membre["role"]>(membre.role);
   const [statut, setStatut] = useState<Membre["statut"]>(membre.statut);
@@ -215,7 +223,7 @@ function EditDialog({ membre, canAdmin }: { membre: Membre; canAdmin: boolean })
       setForm({
         prenom: membre.prenom, nom: membre.nom,
         entreprise: membre.entreprise ?? "", categorie: membre.categorie ?? "",
-        telephone: membre.telephone ?? "", photo_url: membre.photo_url ?? "",
+        telephone: membre.telephone ?? "", photo_url: membre.photo_url ?? "", site_internet: membre.site_internet ?? "",
       });
       setRole(membre.role);
       setStatut(membre.statut);
@@ -233,6 +241,7 @@ function EditDialog({ membre, canAdmin }: { membre: Membre; canAdmin: boolean })
         entreprise: form.entreprise || null,
         categorie: form.categorie || null,
         telephone: form.telephone || null,
+        site_internet: form.site_internet || null,
         photo_url: form.photo_url || null,
       } });
       if (canAdmin && (role !== membre.role || statut !== membre.statut)) {
@@ -269,6 +278,7 @@ function EditDialog({ membre, canAdmin }: { membre: Membre; canAdmin: boolean })
           <Field label="Entreprise" value={form.entreprise} onChange={(v) => setForm({ ...form, entreprise: v })} />
           <Field label="Catégorie" value={form.categorie} onChange={(v) => setForm({ ...form, categorie: v })} />
           <Field label="Téléphone" type="tel" value={form.telephone} onChange={(v) => setForm({ ...form, telephone: v })} />
+          <Field label="Lien site internet" type="url" value={form.site_internet} onChange={(v) => setForm({ ...form, site_internet: v })} />
 
           {canAdmin && (
             <div className="grid grid-cols-2 gap-3 pt-2 border-t">
