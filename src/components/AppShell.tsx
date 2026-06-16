@@ -45,7 +45,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   const navContent = (
     <>
-      <div className="px-4 py-5 border-b border-sidebar-border bg-white/5">
+      <div className="px-4 py-5 border-b border-sidebar-border bg-[#F8FBFB]">
         <OlbLogo className="h-14 w-auto" />
       </div>
       {profile && (
@@ -103,10 +103,10 @@ export function AppShell({ children }: { children: ReactNode }) {
       </aside>
 
       {/* Mobile topbar */}
-      <header className="md:hidden sticky top-0 z-30 flex items-center justify-between bg-sidebar text-sidebar-foreground px-3 h-14 border-b border-sidebar-border">
+      <header className="md:hidden sticky top-0 z-30 flex items-center justify-between bg-[#F8FBFB] text-[#1F676F] px-3 h-14 border-b border-border">
         <button
           onClick={() => setMobileOpen(true)}
-          className="p-2 rounded-md hover:bg-sidebar-accent"
+          className="p-2 rounded-md text-[#1F676F] hover:bg-[#1F676F]/10"
           aria-label="Ouvrir le menu"
         >
           <Menu className="h-5 w-5" />

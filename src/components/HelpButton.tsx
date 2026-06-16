@@ -24,7 +24,7 @@ export function HelpButton({ title, children, ariaLabel = "Aide" }: HelpButtonPr
         <button
           type="button"
           aria-label={ariaLabel}
-          className="inline-flex h-9 w-9 items-center justify-center rounded-full text-primary transition-colors hover:bg-primary/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+          className="inline-flex h-9 w-9 items-center justify-center rounded-full text-[#1F676F] transition-colors hover:bg-[#1F676F]/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
         >
           <HelpCircle className="h-5 w-5" />
         </button>
