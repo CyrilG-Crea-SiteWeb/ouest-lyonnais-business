@@ -251,6 +251,7 @@ function RecosPage() {
       <RecoForm
         membres={membres.filter((m) => m.id !== profile?.id)}
         allMembres={membres}
+        isBureau={isBureau}
         onCreated={() => {
           qc.invalidateQueries({ queryKey: ["recos", "list"] });
           qc.invalidateQueries({ queryKey: ["reco_participants", "all"] });
@@ -380,10 +381,11 @@ function MoisBlock({
 }
 
 function RecoForm({
-  membres, allMembres, onCreated,
+  membres, allMembres, isBureau, onCreated,
 }: {
   membres: MembreLite[];      // sans soi-même (pour T-à-T, reco interne classique, reco externe, merci)
-  allMembres: MembreLite[];   // avec soi-même (non utilisé ici mais dispo si besoin)
+  allMembres: MembreLite[];   // avec soi-même : sert à choisir l'auteur en saisie déléguée
+  isBureau: boolean;
   onCreated: () => void;
 }) {
   const { data: profile } = useProfile();
@@ -393,6 +395,8 @@ function RecoForm({
   const [autoReco, setAutoReco] = useState(false);                      // reco interne : "je me recommande"
   const [contactExterne, setContactExterne] = useState("");
   const [montant, setMontant] = useState("");
+  const [pourAutre, setPourAutre] = useState(false);                  // bureau : saisir au nom d'un autre
+  const [auteurId, setAuteurId] = useState<string>("");               // membre au nom duquel on saisit
 
   const resetFields = () => {
     setMembreCible("");
@@ -400,6 +404,8 @@ function RecoForm({
     setAutoReco(false);
     setContactExterne("");
     setMontant("");
+    setPourAutre(false);
+    setAuteurId("");
   };
 
   const toggleParticipant = (id: string) => {
@@ -408,15 +414,25 @@ function RecoForm({
     );
   };
 
+  // Auteur effectif de la saisie : un autre membre si le bureau délègue, sinon soi-même.
+  const delegue = isBureau && pourAutre && auteurId !== "";
+  const auteurEffectifId = delegue ? auteurId : profile?.id;
+
+  // Liste des membres "cible" (destinataire / participants), excluant l'auteur effectif.
+  const membresCibles = allMembres.filter((m) => m.id !== auteurEffectifId);
+
   const mutation = useMutation({
     mutationFn: async () => {
       if (!profile) throw new Error("Profil non chargé");
+      if (delegue && !auteurId) throw new Error("Sélectionnez le membre au nom duquel saisir");
       const { data: semaineId, error: semErr } = await supabase.rpc("get_or_create_semaine");
       if (semErr) throw semErr;
 
+      const auteur = auteurEffectifId!;  // émetteur réel (soi-même ou membre délégué)
+
       const payload: any = {
         type,
-        membre_id: profile.id,
+        membre_id: auteur,
         semaine_id: semaineId,
       };
 
@@ -463,7 +479,15 @@ function RecoForm({
       }
 
       // Notifications (best-effort, ne bloque pas la saisie).
-      const emName = `${profile.prenom} ${profile.nom}`;
+      // Nom affiché = l'émetteur réel (le membre délégué, pas la personne du bureau qui saisit).
+      const emMembre = allMembres.find((m) => m.id === auteur);
+      const emName = emMembre
+        ? `${emMembre.prenom} ${emMembre.nom}`
+        : `${profile.prenom} ${profile.nom}`;
+      // En saisie déléguée, ne pas notifier l'auteur choisi NI la personne du bureau qui saisit.
+      const exclureIds = Array.from(new Set([auteur, profile.id]));
+      const filtrer = (ids: string[]) => ids.filter((id) => !exclureIds.includes(id));
+
       if (type === "reco_interne") {
         const titre = autoReco
           ? `${emName} s'est recommandé auprès de vous`
@@ -472,7 +496,7 @@ function RecoForm({
           typeContenu: "recommandation",
           contenuId: recoId,
           titre,
-          membreIds: [membreCible],
+          membreIds: filtrer([membreCible]),
           exclureId: profile.id,
         });
       } else if (type === "reco_externe") {
@@ -480,7 +504,7 @@ function RecoForm({
           typeContenu: "recommandation",
           contenuId: recoId,
           titre: `${emName} vous transmet un contact : ${contactExterne.trim()}`,
-          membreIds: [membreCible],
+          membreIds: filtrer([membreCible]),
           exclureId: profile.id,
         });
       } else if (type === "tete_a_tete") {
@@ -488,7 +512,7 @@ function RecoForm({
           typeContenu: "recommandation",
           contenuId: recoId,
           titre: `${emName} a noté un tête-à-tête avec vous`,
-          membreIds: participants,
+          membreIds: filtrer(participants),
           exclureId: profile.id,
         });
       }
@@ -542,12 +566,44 @@ function RecoForm({
             })}
           </div>
 
+          {/* SAISIE DÉLÉGUÉE (bureau/admin) : saisir au nom d'un autre membre */}
+          {isBureau && (
+            <div className="space-y-2 rounded-lg border border-amber-300 bg-amber-50/50 p-3">
+              <button
+                type="button"
+                onClick={() => { setPourAutre((v) => !v); setAuteurId(""); setMembreCible(""); setParticipants([]); }}
+                className="flex w-full items-center gap-3 text-left text-sm"
+              >
+                <FauxCheck checked={pourAutre} />
+                <span className="font-medium">Saisir pour un autre membre</span>
+              </button>
+              {pourAutre && (
+                <div className="space-y-1.5">
+                  <Label>Membre au nom duquel saisir</Label>
+                  <Select value={auteurId} onValueChange={(v) => { setAuteurId(v); setMembreCible(""); setParticipants([]); }}>
+                    <SelectTrigger><SelectValue placeholder="Choisir le membre…" /></SelectTrigger>
+                    <SelectContent>
+                      {allMembres.map((m) => (
+                        <SelectItem key={m.id} value={m.id}>
+                          {m.prenom} {m.nom}{m.entreprise ? ` — ${m.entreprise}` : ""}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">
+                    La recommandation sera enregistrée comme si elle venait de ce membre.
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+          
           {/* TÊTE-À-TÊTE : sélection multiple de participants */}
           {type === "tete_a_tete" && (
             <div className="space-y-2">
               <Label>Membres rencontrés ({participants.length} sélectionné{participants.length > 1 ? "s" : ""})</Label>
               <div className="max-h-56 overflow-y-auto rounded-lg border divide-y">
-                {membres.map((m) => {
+                {membresCibles.map((m) => {
                   const checked = participants.includes(m.id);
                   return (
                     <button
@@ -564,9 +620,6 @@ function RecoForm({
                   );
                 })}
               </div>
-              <p className="text-xs text-muted-foreground">
-                Un tête-à-tête à plusieurs compte pour 1 dans vos statistiques. Chaque participant déclare le sien de son côté.
-              </p>
             </div>
           )}
 
@@ -586,7 +639,7 @@ function RecoForm({
                 <Select value={membreCible} onValueChange={setMembreCible}>
                   <SelectTrigger><SelectValue placeholder="Choisir un membre…" /></SelectTrigger>
                   <SelectContent>
-                    {membres.map((m) => (
+                    {membresCibles.map((m) => (
                       <SelectItem key={m.id} value={m.id}>
                         {m.prenom} {m.nom}{m.entreprise ? ` — ${m.entreprise}` : ""}
                       </SelectItem>
@@ -604,7 +657,7 @@ function RecoForm({
               <Select value={membreCible} onValueChange={setMembreCible}>
                 <SelectTrigger><SelectValue placeholder="Choisir un membre…" /></SelectTrigger>
                 <SelectContent>
-                  {membres.map((m) => (
+                  {membresCibles.map((m) => (
                     <SelectItem key={m.id} value={m.id}>
                       {m.prenom} {m.nom}{m.entreprise ? ` — ${m.entreprise}` : ""}
                     </SelectItem>
@@ -632,7 +685,7 @@ function RecoForm({
                 <Select value={membreCible} onValueChange={setMembreCible}>
                   <SelectTrigger><SelectValue placeholder="À qui transmettez-vous ce contact ?" /></SelectTrigger>
                   <SelectContent>
-                    {membres.map((m) => (
+                    {membresCibles.map((m) => (
                       <SelectItem key={m.id} value={m.id}>
                         {m.prenom} {m.nom}{m.entreprise ? ` — ${m.entreprise}` : ""}
                       </SelectItem>
