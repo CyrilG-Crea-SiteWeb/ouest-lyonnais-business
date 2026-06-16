@@ -507,14 +507,6 @@ function RecoForm({
           membreIds: filtrer([membreCible]),
           exclureId: profile.id,
         });
-      } else if (type === "tete_a_tete") {
-        await creerNotificationsSafe({
-          typeContenu: "recommandation",
-          contenuId: recoId,
-          titre: `${emName} a noté un tête-à-tête avec vous`,
-          membreIds: filtrer(participants),
-          exclureId: profile.id,
-        });
       }
     },
     onSuccess: () => {
