@@ -31,7 +31,7 @@ export const Route = createFileRoute("/_authenticated/demandes/$demandeId")({
   component: DemandeDetailPage,
 });
 
-type Statut = "ouverte" | "resolue" | "cloturee";
+type Statut = "ouverte" | "cloturee";
 
 type DemandeDetail = {
   id: number;
@@ -53,10 +53,6 @@ const STATUT_META: Record<Statut, { label: string; className: string }> = {
   ouverte: {
     label: "Ouverte",
     className: "bg-primary text-primary-foreground hover:bg-primary",
-  },
-  resolue: {
-    label: "Résolue",
-    className: "bg-accent text-accent-foreground hover:bg-accent",
   },
   cloturee: {
     label: "Clôturée",
@@ -277,7 +273,6 @@ function DemandeDetailPage() {
                 className="h-10 w-48 rounded-md border border-input bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-50"
               >
                 <option value="ouverte">Ouverte</option>
-                <option value="resolue">Résolue</option>
                 <option value="cloturee">Clôturée</option>
               </select>
             </div>
