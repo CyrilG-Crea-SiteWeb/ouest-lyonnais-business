@@ -96,7 +96,7 @@ function MembresPage() {
       ) : filtered.length === 0 ? (
         <Card><CardContent className="p-6 text-sm text-muted-foreground">Aucun membre trouvé.</CardContent></Card>
       ) : (
-        <div className="grid gap-3 grid-cols-2 md:grid-cols-3">
+        <div className="grid gap-3 grid-cols-3">
           {filtered.map((m) => (
             <MembreCard key={m.id} membre={m} canEdit={isBureau} canAdmin={isAdmin} />
           ))}
