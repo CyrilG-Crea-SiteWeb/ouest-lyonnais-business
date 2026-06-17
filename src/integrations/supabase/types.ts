@@ -224,6 +224,7 @@ export type Database = {
           prenom: string
           role: Database["public"]["Enums"]["role_membre"]
           site_internet: string | null
+          site_web: string | null
           statut: Database["public"]["Enums"]["statut_membre"]
           telephone: string | null
         }
@@ -240,6 +241,7 @@ export type Database = {
           prenom: string
           role?: Database["public"]["Enums"]["role_membre"]
           site_internet?: string | null
+          site_web?: string | null
           statut?: Database["public"]["Enums"]["statut_membre"]
           telephone?: string | null
         }
@@ -256,6 +258,7 @@ export type Database = {
           prenom?: string
           role?: Database["public"]["Enums"]["role_membre"]
           site_internet?: string | null
+          site_web?: string | null
           statut?: Database["public"]["Enums"]["statut_membre"]
           telephone?: string | null
         }
@@ -620,7 +623,7 @@ export type Database = {
     }
     Enums: {
       role_membre: "admin" | "bureau" | "membre"
-      statut_demande: "ouverte" | "resolue" | "cloturee"
+      statut_demande: "ouverte" | "cloturee"
       statut_inscription: "present" | "absent" | "peut_etre"
       statut_membre: "actif" | "inactif"
       statut_sondage: "ouvert" | "cloture"
@@ -758,7 +761,7 @@ export const Constants = {
   public: {
     Enums: {
       role_membre: ["admin", "bureau", "membre"],
-      statut_demande: ["ouverte", "resolue", "cloturee"],
+      statut_demande: ["ouverte", "cloturee"],
       statut_inscription: ["present", "absent", "peut_etre"],
       statut_membre: ["actif", "inactif"],
       statut_sondage: ["ouvert", "cloture"],
