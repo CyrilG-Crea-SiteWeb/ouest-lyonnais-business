@@ -21,7 +21,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Mail, Phone, Globe, Plus, Pencil, Trash2, Search, Shield } from "lucide-react";
+import { Mail, Phone, Globe, Plus, Pencil, Trash2, Search, Shield, Building2, Tag } from "lucide-react";
 import { inviteMembre, updateMembre, updateMembreRoleStatut, deleteMembre } from "@/lib/membres.functions";
 
 export const Route = createFileRoute("/_authenticated/membres")({
@@ -38,7 +38,7 @@ type Membre = {
   entreprise: string | null;
   categorie: string | null;
   telephone: string | null;
-  site_internet: string | null;
+  site_web: string | null;
   role: "admin" | "bureau" | "membre";
   statut: "actif" | "inactif";
 };
@@ -54,7 +54,7 @@ function MembresPage() {
     queryFn: async (): Promise<Membre[]> => {
       const { data, error } = await supabase
         .from("membres")
-        .select("id, nom, prenom, email, photo_url, entreprise, categorie, telephone, site_internet, role, statut")
+        .select("id, nom, prenom, email, photo_url, entreprise, categorie, telephone, site_web, role, statut")
         .order("nom", { ascending: true });
       if (error) throw error;
       return (data ?? []) as Membre[];
@@ -96,7 +96,7 @@ function MembresPage() {
       ) : filtered.length === 0 ? (
         <Card><CardContent className="p-6 text-sm text-muted-foreground">Aucun membre trouvé.</CardContent></Card>
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-4 grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
           {filtered.map((m) => (
             <MembreCard key={m.id} membre={m} canEdit={isBureau} canAdmin={isAdmin} />
           ))}
@@ -107,61 +107,156 @@ function MembresPage() {
 }
 
 function MembreCard({ membre, canEdit, canAdmin }: { membre: Membre; canEdit: boolean; canAdmin: boolean }) {
+  const [open, setOpen] = useState(false);
   const initiales = `${membre.prenom?.[0] ?? ""}${membre.nom?.[0] ?? ""}`.toUpperCase();
   const inactif = membre.statut === "inactif";
+
   return (
-    <Card className={inactif ? "opacity-60" : ""}>
-      <CardContent className="p-4 flex flex-col gap-3">
-        <div className="flex items-start gap-3">
-          <Avatar className="h-14 w-14">
-            <AvatarImage src={membre.photo_url ?? undefined} alt={`${membre.prenom} ${membre.nom}`} />
-            <AvatarFallback>{initiales || "?"}</AvatarFallback>
+    <>
+      <Card
+        className={`rounded-2xl shadow-sm hover:shadow-md transition-shadow cursor-pointer ${inactif ? "opacity-60" : ""}`}
+        onClick={() => setOpen(true)}
+        role="button"
+        tabIndex={0}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            setOpen(true);
+          }
+        }}
+      >
+        <CardContent className="p-4 flex flex-col items-center gap-3 text-center">
+          <Avatar className="h-20 w-20 rounded-2xl">
+            <AvatarImage src={membre.photo_url ?? undefined} alt={`${membre.prenom} ${membre.nom}`} className="object-cover" />
+            <AvatarFallback className="rounded-2xl">{initiales || "?"}</AvatarFallback>
           </Avatar>
-          <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-2 flex-wrap">
-              <p className="font-semibold truncate">{membre.prenom} {membre.nom}</p>
+          <p className="font-semibold text-sm leading-tight break-words">
+            {membre.prenom} {membre.nom}
+          </p>
+        </CardContent>
+      </Card>
+
+      <MembreDetailDialog
+        membre={membre}
+        open={open}
+        onOpenChange={setOpen}
+        canEdit={canEdit}
+        canAdmin={canAdmin}
+      />
+    </>
+  );
+}
+
+function MembreDetailDialog({
+  membre, open, onOpenChange, canEdit, canAdmin,
+}: {
+  membre: Membre;
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  canEdit: boolean;
+  canAdmin: boolean;
+}) {
+  const initiales = `${membre.prenom?.[0] ?? ""}${membre.nom?.[0] ?? ""}`.toUpperCase();
+  const inactif = membre.statut === "inactif";
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <div className="flex flex-col items-center gap-3 pt-2">
+            <Avatar className="h-28 w-28 rounded-2xl">
+              <AvatarImage src={membre.photo_url ?? undefined} alt={`${membre.prenom} ${membre.nom}`} className="object-cover" />
+              <AvatarFallback className="rounded-2xl text-xl">{initiales || "?"}</AvatarFallback>
+            </Avatar>
+            <DialogTitle className="text-xl text-center">
+              {membre.prenom} {membre.nom}
+            </DialogTitle>
+            <div className="flex gap-2 flex-wrap justify-center">
               {membre.role !== "membre" && (
-                <Badge variant="secondary" className="capitalize text-[10px]">
+                <Badge variant="secondary" className="capitalize">
                   <Shield className="h-3 w-3 mr-1" />{membre.role}
                 </Badge>
               )}
-              {inactif && <Badge variant="outline" className="text-[10px]">inactif</Badge>}
+              {inactif && <Badge variant="outline">inactif</Badge>}
             </div>
-            {membre.entreprise && <p className="text-sm text-foreground truncate">{membre.entreprise}</p>}
-            {membre.categorie && <p className="text-xs text-muted-foreground truncate">{membre.categorie}</p>}
           </div>
+          <DialogDescription className="sr-only">Détail du membre</DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-2 mt-2">
+          {membre.entreprise && (
+            <InfoRow icon={<Building2 className="h-4 w-4" />} label="Entreprise" value={membre.entreprise} />
+          )}
+          {membre.categorie && (
+            <InfoRow icon={<Tag className="h-4 w-4" />} label="Catégorie" value={membre.categorie} />
+          )}
+          {membre.email && (
+            <InfoRow
+              icon={<Mail className="h-4 w-4" />}
+              label="Email"
+              value={
+                <a href={`mailto:${membre.email}`} className="text-primary hover:underline break-all">
+                  {membre.email}
+                </a>
+              }
+            />
+          )}
+          {membre.telephone && (
+            <InfoRow
+              icon={<Phone className="h-4 w-4" />}
+              label="Téléphone"
+              value={
+                <a href={`tel:${membre.telephone}`} className="text-primary hover:underline">
+                  {membre.telephone}
+                </a>
+              }
+            />
+          )}
+          {membre.site_web && (
+            <InfoRow
+              icon={<Globe className="h-4 w-4" />}
+              label="Site internet"
+              value={
+                <a
+                  href={membre.site_web}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-primary hover:underline break-all"
+                >
+                  {membre.site_web}
+                </a>
+              }
+            />
+          )}
         </div>
 
-        <div className="flex flex-wrap gap-2 pt-1">
-          <Button asChild size="sm" variant="outline" className="flex-1 min-w-0">
-            <a href={`mailto:${membre.email}`}>
-              <Mail className="h-4 w-4" /> <span className="truncate">Contact</span>
-            </a>
-          </Button>
-          {membre.telephone && (
-            <Button asChild size="sm" variant="outline">
-              <a href={`tel:${membre.telephone}`}><Phone className="h-4 w-4" /></a>
-            </Button>
-          )}
-          {membre.site_internet && (
-            <Button asChild size="sm" variant="outline">
-              <a href={membre.site_internet} target="_blank" rel="noopener noreferrer" aria-label="Site internet">
-                <Globe className="h-4 w-4" />
-              </a>
-            </Button>
-          )}
-          {canEdit && <EditDialog membre={membre} canAdmin={canAdmin} />}
-          {canAdmin && <DeleteButton membre={membre} />}
-        </div>
-      </CardContent>
-    </Card>
+        {(canEdit || canAdmin) && (
+          <DialogFooter className="flex-row flex-wrap gap-2 sm:justify-end pt-4 border-t mt-4">
+            {canEdit && <EditDialog membre={membre} canAdmin={canAdmin} />}
+            {canAdmin && <DeleteButton membre={membre} onDeleted={() => onOpenChange(false)} />}
+          </DialogFooter>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function InfoRow({ icon, label, value }: { icon: React.ReactNode; label: string; value: React.ReactNode }) {
+  return (
+    <div className="flex items-start gap-3 py-2 border-b last:border-0">
+      <div className="text-muted-foreground mt-0.5">{icon}</div>
+      <div className="flex-1 min-w-0">
+        <p className="text-xs text-muted-foreground">{label}</p>
+        <div className="text-sm font-medium break-words">{value}</div>
+      </div>
+    </div>
   );
 }
 
 function InviteDialog() {
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
-  const [form, setForm] = useState({ email: "", prenom: "", nom: "", entreprise: "", categorie: "", telephone: "" });
+  const [form, setForm] = useState({ email: "", prenom: "", nom: "", entreprise: "", categorie: "", telephone: "", site_web: "" });
   const invite = useServerFn(inviteMembre);
   const mutation = useMutation({
     mutationFn: (data: typeof form) => invite({ data }),
@@ -169,7 +264,7 @@ function InviteDialog() {
       toast.success("Invitation envoyée par email.");
       qc.invalidateQueries({ queryKey: ["membres", "list"] });
       setOpen(false);
-      setForm({ email: "", prenom: "", nom: "", entreprise: "", categorie: "", telephone: "" });
+      setForm({ email: "", prenom: "", nom: "", entreprise: "", categorie: "", telephone: "", site_web: "" });
     },
     onError: (e) => toast.error(e instanceof Error ? e.message : "Erreur lors de l'invitation"),
   });
@@ -196,6 +291,7 @@ function InviteDialog() {
           <Field label="Entreprise" value={form.entreprise} onChange={(v) => setForm({ ...form, entreprise: v })} />
           <Field label="Catégorie professionnelle" value={form.categorie} onChange={(v) => setForm({ ...form, categorie: v })} />
           <Field label="Téléphone" type="tel" value={form.telephone} onChange={(v) => setForm({ ...form, telephone: v })} />
+          <Field label="Site internet" type="url" value={form.site_web} onChange={(v) => setForm({ ...form, site_web: v })} />
           <DialogFooter>
             <Button type="submit" disabled={mutation.isPending}>
               {mutation.isPending ? "Envoi…" : "Envoyer l'invitation"}
@@ -213,7 +309,7 @@ function EditDialog({ membre, canAdmin }: { membre: Membre; canAdmin: boolean })
   const [form, setForm] = useState({
     prenom: membre.prenom, nom: membre.nom,
     entreprise: membre.entreprise ?? "", categorie: membre.categorie ?? "",
-    telephone: membre.telephone ?? "", photo_url: membre.photo_url ?? "", site_internet: membre.site_internet ?? "",
+    telephone: membre.telephone ?? "", photo_url: membre.photo_url ?? "", site_web: membre.site_web ?? "",
   });
   const [role, setRole] = useState<Membre["role"]>(membre.role);
   const [statut, setStatut] = useState<Membre["statut"]>(membre.statut);
@@ -223,7 +319,7 @@ function EditDialog({ membre, canAdmin }: { membre: Membre; canAdmin: boolean })
       setForm({
         prenom: membre.prenom, nom: membre.nom,
         entreprise: membre.entreprise ?? "", categorie: membre.categorie ?? "",
-        telephone: membre.telephone ?? "", photo_url: membre.photo_url ?? "", site_internet: membre.site_internet ?? "",
+        telephone: membre.telephone ?? "", photo_url: membre.photo_url ?? "", site_web: membre.site_web ?? "",
       });
       setRole(membre.role);
       setStatut(membre.statut);
@@ -241,7 +337,7 @@ function EditDialog({ membre, canAdmin }: { membre: Membre; canAdmin: boolean })
         entreprise: form.entreprise || null,
         categorie: form.categorie || null,
         telephone: form.telephone || null,
-        site_internet: form.site_internet || null,
+        site_web: form.site_web || null,
         photo_url: form.photo_url || null,
       } });
       if (canAdmin && (role !== membre.role || statut !== membre.statut)) {
@@ -259,7 +355,9 @@ function EditDialog({ membre, canAdmin }: { membre: Membre; canAdmin: boolean })
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button size="sm" variant="outline"><Pencil className="h-4 w-4" /></Button>
+        <Button size="sm" variant="outline">
+          <Pencil className="h-4 w-4" /> Modifier
+        </Button>
       </DialogTrigger>
       <DialogContent className="max-h-[90vh] overflow-y-auto">
         <DialogHeader>
@@ -278,7 +376,7 @@ function EditDialog({ membre, canAdmin }: { membre: Membre; canAdmin: boolean })
           <Field label="Entreprise" value={form.entreprise} onChange={(v) => setForm({ ...form, entreprise: v })} />
           <Field label="Catégorie" value={form.categorie} onChange={(v) => setForm({ ...form, categorie: v })} />
           <Field label="Téléphone" type="tel" value={form.telephone} onChange={(v) => setForm({ ...form, telephone: v })} />
-          <Field label="Lien site internet" type="url" value={form.site_internet} onChange={(v) => setForm({ ...form, site_internet: v })} />
+          <Field label="Site internet" type="url" value={form.site_web} onChange={(v) => setForm({ ...form, site_web: v })} />
 
           {canAdmin && (
             <div className="grid grid-cols-2 gap-3 pt-2 border-t">
@@ -317,7 +415,7 @@ function EditDialog({ membre, canAdmin }: { membre: Membre; canAdmin: boolean })
   );
 }
 
-function DeleteButton({ membre }: { membre: Membre }) {
+function DeleteButton({ membre, onDeleted }: { membre: Membre; onDeleted?: () => void }) {
   const qc = useQueryClient();
   const del = useServerFn(deleteMembre);
   const mutation = useMutation({
@@ -325,6 +423,7 @@ function DeleteButton({ membre }: { membre: Membre }) {
     onSuccess: () => {
       toast.success("Membre supprimé");
       qc.invalidateQueries({ queryKey: ["membres", "list"] });
+      onDeleted?.();
     },
     onError: (e) => toast.error(e instanceof Error ? e.message : "Erreur"),
   });
@@ -332,7 +431,7 @@ function DeleteButton({ membre }: { membre: Membre }) {
     <AlertDialog>
       <AlertDialogTrigger asChild>
         <Button size="sm" variant="outline" className="text-destructive hover:text-destructive">
-          <Trash2 className="h-4 w-4" />
+          <Trash2 className="h-4 w-4" /> Supprimer
         </Button>
       </AlertDialogTrigger>
       <AlertDialogContent>

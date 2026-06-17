@@ -26,6 +26,7 @@ const inviteSchema = z.object({
   entreprise: z.string().trim().max(150).optional().nullable(),
   categorie: z.string().trim().max(150).optional().nullable(),
   telephone: z.string().trim().max(40).optional().nullable(),
+  site_web: z.string().trim().max(500).optional().nullable(),
 });
 
 export const inviteMembre = createServerFn({ method: "POST" })
@@ -51,6 +52,7 @@ export const inviteMembre = createServerFn({ method: "POST" })
         entreprise: data.entreprise || null,
         categorie: data.categorie || null,
         telephone: data.telephone || null,
+        site_web: data.site_web || null,
       })
       .eq("id", userId);
     if (upErr) throw new Error(upErr.message);
@@ -65,7 +67,7 @@ const updateSchema = z.object({
   categorie: z.string().trim().max(150).nullable().optional(),
   telephone: z.string().trim().max(40).nullable().optional(),
   photo_url: z.string().trim().max(500).nullable().optional(),
-  site_internet: z.string().trim().max(500).nullable().optional(),
+  site_web: z.string().trim().max(500).nullable().optional(),
 });
 
 export const updateMembre = createServerFn({ method: "POST" })
