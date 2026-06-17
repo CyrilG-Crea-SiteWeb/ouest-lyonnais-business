@@ -229,7 +229,7 @@ function Dashboard() {
       </header>
 
       {/* KPIs semaine */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4">
+      <div className="grid grid-cols-3 gap-3 md:gap-4">
         {stats.map(({ label, value, icon: Icon }) => (
           <Card key={label} className="shadow-sm">
             <CardContent className="p-4">
@@ -250,7 +250,7 @@ function Dashboard() {
           <CardDescription>De juin à mai — recommandations et CA par mois</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="h-72 w-full">
+          <div className="h-60 w-full">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={evolution ?? []} margin={{ top: 10, right: 16, left: 0, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
