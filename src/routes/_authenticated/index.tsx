@@ -206,8 +206,8 @@ function Dashboard() {
 
   const stats = [
     { label: "Tête-à-tête (semaine)", value: nbTeteATete, icon: Coffee },
-    { label: "Recommandations (semaine)", value: nbRecos, icon: HandshakeIcon },
-    { label: "CA validé (semaine)", value: euros(caValide), icon: Euro },
+    { label: "Recos (semaine)", value: nbRecos, icon: HandshakeIcon },
+    { label: "CA (semaine)", value: euros(caValide), icon: Euro },
   ];
   
   const palmaresTrie = (palmares ?? [])
