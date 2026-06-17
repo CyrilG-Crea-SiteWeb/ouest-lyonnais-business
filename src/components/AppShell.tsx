@@ -1,3 +1,4 @@
+import { useQueryClient } from "@tanstack/react-query";
 import { useState, type ReactNode } from "react";
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import {
@@ -37,9 +38,11 @@ export function AppShell({ children }: { children: ReactNode }) {
   const navigate = useNavigate();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const { data: profile } = useProfile();
+  const queryClient = useQueryClient();
 
   async function handleLogout() {
     await supabase.auth.signOut();
+    queryClient.clear();
     navigate({ to: "/auth", replace: true });
   }
 
