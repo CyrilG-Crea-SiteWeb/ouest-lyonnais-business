@@ -153,17 +153,12 @@ function RecosPage() {
   // --- Filtres de l'historique (membre / type / plage de dates) ---
   const [fMembre, setFMembre] = useState<string>("__all__");
   const [fType, setFType] = useState<string>("__all__");
-  const [fDu, setFDu] = useState<string>("");   // date début (YYYY-MM-DD)
-  const [fAu, setFAu] = useState<string>("");   // date fin (YYYY-MM-DD)
 
-  const filtresActifs =
-    fMembre !== "__all__" || fType !== "__all__" || fDu !== "" || fAu !== "";
+  const filtresActifs = fMembre !== "__all__" || fType !== "__all__";
 
   const resetFiltres = () => {
     setFMembre("__all__");
     setFType("__all__");
-    setFDu("");
-    setFAu("");
   };
 
   const recosFiltrees = useMemo(() => {
@@ -177,15 +172,9 @@ function RecosPage() {
           parts.includes(fMembre);
         if (!concerne) return false;
       }
-      if (fDu || fAu) {
-        const debut = semainesMap[r.semaine_id]?.date_debut ?? "";
-        if (!debut) return false;
-        if (fDu && debut < fDu) return false;
-        if (fAu && debut > fAu) return false;
-      }
       return true;
     });
-  }, [recos, fMembre, fType, fDu, fAu, participantsMap, semainesMap]);
+  }, [recos, fMembre, fType, participantsMap]);
 
   // Hiérarchie Année > Mois > Semaine, basée sur la date de début de semaine.
   const annees = useMemo(() => {
@@ -319,7 +308,7 @@ function RecosPage() {
         </div>
 
         <Card>
-          <CardContent className="p-4 grid grid-cols-1 md:grid-cols-2 gap-3">
+          <CardContent className="p-4 grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label className="text-xs flex items-center gap-1">
                 <Filter className="h-3 w-3" /> Membre
@@ -347,16 +336,6 @@ function RecosPage() {
                   <SelectItem value="merci_business">Merci pour le business</SelectItem>
                 </SelectContent>
               </Select>
-            </div>
-
-            <div className="space-y-1.5">
-              <Label htmlFor="f-du" className="text-xs">Du</Label>
-              <Input id="f-du" type="date" value={fDu} onChange={(e) => setFDu(e.target.value)} />
-            </div>
-
-            <div className="space-y-1.5">
-              <Label htmlFor="f-au" className="text-xs">Au</Label>
-              <Input id="f-au" type="date" value={fAu} onChange={(e) => setFAu(e.target.value)} />
             </div>
           </CardContent>
         </Card>
