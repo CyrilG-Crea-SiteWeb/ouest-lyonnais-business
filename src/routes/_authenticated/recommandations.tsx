@@ -26,7 +26,7 @@ import { ExportRecos } from "@/components/ExportRecos";
 import { HelpButton } from "@/components/HelpButton";
 import {
   Handshake, Users2, UserPlus, Euro, Trash2, Loader2, Check, ClipboardCheck,
-  ChevronRight,
+  ChevronRight, Filter, X,
 } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/recommandations")({
@@ -150,11 +150,48 @@ function RecosPage() {
     return m;
   }, [membres]);
 
+  // --- Filtres de l'historique (membre / type / plage de dates) ---
+  const [fMembre, setFMembre] = useState<string>("__all__");
+  const [fType, setFType] = useState<string>("__all__");
+  const [fDu, setFDu] = useState<string>("");   // date début (YYYY-MM-DD)
+  const [fAu, setFAu] = useState<string>("");   // date fin (YYYY-MM-DD)
+
+  const filtresActifs =
+    fMembre !== "__all__" || fType !== "__all__" || fDu !== "" || fAu !== "";
+
+  const resetFiltres = () => {
+    setFMembre("__all__");
+    setFType("__all__");
+    setFDu("");
+    setFAu("");
+  };
+
+  const recosFiltrees = useMemo(() => {
+    return recos.filter((r) => {
+      if (fType !== "__all__" && r.type !== fType) return false;
+      if (fMembre !== "__all__") {
+        const parts = participantsMap[r.id] ?? [];
+        const concerne =
+          r.membre_id === fMembre ||
+          r.membre_cible_id === fMembre ||
+          parts.includes(fMembre);
+        if (!concerne) return false;
+      }
+      if (fDu || fAu) {
+        const debut = semainesMap[r.semaine_id]?.date_debut ?? "";
+        if (!debut) return false;
+        if (fDu && debut < fDu) return false;
+        if (fAu && debut > fAu) return false;
+      }
+      return true;
+    });
+  }, [recos, fMembre, fType, fDu, fAu, participantsMap, semainesMap]);
+
   // Hiérarchie Année > Mois > Semaine, basée sur la date de début de semaine.
   const annees = useMemo(() => {
     // 1. regrouper les recos par semaine
     const parSemaine = new Map<number, Reco[]>();
-    recos.forEach((r) => {
+    recosFiltrees.forEach((r) => {
       const arr = parSemaine.get(r.semaine_id) ?? [];
       arr.push(r);
       parSemaine.set(r.semaine_id, arr);
@@ -195,11 +232,24 @@ function RecosPage() {
       }));
 
     return result;
-  }, [recos, semainesMap]);
+  }, [recosFiltrees, semainesMap]);
 
   const now = new Date();
   const anneeCourante = now.getFullYear();
   const moisCourant = now.getMonth();
+
+  const semaineCouranteId = useMemo(() => {
+    const today = new Date().toISOString().slice(0, 10);
+    let best: { id: number; debut: string } | null = null;
+    for (const id of semaineIds) {
+      const debut = semainesMap[id]?.date_debut;
+      if (!debut) continue;
+      if (debut <= today && (!best || debut > best.debut)) {
+        best = { id, debut };
+      }
+    }
+    return best?.id ?? null;
+  }, [semaineIds, semainesMap]);
 
   const aValider = useMemo(() => recos.filter((r) => r.type === "merci_business" && !r.valide), [recos]);
 
@@ -259,11 +309,64 @@ function RecosPage() {
       />
 
       <section className="space-y-4">
-        <h2 className="text-lg font-semibold">Historique</h2>
+        <div className="flex items-center justify-between gap-2">
+          <h2 className="text-lg font-semibold">Historique</h2>
+          {filtresActifs && (
+            <Button variant="ghost" size="sm" onClick={resetFiltres} className="h-8 text-muted-foreground">
+              <X className="h-4 w-4 mr-1" /> Réinitialiser
+            </Button>
+          )}
+        </div>
+
+        <Card>
+          <CardContent className="p-4 grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label className="text-xs flex items-center gap-1">
+                <Filter className="h-3 w-3" /> Membre
+              </Label>
+              <Select value={fMembre} onValueChange={setFMembre}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__all__">Tous les membres</SelectItem>
+                  {membres.map((m) => (
+                    <SelectItem key={m.id} value={m.id}>{m.prenom} {m.nom}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label className="text-xs">Type</Label>
+              <Select value={fType} onValueChange={setFType}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__all__">Tous les types</SelectItem>
+                  <SelectItem value="tete_a_tete">Tête-à-tête</SelectItem>
+                  <SelectItem value="reco_interne">Reco interne</SelectItem>
+                  <SelectItem value="reco_externe">Reco externe</SelectItem>
+                  <SelectItem value="merci_business">Merci pour le business</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="f-du" className="text-xs">Du</Label>
+              <Input id="f-du" type="date" value={fDu} onChange={(e) => setFDu(e.target.value)} />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="f-au" className="text-xs">Au</Label>
+              <Input id="f-au" type="date" value={fAu} onChange={(e) => setFAu(e.target.value)} />
+            </div>
+          </CardContent>
+        </Card>
+
         {isLoading ? (
           <p className="text-sm text-muted-foreground">Chargement…</p>
         ) : annees.length === 0 ? (
-          <Card><CardContent className="p-6 text-sm text-muted-foreground">Aucune recommandation.</CardContent></Card>
+          <Card><CardContent className="p-6 text-sm text-muted-foreground">
+            {filtresActifs ? "Aucune recommandation pour ces filtres." : "Aucune recommandation."}
+          </CardContent></Card>
         ) : (
           annees.map((a) => (
             <AnneeBlock
@@ -276,6 +379,7 @@ function RecosPage() {
               participantsMap={participantsMap}
               profileId={profile?.id}
               isBureau={isBureau}
+              semaineCouranteId={semaineCouranteId}
             />
           ))
         )}
@@ -288,7 +392,7 @@ function RecosPage() {
 
 // ---- Bloc Année (repliable) ----
 function AnneeBlock({
-  annee, mois, defaultOpen, moisCourant, membresMap, participantsMap, profileId, isBureau,
+  annee, mois, defaultOpen, moisCourant, membresMap, participantsMap, profileId, isBureau, semaineCouranteId,
 }: {
   annee: number;
   mois: { mois: number; annee: number; semaines: { id: number; semaine?: Semaine; items: Reco[]; debut: string }[] }[];
@@ -298,6 +402,7 @@ function AnneeBlock({
   participantsMap: Record<number, string[]>;
   profileId?: string;
   isBureau: boolean;
+  semaineCouranteId: number | null;
 }) {
   const [open, setOpen] = useState(defaultOpen);
   const total = mois.reduce((acc, m) => acc + m.semaines.reduce((s, sem) => s + sem.items.length, 0), 0);
@@ -322,6 +427,7 @@ function AnneeBlock({
             participantsMap={participantsMap}
             profileId={profileId}
             isBureau={isBureau}
+            semaineCouranteId={semaineCouranteId}
           />
         ))}
       </CollapsibleContent>
@@ -331,7 +437,7 @@ function AnneeBlock({
 
 // ---- Bloc Mois (repliable) ----
 function MoisBlock({
-  mois, semaines, defaultOpen, membresMap, participantsMap, profileId, isBureau,
+  mois, semaines, defaultOpen, membresMap, participantsMap, profileId, isBureau, semaineCouranteId,
 }: {
   mois: number;
   semaines: { id: number; semaine?: Semaine; items: Reco[]; debut: string }[];
@@ -340,6 +446,7 @@ function MoisBlock({
   participantsMap: Record<number, string[]>;
   profileId?: string;
   isBureau: boolean;
+  semaineCouranteId: number | null;
 }) {
   const [open, setOpen] = useState(defaultOpen);
   const total = semaines.reduce((s, sem) => s + sem.items.length, 0);
@@ -353,30 +460,66 @@ function MoisBlock({
           <Badge variant="outline" className="ml-auto text-[10px]">{total}</Badge>
         </button>
       </CollapsibleTrigger>
-      <CollapsibleContent className="space-y-4 pt-2">
+      <CollapsibleContent className="space-y-3 pt-2">
         {semaines.map((g) => (
-          <Card key={g.id}>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-semibold text-primary">
-                {g.semaine?.libelle ?? `Semaine #${g.id}`}
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="pt-0 divide-y">
-              {g.items.map((r) => (
-                <RecoRow
-                  key={r.id}
-                  reco={r}
-                  emetteur={membresMap[r.membre_id]}
-                  cible={r.membre_cible_id ? membresMap[r.membre_cible_id] : undefined}
-                  participants={(participantsMap[r.id] ?? []).map((id) => membresMap[id]).filter(Boolean)}
-                  canEdit={isBureau || r.membre_id === profileId}
-                />
-              ))}
-            </CardContent>
-          </Card>
+          <SemaineBlock
+            key={g.id}
+            group={g}
+            defaultOpen={g.id === semaineCouranteId}
+            membresMap={membresMap}
+            participantsMap={participantsMap}
+            profileId={profileId}
+            isBureau={isBureau}
+          />
         ))}
       </CollapsibleContent>
     </Collapsible>
+  );
+}
+
+// ---- Bloc Semaine (repliable ; seule la semaine en cours ouverte par défaut) ----
+function SemaineBlock({
+  group, defaultOpen, membresMap, participantsMap, profileId, isBureau,
+}: {
+  group: { id: number; semaine?: Semaine; items: Reco[]; debut: string };
+  defaultOpen: boolean;
+  membresMap: Record<string, MembreLite>;
+  participantsMap: Record<number, string[]>;
+  profileId?: string;
+  isBureau: boolean;
+}) {
+  const [open, setOpen] = useState(defaultOpen);
+  const libelle = group.semaine?.libelle ?? `Semaine #${group.id}`;
+
+  return (
+    <Card>
+      <Collapsible open={open} onOpenChange={setOpen}>
+        <CollapsibleTrigger asChild>
+          <button className="flex w-full items-center gap-2 px-4 py-3 text-left hover:bg-accent/50 transition-colors rounded-t-lg">
+            <ChevronRight className={"h-4 w-4 shrink-0 transition-transform " + (open ? "rotate-90" : "")} />
+            <span className="text-sm font-semibold text-primary">{libelle}</span>
+            {defaultOpen && (
+              <Badge className="text-[10px]">En cours</Badge>
+            )}
+            <Badge variant="outline" className="ml-auto text-[10px]">{group.items.length}</Badge>
+          </button>
+        </CollapsibleTrigger>
+        <CollapsibleContent>
+          <CardContent className="pt-0 divide-y">
+            {group.items.map((r) => (
+              <RecoRow
+                key={r.id}
+                reco={r}
+                emetteur={membresMap[r.membre_id]}
+                cible={r.membre_cible_id ? membresMap[r.membre_cible_id] : undefined}
+                participants={(participantsMap[r.id] ?? []).map((id) => membresMap[id]).filter(Boolean)}
+                canEdit={isBureau || r.membre_id === profileId}
+              />
+            ))}
+          </CardContent>
+        </CollapsibleContent>
+      </Collapsible>
+    </Card>
   );
 }
 

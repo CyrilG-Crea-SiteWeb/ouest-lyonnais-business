@@ -13,8 +13,18 @@ import { toast } from "sonner";
 
 const ALL = "__all__";
 
+const MOIS_FR = [
+  "Janvier", "Février", "Mars", "Avril", "Mai", "Juin",
+  "Juillet", "Août", "Septembre", "Octobre", "Novembre", "Décembre",
+];
+
+type Granularite = "toutes" | "semaine" | "mois" | "annee";
+
 export function ExportRecos() {
+  const [granularite, setGranularite] = useState<Granularite>("toutes");
   const [semaineId, setSemaineId] = useState<string>(ALL);
+  const [moisKey, setMoisKey] = useState<string>(ALL);   // format "YYYY-MM"
+  const [anneeKey, setAnneeKey] = useState<string>(ALL); // format "YYYY"
   const [membreId, setMembreId] = useState<string>(ALL);
   const [type, setType] = useState<string>(ALL);
 
@@ -54,25 +64,90 @@ export function ExportRecos() {
     return m;
   }, [semaines]);
 
+  // Mois distincts présents (clé "YYYY-MM"), du plus récent au plus ancien.
+  const moisOptions = useMemo(() => {
+    const map = new Map<string, string>(); // key -> label
+    semaines.forEach((s: any) => {
+      const d = s.date_debut as string;
+      if (!d) return;
+      const key = d.slice(0, 7); // YYYY-MM
+      const annee = Number(d.slice(0, 4));
+      const mois = Number(d.slice(5, 7)) - 1;
+      map.set(key, `${MOIS_FR[mois]} ${annee}`);
+    });
+    return Array.from(map.entries()).sort((a, b) => b[0].localeCompare(a[0]));
+  }, [semaines]);
+
+  // Années distinctes présentes, du plus récent au plus ancien.
+  const anneeOptions = useMemo(() => {
+    const set = new Set<string>();
+    semaines.forEach((s: any) => {
+      const d = s.date_debut as string;
+      if (d) set.add(d.slice(0, 4));
+    });
+    return Array.from(set).sort((a, b) => b.localeCompare(a));
+  }, [semaines]);
+
+  // Ids de semaines correspondant à la portée période choisie.
+  // Retourne null = "pas de filtre période" (toutes les semaines).
+  const semaineIdsPortee = (): number[] | null => {
+    if (granularite === "toutes") return null;
+    if (granularite === "semaine") {
+      return semaineId === ALL ? null : [Number(semaineId)];
+    }
+    if (granularite === "mois") {
+      if (moisKey === ALL) return null;
+      return semaines
+        .filter((s: any) => (s.date_debut as string)?.slice(0, 7) === moisKey)
+        .map((s: any) => s.id as number);
+    }
+    // annee
+    if (anneeKey === ALL) return null;
+    return semaines
+      .filter((s: any) => (s.date_debut as string)?.slice(0, 4) === anneeKey)
+      .map((s: any) => s.id as number);
+  };
+
   const handleExport = async () => {
     try {
+      const ids = semaineIdsPortee();
+      // Portée période choisie mais aucune semaine ne correspond → rien à exporter.
+      if (ids !== null && ids.length === 0) {
+        toast.info("Aucune semaine pour cette période.");
+        return;
+      }
+
       let q = supabase
         .from("recommandations")
         .select("id, type, membre_id, membre_cible_id, contact_externe, montant, valide, semaine_id, created_at")
         .order("created_at", { ascending: false });
-      if (semaineId !== ALL) q = q.eq("semaine_id", Number(semaineId));
+      if (ids !== null) q = q.in("semaine_id", ids);
       if (membreId !== ALL) q = q.eq("membre_id", membreId);
       if (type !== ALL) q = q.eq("type", type as any);
+
       const { data, error } = await q;
       if (error) throw error;
       if (!data?.length) {
         toast.info("Aucune recommandation à exporter pour ces filtres.");
         return;
       }
+
+      // Suffixe de nom de fichier selon la portée.
+      let suffixe = new Date().toISOString().slice(0, 10);
+      if (granularite === "semaine" && semaineId !== ALL) {
+        suffixe = (semainesMap[Number(semaineId)]?.libelle ?? `semaine-${semaineId}`)
+          .replace(/\s+/g, "-").toLowerCase();
+      } else if (granularite === "mois" && moisKey !== ALL) {
+        suffixe = moisKey;
+      } else if (granularite === "annee" && anneeKey !== ALL) {
+        suffixe = anneeKey;
+      }
+
       exportRecommandationsXlsx({
         recos: data as any,
         membres: membresMap,
         semaines: semainesMap,
+        filename: `recommandations-${suffixe}.xlsx`,
       });
       toast.success(`${data.length} ligne(s) exportée(s).`);
     } catch (e: any) {
@@ -89,19 +164,77 @@ export function ExportRecos() {
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          {/* Granularité de période */}
           <div>
-            <Label className="text-xs">Semaine</Label>
-            <Select value={semaineId} onValueChange={setSemaineId}>
+            <Label className="text-xs">Période</Label>
+            <Select
+              value={granularite}
+              onValueChange={(v) => {
+                setGranularite(v as Granularite);
+                // reset des sous-sélecteurs pour éviter un filtre fantôme
+                setSemaineId(ALL);
+                setMoisKey(ALL);
+                setAnneeKey(ALL);
+              }}
+            >
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
-                <SelectItem value={ALL}>Toutes</SelectItem>
-                {semaines.map((s: any) => (
-                  <SelectItem key={s.id} value={String(s.id)}>{s.libelle}</SelectItem>
-                ))}
+                <SelectItem value="toutes">Toutes les périodes</SelectItem>
+                <SelectItem value="semaine">Par semaine</SelectItem>
+                <SelectItem value="mois">Par mois</SelectItem>
+                <SelectItem value="annee">Par année</SelectItem>
               </SelectContent>
             </Select>
           </div>
+
+          {/* Sous-sélecteur conditionnel */}
+          {granularite === "semaine" && (
+            <div>
+              <Label className="text-xs">Semaine</Label>
+              <Select value={semaineId} onValueChange={setSemaineId}>
+                <SelectTrigger><SelectValue placeholder="Choisir…" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={ALL}>Toutes les semaines</SelectItem>
+                  {semaines.map((s: any) => (
+                    <SelectItem key={s.id} value={String(s.id)}>{s.libelle}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
+          {granularite === "mois" && (
+            <div>
+              <Label className="text-xs">Mois</Label>
+              <Select value={moisKey} onValueChange={setMoisKey}>
+                <SelectTrigger><SelectValue placeholder="Choisir…" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={ALL}>Tous les mois</SelectItem>
+                  {moisOptions.map(([key, label]) => (
+                    <SelectItem key={key} value={key}>{label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
+          {granularite === "annee" && (
+            <div>
+              <Label className="text-xs">Année</Label>
+              <Select value={anneeKey} onValueChange={setAnneeKey}>
+                <SelectTrigger><SelectValue placeholder="Choisir…" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={ALL}>Toutes les années</SelectItem>
+                  {anneeOptions.map((a) => (
+                    <SelectItem key={a} value={a}>{a}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
+          {/* Membre */}
           <div>
             <Label className="text-xs">Membre</Label>
             <Select value={membreId} onValueChange={setMembreId}>
@@ -114,6 +247,8 @@ export function ExportRecos() {
               </SelectContent>
             </Select>
           </div>
+
+          {/* Type */}
           <div>
             <Label className="text-xs">Type</Label>
             <Select value={type} onValueChange={setType}>
@@ -128,6 +263,7 @@ export function ExportRecos() {
             </Select>
           </div>
         </div>
+
         <Button onClick={handleExport} className="w-full md:w-auto">
           <Download className="h-4 w-4 mr-2" />
           Télécharger .xlsx
