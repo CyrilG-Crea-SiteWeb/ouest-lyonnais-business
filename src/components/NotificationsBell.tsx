@@ -25,7 +25,7 @@ function lienVers(n: Notification): string {
       return `/evenements`;
     case "sondage":
       return `/sondages`;
-    case."rappel":
+    case "rappel":
     case "recommandation":
       return `/recommandations`;
     default:
