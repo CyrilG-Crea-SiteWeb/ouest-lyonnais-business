@@ -110,9 +110,14 @@ export function NotificationsBell() {
     navigate({ to: lienVers(n) });
   }
 
-  const [pushEtat, setPushEtat] = useState<NotificationPermission | "unsupported">(
-    () => permissionPush(),
-  );
+  // On part d'une valeur neutre identique côté serveur et côté client,
+  // puis on lit la vraie permission après le montage (évite le mismatch
+  // d'hydratation React #418 : Notification n'existe pas au SSR).
+  const [pushEtat, setPushEtat] = useState<NotificationPermission | "unsupported" | null>(null);
+
+  useEffect(() => {
+    setPushEtat(permissionPush());
+  }, []);
 
   async function activerNotifsPush() {
     if (!profile) return;
@@ -155,7 +160,7 @@ export function NotificationsBell() {
               </Button>
             )}
           </div>
-          {pushEtat !== "granted" && (
+          {pushEtat !== null && pushEtat !== "granted" && (
             <div className="border-b px-3 py-2">
               {pushEtat === "unsupported" ? (
                 <p className="text-xs text-muted-foreground">
