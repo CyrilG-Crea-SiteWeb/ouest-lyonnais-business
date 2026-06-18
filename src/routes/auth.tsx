@@ -32,6 +32,9 @@ function messageErreur(brut: string): string {
   if (m.includes("rate limit") || m.includes("too many")) {
     return "Trop de tentatives. Patientez quelques minutes avant de réessayer.";
   }
+  if (m.includes("signup") || m.includes("not allowed") || m.includes("disabled")) {
+    return "Les inscriptions ne sont pas ouvertes. Utilisez le lien d'invitation transmis par le bureau.";
+  }
   return "Une erreur est survenue. Réessayez.";
 }
 
@@ -40,6 +43,7 @@ function AuthPage() {
   const [mode, setMode] = useState<"signin" | "signup" | "reset">("signin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [passwordConfirm, setPasswordConfirm] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [prenom, setPrenom] = useState("");
   const [nom, setNom] = useState("");
@@ -53,6 +57,14 @@ function AuthPage() {
     });
   }, [navigate]);
 
+  // Active le mode inscription uniquement via le lien privé ?invite=1.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("invite") === "1") {
+      setMode("signup");
+    }
+  }, []);
+
   // Réinitialise l'écran de confirmation et l'erreur quand on change de mode.
   function changerMode(nouveau: "signin" | "signup" | "reset") {
     setResetEnvoye(false);
@@ -63,6 +75,10 @@ function AuthPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setErreur(null);
+    if (mode === "signup" && password !== passwordConfirm) {
+      setErreur("Les deux mots de passe ne correspondent pas.");
+      return;
+    }
     setLoading(true);
     try {
       if (mode === "signin") {
@@ -174,6 +190,20 @@ function AuthPage() {
                     </div>
                   </div>
                 )}
+                {mode === "signup" && (
+                  <div className="space-y-1.5">
+                    <Label htmlFor="passwordConfirm">Confirmer le mot de passe</Label>
+                    <Input
+                      id="passwordConfirm"
+                      type={showPassword ? "text" : "password"}
+                      autoComplete="new-password"
+                      value={passwordConfirm}
+                      onChange={(e) => setPasswordConfirm(e.target.value)}
+                      required
+                      minLength={6}
+                    />
+                  </div>
+                )}
                 {erreur && (
                   <div
                     role="alert"
@@ -201,7 +231,7 @@ function AuthPage() {
                     : "Envoyer le lien"}
                 </Button>
               </form>
-              {mode === "reset" ? (
+              {mode === "reset" && (
                 <button
                   type="button"
                   onClick={() => changerMode("signin")}
@@ -209,13 +239,14 @@ function AuthPage() {
                 >
                   Retour à la connexion
                 </button>
-              ) : (
+              )}
+              {mode === "signup" && (
                 <button
                   type="button"
-                  onClick={() => changerMode(mode === "signin" ? "signup" : "signin")}
+                  onClick={() => changerMode("signin")}
                   className="block w-full text-center text-sm text-primary hover:underline"
                 >
-                  {mode === "signin" ? "Pas encore de compte ? S'inscrire" : "Déjà inscrit ? Se connecter"}
+                  Déjà inscrit ? Se connecter
                 </button>
               )}
             </>
