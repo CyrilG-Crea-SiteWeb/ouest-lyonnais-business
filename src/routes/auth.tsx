@@ -29,6 +29,9 @@ function messageErreur(brut: string): string {
   if (m.includes("password should be at least")) {
     return "Le mot de passe doit faire au moins 6 caractères.";
   }
+  if (m.includes("password") && (m.includes("weak") || m.includes("characters") || m.includes("requirement"))) {
+    return "Mot de passe trop faible : il doit contenir des lettres et des chiffres (6 caractères minimum).";
+  }
   if (m.includes("rate limit") || m.includes("too many")) {
     return "Trop de tentatives. Patientez quelques minutes avant de réessayer.";
   }
@@ -49,6 +52,7 @@ function AuthPage() {
   const [nom, setNom] = useState("");
   const [loading, setLoading] = useState(false);
   const [resetEnvoye, setResetEnvoye] = useState(false);
+  const [inscriptionEnvoyee, setInscriptionEnvoyee] = useState(false);
   const [erreur, setErreur] = useState<string | null>(null);
 
   useEffect(() => {
@@ -69,6 +73,7 @@ function AuthPage() {
   function changerMode(nouveau: "signin" | "signup" | "reset") {
     setResetEnvoye(false);
     setErreur(null);
+    setInscriptionEnvoyee(false);
     setMode(nouveau);
   }
 
@@ -96,7 +101,7 @@ function AuthPage() {
           },
         });
         if (error) throw error;
-        toast.success("Compte créé. Vérifiez votre email.");
+        setInscriptionEnvoyee(true);
       } else {
         // mode === "reset" : envoi du lien de réinitialisation.
         const { error } = await supabase.auth.resetPasswordForEmail(email, {
@@ -124,7 +129,30 @@ function AuthPage() {
         </div>
         <Card className="p-6 space-y-5 shadow-md">
           {/* Écran de confirmation après l'envoi du lien de réinitialisation */}
-          {mode === "reset" && resetEnvoye ? (
+          {mode === "signup" && inscriptionEnvoyee ? (
+            <div className="space-y-5 text-center">
+              <div className="flex justify-center">
+                <div className="rounded-full bg-primary/10 p-3">
+                  <MailCheck className="h-8 w-8 text-primary" />
+                </div>
+              </div>
+              <div className="space-y-1">
+                <h1 className="text-xl font-bold text-foreground">Compte créé</h1>
+                <p className="text-sm text-muted-foreground">
+                  Un email de confirmation vient d'être envoyé à{" "}
+                  <span className="font-medium text-foreground">{email}</span>.
+                </p>
+              </div>
+              <div className="rounded-md bg-muted/50 p-3 text-left text-sm text-muted-foreground">
+                Cliquez sur le lien dans cet email pour activer votre compte,
+                puis revenez vous connecter. Pensez à vérifier vos spams ; le
+                lien expire après environ une heure.
+              </div>
+              <Button type="button" className="w-full" onClick={() => changerMode("signin")}>
+                Retour à la connexion
+              </Button>
+            </div>
+          ) : mode === "reset" && resetEnvoye ? (
             <div className="space-y-5 text-center">
               <div className="flex justify-center">
                 <div className="rounded-full bg-primary/10 p-3">
@@ -188,6 +216,11 @@ function AuthPage() {
                         {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                       </button>
                     </div>
+                    {mode === "signup" && (
+                      <p className="text-xs text-muted-foreground">
+                        Au moins 6 caractères, avec des lettres et des chiffres.
+                      </p>
+                    )}
                   </div>
                 )}
                 {mode === "signup" && (
