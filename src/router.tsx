@@ -23,9 +23,28 @@ export const getRouter = () => {
   // sans rechargement de page (déconnexion → reconnexion avec un autre compte).
   // S'exécute uniquement côté navigateur.
   if (typeof window !== "undefined") {
-    supabase.auth.onAuthStateChange((event) => {
-      if (event === "SIGNED_OUT" || event === "SIGNED_IN") {
+    let dernierUserId: string | null = null;
+
+    supabase.auth.onAuthStateChange((event, session) => {
+      const userIdActuel = session?.user?.id ?? null;
+
+      // Vraie déconnexion : on purge.
+      if (event === "SIGNED_OUT") {
+        dernierUserId = null;
         queryClient.clear();
+        return;
+      }
+
+      // Connexion / restauration de session : on ne purge QUE si
+      // l'utilisateur a réellement changé (vrai changement de compte).
+      // On ignore TOKEN_REFRESHED et les SIGNED_IN répétés du même
+      // utilisateur (fréquents sur mobile au réveil de l'app),
+      // qui faisaient disparaître/réapparaître les données.
+      if (event === "SIGNED_IN") {
+        if (dernierUserId !== null && dernierUserId !== userIdActuel) {
+          queryClient.clear();
+        }
+        dernierUserId = userIdActuel;
       }
     });
   }
