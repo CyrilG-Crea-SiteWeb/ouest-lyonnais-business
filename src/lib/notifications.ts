@@ -36,6 +36,16 @@ export async function creerNotifications(opts: {
 
   const { error } = await supabase.from("notifications").insert(rows);
   if (error) throw error;
+
+  // Push (best-effort) : on déclenche l'Edge Function après l'in-app.
+  // N'échoue jamais l'action principale (try/catch interne).
+  try {
+    await supabase.functions.invoke("send-push", {
+      body: { typeContenu, contenuId, titre, membreIds: destinataires },
+    });
+  } catch (e) {
+    console.error("[push] échec envoi (non bloquant):", e);
+  }
 }
 
 /**

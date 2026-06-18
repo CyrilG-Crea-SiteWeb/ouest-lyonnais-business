@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
+import { creerNotificationsSafe, getMembresActifsIds } from "@/lib/notifications";
 import {
   Dialog,
   DialogContent,
@@ -317,6 +318,15 @@ function CreateSondageDialog() {
         .from("options_sondage")
         .insert(opts.map((libelle) => ({ sondage_id: (s as Sondage).id, libelle })));
       if (e2) throw e2;
+      // Notifier tous les membres actifs (créateur exclu).
+      const actifs = await getMembresActifsIds();
+      await creerNotificationsSafe({
+        typeContenu: "sondage",
+        contenuId: (s as Sondage).id,
+        titre: `Nouveau sondage : ${titre.trim()}`,
+        membreIds: actifs,
+        exclureId: profile.id,
+      });
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["sondages"] });

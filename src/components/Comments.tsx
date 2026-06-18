@@ -18,6 +18,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
+import { creerNotificationsSafe, getMembresActifsIds } from "@/lib/notifications";
 
 // MODIF OLB : ajout de "demande" pour brancher les commentaires sous les demandes.
 export type TypeContenu = "recommandation" | "sondage" | "evenement" | "demande";
@@ -153,6 +154,7 @@ function CommentsThread({
           typeContenu={typeContenu}
           contenuId={contenuId}
           queryKey={queryKey}
+          comments={comments}
         />
       ))}
       <CommentForm
@@ -161,6 +163,7 @@ function CommentsThread({
         parentId={null}
         queryKey={queryKey}
         placeholder="Écrire un commentaire…"
+        comments={comments}
       />
     </div>
   );
@@ -213,6 +216,7 @@ function CommentItem({
               autoFocus
               onDone={() => setReplying(false)}
               placeholder="Votre réponse…"
+              comments={comments}
             />
           )}
         </div>
@@ -392,6 +396,7 @@ function CommentForm({
   placeholder,
   autoFocus,
   onDone,
+  comments,
 }: {
   typeContenu: TypeContenu;
   contenuId: number;
@@ -400,6 +405,7 @@ function CommentForm({
   placeholder?: string;
   autoFocus?: boolean;
   onDone?: () => void;
+  comments: Commentaire[];
 }) {
   const qc = useQueryClient();
   const { data: profile } = useProfile();
@@ -410,14 +416,31 @@ function CommentForm({
       if (!profile) throw new Error("Non connecté");
       const t = texte.trim();
       if (!t) throw new Error("Texte requis");
-      const { error } = await supabase.from("commentaires").insert({
-        type_contenu: typeContenu,
-        contenu_id: contenuId,
-        parent_id: parentId,
-        membre_id: profile.id,
-        texte: t,
-      });
+
+      // 1) Insère le commentaire et récupère la ligne créée (besoin de l'id).
+      const { data: insere, error } = await supabase
+        .from("commentaires")
+        .insert({
+          type_contenu: typeContenu,
+          contenu_id: contenuId,
+          parent_id: parentId,
+          membre_id: profile.id,
+          texte: t,
+        })
+        .select("id")
+        .single();
       if (error) throw error;
+
+      // 2) Notifications (best-effort : ne bloque jamais la publication).
+      await notifierCommentaire({
+        typeContenu,
+        contenuId,
+        parentId,
+        auteurCommentaireId: profile.id,
+        commentaires: comments,
+      });
+
+      return insere;
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey });
@@ -452,4 +475,70 @@ function CommentForm({
       </div>
     </div>
   );
+}
+/**
+ * Notifie les bonnes personnes après la publication d'un commentaire.
+ *
+ * - Commentaire racine (parentId == null) :
+ *     • recommandation / demande -> l'AUTEUR du contenu
+ *     • evenement / sondage      -> TOUS les membres actifs
+ * - Réponse (parentId != null) :
+ *     • l'AUTEUR du commentaire parent
+ *
+ * Best-effort : ne bloque jamais la publication (creerNotificationsSafe).
+ */
+async function notifierCommentaire(opts: {
+  typeContenu: TypeContenu;
+  contenuId: number;
+  parentId: number | null;
+  auteurCommentaireId: string;
+  commentaires: Commentaire[];
+}) {
+  const { typeContenu, contenuId, parentId, auteurCommentaireId, commentaires } = opts;
+
+  // CAS 1 — Réponse à un commentaire : notifier l'auteur du parent.
+  if (parentId != null) {
+    const parent = commentaires.find((c) => c.id === parentId);
+    if (!parent) return;
+    await creerNotificationsSafe({
+      typeContenu,
+      contenuId,
+      titre: "Nouvelle réponse à votre commentaire",
+      membreIds: [parent.membre_id],
+      exclureId: auteurCommentaireId, // si je me réponds à moi-même, pas de notif
+    });
+    return;
+  }
+
+  // CAS 2 — Commentaire racine.
+  // 2a) Événement ou sondage : tous les membres actifs.
+  if (typeContenu === "evenement" || typeContenu === "sondage") {
+    const tousActifs = await getMembresActifsIds();
+    const label = typeContenu === "evenement" ? "un événement" : "un sondage";
+    await creerNotificationsSafe({
+      typeContenu,
+      contenuId,
+      titre: `Nouveau commentaire sur ${label}`,
+      membreIds: tousActifs,
+      exclureId: auteurCommentaireId,
+    });
+    return;
+  }
+
+  // 2b) Recommandation ou demande : l'auteur du contenu.
+  const table = typeContenu === "recommandation" ? "recommandations" : "demandes";
+  const { data, error } = await supabase
+    .from(table)
+    .select("membre_id")
+    .eq("id", contenuId)
+    .single();
+  if (error || !data) return;
+
+  await creerNotificationsSafe({
+    typeContenu,
+    contenuId,
+    titre: "Nouveau commentaire sur votre publication",
+    membreIds: [data.membre_id as string],
+    exclureId: auteurCommentaireId,
+  });
 }
