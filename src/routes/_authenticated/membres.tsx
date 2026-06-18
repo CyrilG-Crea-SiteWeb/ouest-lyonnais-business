@@ -364,10 +364,7 @@ function EditDialog({ membre, canAdmin }: { membre: Membre; canAdmin: boolean })
           <DialogTitle>Modifier {membre.prenom} {membre.nom}</DialogTitle>
           <DialogDescription>{membre.email}</DialogDescription>
         </DialogHeader>
-        <form
-          onSubmit={(e) => { e.preventDefault(); mutation.mutate(); }}
-          className="space-y-3"
-        >
+        <div className="space-y-3">
           <div className="grid grid-cols-2 gap-3">
             <Field label="Prénom" value={form.prenom} onChange={(v) => setForm({ ...form, prenom: v })} required />
             <Field label="Nom" value={form.nom} onChange={(v) => setForm({ ...form, nom: v })} required />
@@ -405,11 +402,15 @@ function EditDialog({ membre, canAdmin }: { membre: Membre; canAdmin: boolean })
           )}
 
           <DialogFooter>
-            <Button type="submit" disabled={mutation.isPending}>
+            <Button
+              type="button"
+              onClick={() => mutation.mutate()}
+              disabled={mutation.isPending}
+            >
               {mutation.isPending ? "Enregistrement…" : "Enregistrer"}
             </Button>
           </DialogFooter>
-        </form>
+        </div>
       </DialogContent>
     </Dialog>
   );
