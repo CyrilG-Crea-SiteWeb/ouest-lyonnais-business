@@ -17,6 +17,8 @@ webpush.setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC, VAPID_PRIVATE);
 // Vers quelle page de l'app le clic doit ouvrir.
 function lienVers(typeContenu: string, contenuId: number): string {
   switch (typeContenu) {
+    case "rappel":
+      return `/recommandations`;
     case "demande":
       return `/demandes/${contenuId}`;
     case "evenement":
