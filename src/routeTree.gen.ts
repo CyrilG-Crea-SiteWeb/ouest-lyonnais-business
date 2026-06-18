@@ -18,6 +18,7 @@ import { Route as AuthenticatedRecommandationsRouteImport } from './routes/_auth
 import { Route as AuthenticatedMonProfilRouteImport } from './routes/_authenticated/mon-profil'
 import { Route as AuthenticatedMembresRouteImport } from './routes/_authenticated/membres'
 import { Route as AuthenticatedEvenementsRouteImport } from './routes/_authenticated/evenements'
+import { Route as AuthenticatedAdminRappelRouteImport } from './routes/_authenticated/admin-rappel'
 import { Route as AuthenticatedDemandesIndexRouteImport } from './routes/_authenticated/demandes/index'
 import { Route as AuthenticatedDemandesNouvelleRouteImport } from './routes/_authenticated/demandes/nouvelle'
 import { Route as AuthenticatedDemandesDemandeIdRouteImport } from './routes/_authenticated/demandes/$demandeId'
@@ -67,6 +68,12 @@ const AuthenticatedEvenementsRoute = AuthenticatedEvenementsRouteImport.update({
   path: '/evenements',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedAdminRappelRoute =
+  AuthenticatedAdminRappelRouteImport.update({
+    id: '/admin-rappel',
+    path: '/admin-rappel',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedDemandesIndexRoute =
   AuthenticatedDemandesIndexRouteImport.update({
     id: '/demandes/',
@@ -90,6 +97,7 @@ export interface FileRoutesByFullPath {
   '/': typeof AuthenticatedIndexRoute
   '/auth': typeof AuthRoute
   '/definir-mot-de-passe': typeof DefinirMotDePasseRoute
+  '/admin-rappel': typeof AuthenticatedAdminRappelRoute
   '/evenements': typeof AuthenticatedEvenementsRoute
   '/membres': typeof AuthenticatedMembresRoute
   '/mon-profil': typeof AuthenticatedMonProfilRoute
@@ -102,6 +110,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/definir-mot-de-passe': typeof DefinirMotDePasseRoute
+  '/admin-rappel': typeof AuthenticatedAdminRappelRoute
   '/evenements': typeof AuthenticatedEvenementsRoute
   '/membres': typeof AuthenticatedMembresRoute
   '/mon-profil': typeof AuthenticatedMonProfilRoute
@@ -117,6 +126,7 @@ export interface FileRoutesById {
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
   '/definir-mot-de-passe': typeof DefinirMotDePasseRoute
+  '/_authenticated/admin-rappel': typeof AuthenticatedAdminRappelRoute
   '/_authenticated/evenements': typeof AuthenticatedEvenementsRoute
   '/_authenticated/membres': typeof AuthenticatedMembresRoute
   '/_authenticated/mon-profil': typeof AuthenticatedMonProfilRoute
@@ -133,6 +143,7 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/definir-mot-de-passe'
+    | '/admin-rappel'
     | '/evenements'
     | '/membres'
     | '/mon-profil'
@@ -145,6 +156,7 @@ export interface FileRouteTypes {
   to:
     | '/auth'
     | '/definir-mot-de-passe'
+    | '/admin-rappel'
     | '/evenements'
     | '/membres'
     | '/mon-profil'
@@ -159,6 +171,7 @@ export interface FileRouteTypes {
     | '/_authenticated'
     | '/auth'
     | '/definir-mot-de-passe'
+    | '/_authenticated/admin-rappel'
     | '/_authenticated/evenements'
     | '/_authenticated/membres'
     | '/_authenticated/mon-profil'
@@ -241,6 +254,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedEvenementsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/admin-rappel': {
+      id: '/_authenticated/admin-rappel'
+      path: '/admin-rappel'
+      fullPath: '/admin-rappel'
+      preLoaderRoute: typeof AuthenticatedAdminRappelRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/demandes/': {
       id: '/_authenticated/demandes/'
       path: '/demandes'
@@ -266,6 +286,7 @@ declare module '@tanstack/react-router' {
 }
 
 interface AuthenticatedRouteRouteChildren {
+  AuthenticatedAdminRappelRoute: typeof AuthenticatedAdminRappelRoute
   AuthenticatedEvenementsRoute: typeof AuthenticatedEvenementsRoute
   AuthenticatedMembresRoute: typeof AuthenticatedMembresRoute
   AuthenticatedMonProfilRoute: typeof AuthenticatedMonProfilRoute
@@ -278,6 +299,7 @@ interface AuthenticatedRouteRouteChildren {
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
+  AuthenticatedAdminRappelRoute: AuthenticatedAdminRappelRoute,
   AuthenticatedEvenementsRoute: AuthenticatedEvenementsRoute,
   AuthenticatedMembresRoute: AuthenticatedMembresRoute,
   AuthenticatedMonProfilRoute: AuthenticatedMonProfilRoute,
@@ -300,3 +322,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
