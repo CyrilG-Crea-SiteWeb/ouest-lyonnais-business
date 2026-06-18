@@ -12,6 +12,7 @@ import {
   X,
   UserCircle,
   Inbox,
+  BellRing,
 } from "lucide-react";
 import { NotificationsBell } from "./NotificationsBell";
 import { HelpButton } from "./HelpButton";
@@ -31,6 +32,7 @@ const NAV = [
   { to: "/evenements", label: "Événements", icon: CalendarDays },
   { to: "/demandes", label: "Demandes", icon: Inbox },
   { to: "/mon-profil", label: "Mon profil", icon: UserCircle },
+  { to: "/admin-rappel", label: "Rappel auto", icon: BellRing, adminOnly: true },
 ] as const;
 
 export function AppShell({ children }: { children: ReactNode }) {
@@ -64,7 +66,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         </div>
       )}
       <nav className="flex-1 overflow-y-auto p-3 space-y-1">
-        {NAV.map((item) => {
+        {NAV.filter((item) => !item.adminOnly || profile?.role === "admin").map((item) => {
           const active = pathname === item.to;
           const Icon = item.icon;
           return (
