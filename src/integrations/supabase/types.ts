@@ -218,10 +218,13 @@ export type Database = {
           email: string
           entreprise: string | null
           id: string
+          mdp_defini: boolean
           nom: string
           photo_url: string | null
           prenom: string
           role: Database["public"]["Enums"]["role_membre"]
+          site_internet: string | null
+          site_web: string | null
           statut: Database["public"]["Enums"]["statut_membre"]
           telephone: string | null
         }
@@ -232,10 +235,13 @@ export type Database = {
           email: string
           entreprise?: string | null
           id: string
+          mdp_defini?: boolean
           nom: string
           photo_url?: string | null
           prenom: string
           role?: Database["public"]["Enums"]["role_membre"]
+          site_internet?: string | null
+          site_web?: string | null
           statut?: Database["public"]["Enums"]["statut_membre"]
           telephone?: string | null
         }
@@ -246,10 +252,13 @@ export type Database = {
           email?: string
           entreprise?: string | null
           id?: string
+          mdp_defini?: boolean
           nom?: string
           photo_url?: string | null
           prenom?: string
           role?: Database["public"]["Enums"]["role_membre"]
+          site_internet?: string | null
+          site_web?: string | null
           statut?: Database["public"]["Enums"]["statut_membre"]
           telephone?: string | null
         }
@@ -315,6 +324,71 @@ export type Database = {
             columns: ["sondage_id"]
             isOneToOne: false
             referencedRelation: "sondages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      push_subscriptions: {
+        Row: {
+          auth: string
+          created_at: string
+          endpoint: string
+          id: number
+          membre_id: string
+          p256dh: string
+        }
+        Insert: {
+          auth: string
+          created_at?: string
+          endpoint: string
+          id?: never
+          membre_id: string
+          p256dh: string
+        }
+        Update: {
+          auth?: string
+          created_at?: string
+          endpoint?: string
+          id?: never
+          membre_id?: string
+          p256dh?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "push_subscriptions_membre_id_fkey"
+            columns: ["membre_id"]
+            isOneToOne: false
+            referencedRelation: "membres"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      reco_participants: {
+        Row: {
+          membre_id: string
+          recommandation_id: number
+        }
+        Insert: {
+          membre_id: string
+          recommandation_id: number
+        }
+        Update: {
+          membre_id?: string
+          recommandation_id?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reco_participants_membre_id_fkey"
+            columns: ["membre_id"]
+            isOneToOne: false
+            referencedRelation: "membres"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reco_participants_recommandation_id_fkey"
+            columns: ["recommandation_id"]
+            isOneToOne: false
+            referencedRelation: "recommandations"
             referencedColumns: ["id"]
           },
         ]
@@ -549,7 +623,7 @@ export type Database = {
     }
     Enums: {
       role_membre: "admin" | "bureau" | "membre"
-      statut_demande: "ouverte" | "resolue" | "cloturee"
+      statut_demande: "ouverte" | "cloturee"
       statut_inscription: "present" | "absent" | "peut_etre"
       statut_membre: "actif" | "inactif"
       statut_sondage: "ouvert" | "cloture"
@@ -687,7 +761,7 @@ export const Constants = {
   public: {
     Enums: {
       role_membre: ["admin", "bureau", "membre"],
-      statut_demande: ["ouverte", "resolue", "cloturee"],
+      statut_demande: ["ouverte", "cloturee"],
       statut_inscription: ["present", "absent", "peut_etre"],
       statut_membre: ["actif", "inactif"],
       statut_sondage: ["ouvert", "cloture"],
