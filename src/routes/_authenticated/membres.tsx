@@ -270,7 +270,7 @@ function InviteDialog() {
   });
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={setOpen} modal={false}>
       <DialogTrigger asChild>
         <Button><Plus className="h-4 w-4" /> Ajouter un membre</Button>
       </DialogTrigger>
