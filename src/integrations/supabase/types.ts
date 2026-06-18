@@ -363,6 +363,36 @@ export type Database = {
           },
         ]
       }
+      rappel_config: {
+        Row: {
+          actif: boolean
+          cibler_sans_saisie: boolean
+          derniere_execution: string | null
+          heure: number
+          id: number
+          jour_semaine: number
+          message: string
+        }
+        Insert: {
+          actif?: boolean
+          cibler_sans_saisie?: boolean
+          derniere_execution?: string | null
+          heure?: number
+          id?: number
+          jour_semaine?: number
+          message?: string
+        }
+        Update: {
+          actif?: boolean
+          cibler_sans_saisie?: boolean
+          derniere_execution?: string | null
+          heure?: number
+          id?: number
+          jour_semaine?: number
+          message?: string
+        }
+        Relationships: []
+      }
       reco_participants: {
         Row: {
           membre_id: string
@@ -617,6 +647,7 @@ export type Database = {
       }
     }
     Functions: {
+      envoyer_rappel_contributions: { Args: never; Returns: undefined }
       est_admin: { Args: never; Returns: boolean }
       est_bureau: { Args: never; Returns: boolean }
       get_or_create_semaine: { Args: { p_date?: string }; Returns: number }
@@ -627,7 +658,12 @@ export type Database = {
       statut_inscription: "present" | "absent" | "peut_etre"
       statut_membre: "actif" | "inactif"
       statut_sondage: "ouvert" | "cloture"
-      type_contenu: "recommandation" | "sondage" | "evenement" | "demande"
+      type_contenu:
+        | "recommandation"
+        | "sondage"
+        | "evenement"
+        | "demande"
+        | "rappel"
       type_recommandation:
         | "tete_a_tete"
         | "reco_interne"
@@ -765,7 +801,13 @@ export const Constants = {
       statut_inscription: ["present", "absent", "peut_etre"],
       statut_membre: ["actif", "inactif"],
       statut_sondage: ["ouvert", "cloture"],
-      type_contenu: ["recommandation", "sondage", "evenement", "demande"],
+      type_contenu: [
+        "recommandation",
+        "sondage",
+        "evenement",
+        "demande",
+        "rappel",
+      ],
       type_recommandation: [
         "tete_a_tete",
         "reco_interne",
