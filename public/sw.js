@@ -26,6 +26,7 @@ self.addEventListener("push", (event) => {
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
   const url = (event.notification.data && event.notification.data.url) || "/";
+  const cible = new URL(url, self.location.origin).href;
 
   event.waitUntil(
     self.clients
@@ -33,11 +34,14 @@ self.addEventListener("notificationclick", (event) => {
       .then((clientsList) => {
         for (const client of clientsList) {
           if ("focus" in client) {
-            client.navigate(url);
-            return client.focus();
+            return client.focus().then((c) => {
+              const win = c || client;
+              if ("navigate" in win) return win.navigate(cible);
+              return win;
+            });
           }
         }
-        if (self.clients.openWindow) return self.clients.openWindow(url);
+        if (self.clients.openWindow) return self.clients.openWindow(cible);
       }),
   );
 });
