@@ -13,6 +13,7 @@ export type Membre = {
   role: "admin" | "bureau" | "membre" | "comite_membres";
   statut: string;
   date_entree: string;
+  mdp_defini: boolean | null;
 };
 
 export function useProfile() {

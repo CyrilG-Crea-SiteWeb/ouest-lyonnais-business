@@ -63,6 +63,7 @@ export const convertirInvite = createServerFn({ method: "POST" })
     const { data: invited, error: inviteErr } =
       await supabaseAdmin.auth.admin.inviteUserByEmail(invite.email, {
         data: { prenom: invite.prenom, nom: invite.nom },
+        redirectTo: "https://ouest-lyonnais-business.lovable.app/definir-mot-de-passe",
       });
     if (inviteErr) throw new Error(inviteErr.message);
     const userId = invited.user?.id;
