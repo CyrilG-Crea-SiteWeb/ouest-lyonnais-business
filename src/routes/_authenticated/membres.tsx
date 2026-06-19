@@ -383,6 +383,7 @@ function EditDialog({ membre, canAdmin }: { membre: Membre; canAdmin: boolean })
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="membre">Membre</SelectItem>
+                    <SelectItem value="comite_membres">Comité membres</SelectItem>
                     <SelectItem value="bureau">Bureau</SelectItem>
                     <SelectItem value="admin">Admin</SelectItem>
                   </SelectContent>
