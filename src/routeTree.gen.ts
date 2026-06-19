@@ -17,6 +17,7 @@ import { Route as AuthenticatedSondagesRouteImport } from './routes/_authenticat
 import { Route as AuthenticatedRecommandationsRouteImport } from './routes/_authenticated/recommandations'
 import { Route as AuthenticatedMonProfilRouteImport } from './routes/_authenticated/mon-profil'
 import { Route as AuthenticatedMembresRouteImport } from './routes/_authenticated/membres'
+import { Route as AuthenticatedInvitesRouteImport } from './routes/_authenticated/invites'
 import { Route as AuthenticatedEvenementsRouteImport } from './routes/_authenticated/evenements'
 import { Route as AuthenticatedAdminRappelRouteImport } from './routes/_authenticated/admin-rappel'
 import { Route as AuthenticatedDemandesIndexRouteImport } from './routes/_authenticated/demandes/index'
@@ -63,6 +64,11 @@ const AuthenticatedMembresRoute = AuthenticatedMembresRouteImport.update({
   path: '/membres',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedInvitesRoute = AuthenticatedInvitesRouteImport.update({
+  id: '/invites',
+  path: '/invites',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedEvenementsRoute = AuthenticatedEvenementsRouteImport.update({
   id: '/evenements',
   path: '/evenements',
@@ -99,6 +105,7 @@ export interface FileRoutesByFullPath {
   '/definir-mot-de-passe': typeof DefinirMotDePasseRoute
   '/admin-rappel': typeof AuthenticatedAdminRappelRoute
   '/evenements': typeof AuthenticatedEvenementsRoute
+  '/invites': typeof AuthenticatedInvitesRoute
   '/membres': typeof AuthenticatedMembresRoute
   '/mon-profil': typeof AuthenticatedMonProfilRoute
   '/recommandations': typeof AuthenticatedRecommandationsRoute
@@ -112,6 +119,7 @@ export interface FileRoutesByTo {
   '/definir-mot-de-passe': typeof DefinirMotDePasseRoute
   '/admin-rappel': typeof AuthenticatedAdminRappelRoute
   '/evenements': typeof AuthenticatedEvenementsRoute
+  '/invites': typeof AuthenticatedInvitesRoute
   '/membres': typeof AuthenticatedMembresRoute
   '/mon-profil': typeof AuthenticatedMonProfilRoute
   '/recommandations': typeof AuthenticatedRecommandationsRoute
@@ -128,6 +136,7 @@ export interface FileRoutesById {
   '/definir-mot-de-passe': typeof DefinirMotDePasseRoute
   '/_authenticated/admin-rappel': typeof AuthenticatedAdminRappelRoute
   '/_authenticated/evenements': typeof AuthenticatedEvenementsRoute
+  '/_authenticated/invites': typeof AuthenticatedInvitesRoute
   '/_authenticated/membres': typeof AuthenticatedMembresRoute
   '/_authenticated/mon-profil': typeof AuthenticatedMonProfilRoute
   '/_authenticated/recommandations': typeof AuthenticatedRecommandationsRoute
@@ -145,6 +154,7 @@ export interface FileRouteTypes {
     | '/definir-mot-de-passe'
     | '/admin-rappel'
     | '/evenements'
+    | '/invites'
     | '/membres'
     | '/mon-profil'
     | '/recommandations'
@@ -158,6 +168,7 @@ export interface FileRouteTypes {
     | '/definir-mot-de-passe'
     | '/admin-rappel'
     | '/evenements'
+    | '/invites'
     | '/membres'
     | '/mon-profil'
     | '/recommandations'
@@ -173,6 +184,7 @@ export interface FileRouteTypes {
     | '/definir-mot-de-passe'
     | '/_authenticated/admin-rappel'
     | '/_authenticated/evenements'
+    | '/_authenticated/invites'
     | '/_authenticated/membres'
     | '/_authenticated/mon-profil'
     | '/_authenticated/recommandations'
@@ -247,6 +259,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedMembresRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/invites': {
+      id: '/_authenticated/invites'
+      path: '/invites'
+      fullPath: '/invites'
+      preLoaderRoute: typeof AuthenticatedInvitesRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/evenements': {
       id: '/_authenticated/evenements'
       path: '/evenements'
@@ -288,6 +307,7 @@ declare module '@tanstack/react-router' {
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedAdminRappelRoute: typeof AuthenticatedAdminRappelRoute
   AuthenticatedEvenementsRoute: typeof AuthenticatedEvenementsRoute
+  AuthenticatedInvitesRoute: typeof AuthenticatedInvitesRoute
   AuthenticatedMembresRoute: typeof AuthenticatedMembresRoute
   AuthenticatedMonProfilRoute: typeof AuthenticatedMonProfilRoute
   AuthenticatedRecommandationsRoute: typeof AuthenticatedRecommandationsRoute
@@ -301,6 +321,7 @@ interface AuthenticatedRouteRouteChildren {
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedAdminRappelRoute: AuthenticatedAdminRappelRoute,
   AuthenticatedEvenementsRoute: AuthenticatedEvenementsRoute,
+  AuthenticatedInvitesRoute: AuthenticatedInvitesRoute,
   AuthenticatedMembresRoute: AuthenticatedMembresRoute,
   AuthenticatedMonProfilRoute: AuthenticatedMonProfilRoute,
   AuthenticatedRecommandationsRoute: AuthenticatedRecommandationsRoute,
