@@ -210,6 +210,95 @@ export type Database = {
           },
         ]
       }
+      invites: {
+        Row: {
+          categorie: string | null
+          created_at: string
+          cree_par: string | null
+          email: string
+          entreprise: string | null
+          id: number
+          membre_id: string | null
+          nom: string
+          notes: string | null
+          prenom: string
+          statut_conversion: string
+          telephone: string | null
+        }
+        Insert: {
+          categorie?: string | null
+          created_at?: string
+          cree_par?: string | null
+          email: string
+          entreprise?: string | null
+          id?: never
+          membre_id?: string | null
+          nom: string
+          notes?: string | null
+          prenom: string
+          statut_conversion?: string
+          telephone?: string | null
+        }
+        Update: {
+          categorie?: string | null
+          created_at?: string
+          cree_par?: string | null
+          email?: string
+          entreprise?: string | null
+          id?: never
+          membre_id?: string | null
+          nom?: string
+          notes?: string | null
+          prenom?: string
+          statut_conversion?: string
+          telephone?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invites_cree_par_fkey"
+            columns: ["cree_par"]
+            isOneToOne: false
+            referencedRelation: "membres"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invites_membre_id_fkey"
+            columns: ["membre_id"]
+            isOneToOne: false
+            referencedRelation: "membres"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      invites_presences: {
+        Row: {
+          created_at: string
+          date_reunion: string
+          id: number
+          invite_id: number
+        }
+        Insert: {
+          created_at?: string
+          date_reunion: string
+          id?: never
+          invite_id: number
+        }
+        Update: {
+          created_at?: string
+          date_reunion?: string
+          id?: never
+          invite_id?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invites_presences_invite_id_fkey"
+            columns: ["invite_id"]
+            isOneToOne: false
+            referencedRelation: "invites"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       membres: {
         Row: {
           categorie: string | null
@@ -650,10 +739,11 @@ export type Database = {
       envoyer_rappel_contributions: { Args: never; Returns: undefined }
       est_admin: { Args: never; Returns: boolean }
       est_bureau: { Args: never; Returns: boolean }
+      est_comite: { Args: never; Returns: boolean }
       get_or_create_semaine: { Args: { p_date?: string }; Returns: number }
     }
     Enums: {
-      role_membre: "admin" | "bureau" | "membre"
+      role_membre: "admin" | "bureau" | "membre" | "comite_membres"
       statut_demande: "ouverte" | "cloturee"
       statut_inscription: "present" | "absent" | "peut_etre"
       statut_membre: "actif" | "inactif"
@@ -796,7 +886,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      role_membre: ["admin", "bureau", "membre"],
+      role_membre: ["admin", "bureau", "membre", "comite_membres"],
       statut_demande: ["ouverte", "cloturee"],
       statut_inscription: ["present", "absent", "peut_etre"],
       statut_membre: ["actif", "inactif"],
