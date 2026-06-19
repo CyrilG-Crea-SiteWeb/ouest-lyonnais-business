@@ -85,7 +85,7 @@ export const updateMembre = createServerFn({ method: "POST" })
 
 const roleStatutSchema = z.object({
   id: z.string().uuid(),
-  role: z.enum(["membre", "bureau", "admin"]).optional(),
+  role: z.enum(["membre", "comite_membres", "bureau", "admin"]).optional(),
   statut: z.enum(["actif", "inactif"]).optional(),
 });
 
