@@ -21,7 +21,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Mail, Phone, Globe, Plus, Pencil, Trash2, Search, Shield, Building2, Tag } from "lucide-react";
+import { Mail, Phone, Globe, Plus, Pencil, Trash2, Search, Shield, Building2, Tag, ArrowDownUp } from "lucide-react";
 import { inviteMembre, updateMembre, updateMembreRoleStatut, deleteMembre } from "@/lib/membres.functions";
 
 export const Route = createFileRoute("/_authenticated/membres")({
@@ -43,11 +43,28 @@ type Membre = {
   statut: "actif" | "inactif";
 };
 
+type SortBy = "prenom" | "role";
+
+// Ordre d'affichage des rôles (hiérarchie décroissante) et libellés associés.
+const ROLE_ORDER: Record<Membre["role"], number> = {
+  admin: 0,
+  bureau: 1,
+  comite_membres: 2,
+  membre: 3,
+};
+const ROLE_LABELS: Record<Membre["role"], string> = {
+  admin: "Admin",
+  bureau: "Bureau",
+  comite_membres: "Comité membres",
+  membre: "Membre",
+};
+
 function MembresPage() {
   const { data: profile } = useProfile();
   const isBureau = hasRole(profile?.role, "bureau");
   const isAdmin = hasRole(profile?.role, "admin");
   const [search, setSearch] = useState("");
+  const [sortBy, setSortBy] = useState<SortBy>("prenom");
 
   const { data: membres = [], isLoading } = useQuery({
     queryKey: ["membres", "list"],
@@ -63,11 +80,24 @@ function MembresPage() {
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
-    if (!q) return membres;
-    return membres.filter((m) =>
-      [m.nom, m.prenom, m.entreprise, m.categorie].filter(Boolean).join(" ").toLowerCase().includes(q),
-    );
-  }, [membres, search]);
+    const list = !q
+      ? membres
+      : membres.filter((m) =>
+          [m.nom, m.prenom, m.entreprise, m.categorie].filter(Boolean).join(" ").toLowerCase().includes(q),
+        );
+
+    const byPrenom = (a: Membre, b: Membre) =>
+      a.prenom.localeCompare(b.prenom, "fr", { sensitivity: "base" }) ||
+      a.nom.localeCompare(b.nom, "fr", { sensitivity: "base" });
+
+    return [...list].sort((a, b) => {
+      if (sortBy === "role") {
+        const diff = ROLE_ORDER[a.role] - ROLE_ORDER[b.role];
+        if (diff !== 0) return diff;
+      }
+      return byPrenom(a, b);
+    });
+  }, [membres, search, sortBy]);
 
   return (
     <div className="space-y-6">
@@ -81,14 +111,26 @@ function MembresPage() {
         {isBureau && <InviteDialog />}
       </header>
 
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <Input
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Rechercher par nom, entreprise ou catégorie…"
-          className="pl-9"
-        />
+      <div className="flex flex-col sm:flex-row gap-3">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Rechercher par nom, entreprise ou catégorie…"
+            className="pl-9"
+          />
+        </div>
+        <Select value={sortBy} onValueChange={(v) => setSortBy(v as SortBy)}>
+          <SelectTrigger className="sm:w-56" aria-label="Trier les membres">
+            <ArrowDownUp className="h-4 w-4 text-muted-foreground" />
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="prenom">Trier par prénom (A→Z)</SelectItem>
+            <SelectItem value="role">Trier par rôle</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
 
       {isLoading ? (
@@ -133,6 +175,11 @@ function MembreCard({ membre, canEdit, canAdmin }: { membre: Membre; canEdit: bo
           <p className="font-semibold text-sm leading-tight break-words">
             {membre.prenom} {membre.nom}
           </p>
+          {membre.role !== "membre" && (
+            <Badge variant="secondary" className="text-[10px]">
+              <Shield className="h-3 w-3 mr-1" />{ROLE_LABELS[membre.role]}
+            </Badge>
+          )}
         </CardContent>
       </Card>
 
@@ -173,8 +220,8 @@ function MembreDetailDialog({
             </DialogTitle>
             <div className="flex gap-2 flex-wrap justify-center">
               {membre.role !== "membre" && (
-                <Badge variant="secondary" className="capitalize">
-                  <Shield className="h-3 w-3 mr-1" />{membre.role}
+                <Badge variant="secondary">
+                  <Shield className="h-3 w-3 mr-1" />{ROLE_LABELS[membre.role]}
                 </Badge>
               )}
               {inactif && <Badge variant="outline">inactif</Badge>}
