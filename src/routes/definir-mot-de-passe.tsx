@@ -72,6 +72,19 @@ function DefinirMotDePassePage() {
         }
       });
 
+      // Si ce compte provient d'une conversion d'invité, supprime la fiche invité.
+      supabase.auth.getUser().then(({ data: u }) => {
+        if (u.user) {
+          supabase
+            .from("invites")
+            .delete()
+            .eq("membre_id", u.user.id)
+            .then(({ error: e3 }) => {
+              if (e3) console.warn("nettoyage fiche invité:", e3.message);
+            });
+        }
+      });
+
       toast.success("Mot de passe défini. Vous pouvez vous connecter partout.");
       navigate({ to: "/" });
     } catch (err: unknown) {

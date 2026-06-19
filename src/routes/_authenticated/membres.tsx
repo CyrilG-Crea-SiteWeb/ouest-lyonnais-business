@@ -39,7 +39,7 @@ type Membre = {
   categorie: string | null;
   telephone: string | null;
   site_web: string | null;
-  role: "admin" | "bureau" | "membre";
+  role: "admin" | "bureau" | "membre" | "comite_membres";
   statut: "actif" | "inactif";
 };
 

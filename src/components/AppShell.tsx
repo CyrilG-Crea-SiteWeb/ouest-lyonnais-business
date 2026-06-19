@@ -13,6 +13,7 @@ import {
   UserCircle,
   Inbox,
   BellRing,
+  UserPlus,
 } from "lucide-react";
 import { NotificationsBell } from "./NotificationsBell";
 import { HelpButton } from "./HelpButton";
@@ -31,6 +32,7 @@ const NAV = [
   { to: "/sondages", label: "Sondages", icon: Vote },
   { to: "/evenements", label: "Événements", icon: CalendarDays },
   { to: "/demandes", label: "Demandes", icon: Inbox },
+  { to: "/invites", label: "Invités", icon: UserPlus, comiteOnly: true },
   { to: "/mon-profil", label: "Mon profil", icon: UserCircle },
   { to: "/admin-rappel", label: "Rappel auto", icon: BellRing, adminOnly: true },
 ] as const;
@@ -59,14 +61,22 @@ export function AppShell({ children }: { children: ReactNode }) {
             <p className="text-sm font-semibold text-sidebar-foreground truncate">
               {profile.prenom} {profile.nom}
             </p>
-            <Badge variant="outline" className="mt-1 capitalize border-sidebar-border text-sidebar-foreground">
-              {profile.role}
+            <Badge variant="outline" className="mt-1 border-sidebar-border text-sidebar-foreground">
+              {profile.role === "comite_membres" ? "Comité membres"
+                : profile.role === "bureau" ? "Bureau"
+                : profile.role === "admin" ? "Admin"
+                : "Membre"}
             </Badge>
           </div>
         </div>
       )}
       <nav className="flex-1 overflow-y-auto p-3 space-y-1">
-        {NAV.filter((item) => !item.adminOnly || profile?.role === "admin").map((item) => {
+        {NAV.filter((item) => {
+          if ((item as { adminOnly?: boolean }).adminOnly && profile?.role !== "admin") return false;
+          if ((item as { comiteOnly?: boolean }).comiteOnly &&
+              !["comite_membres", "bureau", "admin"].includes(profile?.role ?? "")) return false;
+          return true;
+        }).map((item) => {
           const active = pathname === item.to;
           const Icon = item.icon;
           return (
