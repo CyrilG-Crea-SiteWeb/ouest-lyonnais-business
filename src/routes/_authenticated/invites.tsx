@@ -2,12 +2,14 @@ import { createFileRoute, redirect } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { useProfile } from "@/hooks/use-profile";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import {
+  Collapsible, CollapsibleContent, CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
   DialogFooter, DialogTrigger,
@@ -20,14 +22,13 @@ import {
 import { toast } from "sonner";
 import {
   Mail, Phone, Building2, Tag, Plus, Trash2, Search, CalendarPlus,
-  UserPlus, AlertTriangle,
+  UserPlus, AlertTriangle, Pencil, ChevronDown,
 } from "lucide-react";
 import { convertirInvite } from "@/lib/invites.functions";
 import { useServerFn } from "@tanstack/react-start";
 
 export const Route = createFileRoute("/_authenticated/invites")({
   head: () => ({ meta: [{ title: "Invités — OLB" }] }),
-  // Garde d'accès : Comité / Bureau / Admin uniquement
   beforeLoad: async () => {
     const { data: auth } = await supabase.auth.getUser();
     if (!auth.user) throw redirect({ to: "/auth" });
@@ -104,13 +105,32 @@ function InvitesPage() {
     );
   }, [invites, search]);
 
+  const { actifs, anciens, membres } = useMemo(() => {
+    const actifs: Invite[] = [];
+    const anciens: Invite[] = [];
+    const membres: Invite[] = [];
+    for (const inv of filtered) {
+      const nb = (presencesParInvite.get(inv.id) ?? []).length;
+      if (inv.statut_conversion === "accepte") {
+        membres.push(inv);
+      } else if (inv.statut_conversion === "converti") {
+        actifs.push(inv);
+      } else if (nb >= 2) {
+        anciens.push(inv);
+      } else {
+        actifs.push(inv);
+      }
+    }
+    return { actifs, anciens, membres };
+  }, [filtered, presencesParInvite]);
+
   return (
     <div className="space-y-6">
       <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
           <h1 className="text-2xl md:text-3xl font-bold">Invités</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            {invites.length} invité{invites.length > 1 ? "s" : ""} · 2 réunions gratuites maximum
+            {invites.length} fiche{invites.length > 1 ? "s" : ""} · 2 réunions gratuites maximum
           </p>
         </div>
         <AddInviteDialog />
@@ -128,19 +148,67 @@ function InvitesPage() {
 
       {isLoading ? (
         <p className="text-sm text-muted-foreground">Chargement…</p>
-      ) : filtered.length === 0 ? (
-        <Card><CardContent className="p-6 text-sm text-muted-foreground">Aucun invité.</CardContent></Card>
       ) : (
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {filtered.map((inv) => (
-            <InviteCard
-              key={inv.id}
-              invite={inv}
-              presences={presencesParInvite.get(inv.id) ?? []}
-            />
-          ))}
+        <div className="space-y-6">
+          {actifs.length === 0 ? (
+            <Card><CardContent className="p-6 text-sm text-muted-foreground">Aucun invité actif.</CardContent></Card>
+          ) : (
+            <Grille invites={actifs} presencesParInvite={presencesParInvite} />
+          )}
+
+          {anciens.length > 0 && (
+            <SectionRepliable
+              titre={`Anciens invités (${anciens.length})`}
+              sousTitre="2 réunions gratuites effectuées, sans candidature"
+            >
+              <Grille invites={anciens} presencesParInvite={presencesParInvite} />
+            </SectionRepliable>
+          )}
+
+          {membres.length > 0 && (
+            <SectionRepliable
+              titre={`Anciens invités devenus membres (${membres.length})`}
+              sousTitre="Invitation acceptée, compte activé"
+            >
+              <Grille invites={membres} presencesParInvite={presencesParInvite} />
+            </SectionRepliable>
+          )}
         </div>
       )}
+    </div>
+  );
+}
+
+function SectionRepliable({
+  titre, sousTitre, children,
+}: { titre: string; sousTitre: string; children: React.ReactNode }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <Collapsible open={open} onOpenChange={setOpen}>
+      <CollapsibleTrigger className="flex items-center justify-between w-full rounded-lg border border-border bg-muted/40 px-4 py-3 text-left hover:bg-muted/60 transition-colors">
+        <div>
+          <p className="font-semibold">{titre}</p>
+          <p className="text-xs text-muted-foreground">{sousTitre}</p>
+        </div>
+        <ChevronDown className={`h-4 w-4 shrink-0 transition-transform ${open ? "rotate-180" : ""}`} />
+      </CollapsibleTrigger>
+      <CollapsibleContent className="pt-3">{children}</CollapsibleContent>
+    </Collapsible>
+  );
+}
+
+function Grille({
+  invites, presencesParInvite,
+}: { invites: Invite[]; presencesParInvite: Map<number, Presence[]> }) {
+  return (
+    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+      {invites.map((inv) => (
+        <InviteCard
+          key={inv.id}
+          invite={inv}
+          presences={presencesParInvite.get(inv.id) ?? []}
+        />
+      ))}
     </div>
   );
 }
@@ -149,6 +217,7 @@ function InviteCard({ invite, presences }: { invite: Invite; presences: Presence
   const nb = presences.length;
   const complet = nb >= 2;
   const converti = invite.statut_conversion === "converti";
+  const accepte = invite.statut_conversion === "accepte";
 
   return (
     <Card className="rounded-2xl shadow-sm">
@@ -162,7 +231,9 @@ function InviteCard({ invite, presences }: { invite: Invite; presences: Presence
               </p>
             )}
           </div>
-          {converti ? (
+          {accepte ? (
+            <Badge className="bg-green-600 text-white shrink-0">Invitation acceptée</Badge>
+          ) : converti ? (
             <Badge className="bg-[#F6A000] text-white shrink-0">Invitation envoyée</Badge>
           ) : (
             <Badge
@@ -198,15 +269,19 @@ function InviteCard({ invite, presences }: { invite: Invite; presences: Presence
           </div>
         )}
 
-        {!converti && (
-          <div className="flex flex-wrap gap-2 pt-1">
-            <PresenceDialog invite={invite} nb={nb} />
-            <ConvertDialog invite={invite} />
-            <DeleteInvite invite={invite} />
-          </div>
-        )}
+        <div className="flex flex-wrap gap-2 pt-1">
+          {!converti && !accepte && (
+            <>
+              <PresenceDialog invite={invite} nb={nb} />
+              <ConvertDialog invite={invite} />
+            </>
+          )}
+          <EditInviteDialog invite={invite} />
+          <DeleteInvite invite={invite} />
+        </div>
+
         {converti && (
-          <p className="text-xs text-muted-foreground pt-1">
+          <p className="text-xs text-muted-foreground">
             En attente d'activation du compte par l'invité.
           </p>
         )}
@@ -215,17 +290,14 @@ function InviteCard({ invite, presences }: { invite: Invite; presences: Presence
   );
 }
 
-function AddInviteDialog() {
-  const qc = useQueryClient();
-  const [open, setOpen] = useState(false);
-  const [form, setForm] = useState({
-    prenom: "", nom: "", email: "", telephone: "", entreprise: "", categorie: "",
-  });
-  const [alerteCategorie, setAlerteCategorie] = useState<string | null>(null);
+const CHAMPS_VIDES = {
+  prenom: "", nom: "", email: "", telephone: "", entreprise: "", categorie: "",
+};
 
-  async function checkCategorie(cat: string) {
-    setForm((f) => ({ ...f, categorie: cat }));
-    setAlerteCategorie(null);
+function useCategorieAlerte() {
+  const [alerte, setAlerte] = useState<string | null>(null);
+  async function check(cat: string) {
+    setAlerte(null);
     const c = cat.trim();
     if (!c) return;
     const { data } = await supabase
@@ -235,9 +307,65 @@ function AddInviteDialog() {
       .ilike("categorie", c)
       .maybeSingle();
     if (data) {
-      setAlerteCategorie(`Catégorie déjà occupée par ${data.prenom} ${data.nom} (membre actif).`);
+      setAlerte(`Catégorie déjà occupée par ${data.prenom} ${data.nom} (membre actif).`);
     }
   }
+  return { alerte, check, reset: () => setAlerte(null) };
+}
+
+function ChampsInvite({
+  form, setForm, alerte, onCategorie,
+}: {
+  form: typeof CHAMPS_VIDES;
+  setForm: (f: typeof CHAMPS_VIDES) => void;
+  alerte: string | null;
+  onCategorie: (v: string) => void;
+}) {
+  return (
+    <div className="space-y-3">
+      <div className="grid grid-cols-2 gap-3">
+        <div className="space-y-1.5">
+          <Label>Prénom *</Label>
+          <Input value={form.prenom} onChange={(e) => setForm({ ...form, prenom: e.target.value })} />
+        </div>
+        <div className="space-y-1.5">
+          <Label>Nom *</Label>
+          <Input value={form.nom} onChange={(e) => setForm({ ...form, nom: e.target.value })} />
+        </div>
+      </div>
+      <div className="space-y-1.5">
+        <Label>Email *</Label>
+        <Input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
+      </div>
+      <div className="space-y-1.5">
+        <Label>Téléphone</Label>
+        <Input value={form.telephone} onChange={(e) => setForm({ ...form, telephone: e.target.value })} />
+      </div>
+      <div className="space-y-1.5">
+        <Label>Entreprise</Label>
+        <Input value={form.entreprise} onChange={(e) => setForm({ ...form, entreprise: e.target.value })} />
+      </div>
+      <div className="space-y-1.5">
+        <Label>Catégorie</Label>
+        <Input
+          value={form.categorie}
+          onChange={(e) => { setForm({ ...form, categorie: e.target.value }); onCategorie(e.target.value); }}
+        />
+        {alerte && (
+          <p className="text-xs text-amber-600 flex items-center gap-1">
+            <AlertTriangle className="h-3.5 w-3.5 shrink-0" /> {alerte}
+          </p>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function AddInviteDialog() {
+  const qc = useQueryClient();
+  const [open, setOpen] = useState(false);
+  const [form, setForm] = useState(CHAMPS_VIDES);
+  const { alerte, check, reset } = useCategorieAlerte();
 
   const mutation = useMutation({
     mutationFn: async () => {
@@ -256,8 +384,8 @@ function AddInviteDialog() {
     onSuccess: () => {
       toast.success("Invité ajouté.");
       qc.invalidateQueries({ queryKey: ["invites"] });
-      setForm({ prenom: "", nom: "", email: "", telephone: "", entreprise: "", categorie: "" });
-      setAlerteCategorie(null);
+      setForm(CHAMPS_VIDES);
+      reset();
       setOpen(false);
     },
     onError: (e: unknown) => toast.error(e instanceof Error ? e.message : "Erreur"),
@@ -277,39 +405,7 @@ function AddInviteDialog() {
           <DialogTitle>Nouvel invité</DialogTitle>
           <DialogDescription>Renseignez les coordonnées de l'invité.</DialogDescription>
         </DialogHeader>
-        <div className="space-y-3">
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <Label>Prénom *</Label>
-              <Input value={form.prenom} onChange={(e) => setForm({ ...form, prenom: e.target.value })} />
-            </div>
-            <div className="space-y-1.5">
-              <Label>Nom *</Label>
-              <Input value={form.nom} onChange={(e) => setForm({ ...form, nom: e.target.value })} />
-            </div>
-          </div>
-          <div className="space-y-1.5">
-            <Label>Email *</Label>
-            <Input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
-          </div>
-          <div className="space-y-1.5">
-            <Label>Téléphone</Label>
-            <Input value={form.telephone} onChange={(e) => setForm({ ...form, telephone: e.target.value })} />
-          </div>
-          <div className="space-y-1.5">
-            <Label>Entreprise</Label>
-            <Input value={form.entreprise} onChange={(e) => setForm({ ...form, entreprise: e.target.value })} />
-          </div>
-          <div className="space-y-1.5">
-            <Label>Catégorie</Label>
-            <Input value={form.categorie} onChange={(e) => checkCategorie(e.target.value)} />
-            {alerteCategorie && (
-              <p className="text-xs text-amber-600 flex items-center gap-1">
-                <AlertTriangle className="h-3.5 w-3.5 shrink-0" /> {alerteCategorie}
-              </p>
-            )}
-          </div>
-        </div>
+        <ChampsInvite form={form} setForm={setForm} alerte={alerte} onCategorie={check} />
         <DialogFooter>
           <Button
             className="bg-[#006875] hover:bg-[#00525c]"
@@ -317,6 +413,79 @@ function AddInviteDialog() {
             onClick={() => mutation.mutate()}
           >
             {mutation.isPending ? "Ajout…" : "Ajouter"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function EditInviteDialog({ invite }: { invite: Invite }) {
+  const qc = useQueryClient();
+  const [open, setOpen] = useState(false);
+  const [form, setForm] = useState({
+    prenom: invite.prenom,
+    nom: invite.nom,
+    email: invite.email,
+    telephone: invite.telephone ?? "",
+    entreprise: invite.entreprise ?? "",
+    categorie: invite.categorie ?? "",
+  });
+  const { alerte, check, reset } = useCategorieAlerte();
+
+  const mutation = useMutation({
+    mutationFn: async () => {
+      const { error } = await supabase
+        .from("invites")
+        .update({
+          prenom: form.prenom.trim(),
+          nom: form.nom.trim(),
+          email: form.email.trim(),
+          telephone: form.telephone.trim() || null,
+          entreprise: form.entreprise.trim() || null,
+          categorie: form.categorie.trim() || null,
+        })
+        .eq("id", invite.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Fiche modifiée.");
+      qc.invalidateQueries({ queryKey: ["invites"] });
+      reset();
+      setOpen(false);
+    },
+    onError: (e: unknown) => toast.error(e instanceof Error ? e.message : "Erreur"),
+  });
+
+  const valide = form.prenom.trim() && form.nom.trim() && form.email.trim();
+
+  return (
+    <Dialog open={open} onOpenChange={(o) => {
+      setOpen(o);
+      if (o) setForm({
+        prenom: invite.prenom, nom: invite.nom, email: invite.email,
+        telephone: invite.telephone ?? "", entreprise: invite.entreprise ?? "",
+        categorie: invite.categorie ?? "",
+      });
+    }}>
+      <DialogTrigger asChild>
+        <Button size="sm" variant="outline" className="gap-1">
+          <Pencil className="h-3.5 w-3.5" /> Modifier
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>Modifier la fiche</DialogTitle>
+          <DialogDescription>{invite.prenom} {invite.nom}</DialogDescription>
+        </DialogHeader>
+        <ChampsInvite form={form} setForm={setForm} alerte={alerte} onCategorie={check} />
+        <DialogFooter>
+          <Button
+            className="bg-[#006875] hover:bg-[#00525c]"
+            disabled={!valide || mutation.isPending}
+            onClick={() => mutation.mutate()}
+          >
+            {mutation.isPending ? "Enregistrement…" : "Enregistrer"}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -411,8 +580,8 @@ function ConvertDialog({ invite }: { invite: Invite }) {
         <AlertDialogHeader>
           <AlertDialogTitle>Convertir en membre ?</AlertDialogTitle>
           <AlertDialogDescription>
-            Un email d'invitation sera envoyé à {invite.email}. La fiche invité sera
-            conservée jusqu'à ce que le compte soit activé, puis supprimée automatiquement.
+            Un email d'invitation sera envoyé à {invite.email}. La fiche restera
+            visible et passera en « Invitation acceptée » une fois le compte activé.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
@@ -438,7 +607,7 @@ function DeleteInvite({ invite }: { invite: Invite }) {
       if (error) throw error;
     },
     onSuccess: () => {
-      toast.success("Invité supprimé.");
+      toast.success("Fiche supprimée.");
       qc.invalidateQueries({ queryKey: ["invites"] });
     },
     onError: (e: unknown) => toast.error(e instanceof Error ? e.message : "Erreur"),
@@ -453,9 +622,11 @@ function DeleteInvite({ invite }: { invite: Invite }) {
       </AlertDialogTrigger>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Supprimer cet invité ?</AlertDialogTitle>
+          <AlertDialogTitle>Supprimer cette fiche ?</AlertDialogTitle>
           <AlertDialogDescription>
             {invite.prenom} {invite.nom} et ses présences seront définitivement supprimés.
+            {invite.statut_conversion === "accepte" &&
+              " Le compte membre déjà créé n'est pas affecté."}
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
