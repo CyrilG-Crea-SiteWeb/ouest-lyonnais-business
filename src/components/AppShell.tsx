@@ -24,6 +24,7 @@ import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
 import { cn } from "@/lib/utils";
 import { useProfile } from "@/hooks/use-profile";
+import { DefinirMdpBanner } from "@/components/DefinirMdpBanner";
 
 const NAV = [
   { to: "/", label: "Tableau de bord", icon: LayoutDashboard },
@@ -181,6 +182,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           </HelpButton>
         </header>
         <div className="px-4 py-6 md:px-8 md:py-8 max-w-6xl mx-auto">
+          <DefinirMdpBanner />
           {children}
         </div>
       </main>
