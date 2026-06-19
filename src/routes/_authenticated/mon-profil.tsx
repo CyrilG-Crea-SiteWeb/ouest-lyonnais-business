@@ -25,7 +25,7 @@ export const Route = createFileRoute("/_authenticated/mon-profil")({
 });
 
 function ProfilPage() {
-  const { data: profile, isLoading } = useProfile();
+  const { data: profile, isLoading, isError } = useProfile();
   const qc = useQueryClient();
   const [photo_url, setPhotoUrl] = useState("");
   const [entreprise, setEntreprise] = useState("");
@@ -43,10 +43,11 @@ function ProfilPage() {
     setPhotoUrl(profile.photo_url ?? "");
     setEntreprise(profile.entreprise ?? "");
     setCategorie(profile.categorie ?? "");
+    setTelephone(profile.telephone ?? "");
     setSiteInternet(profile.site_internet ?? "");
   }, [profile]);
 
-  if (isLoading) return <p className="text-sm text-muted-foreground">Chargement…</p>;
+  if (isLoading || isError) return <p className="text-sm text-muted-foreground">Chargement…</p>;
   if (!profile) return <p className="text-sm text-muted-foreground">Profil introuvable.</p>;
 
   async function handleSubmit(e: React.FormEvent) {

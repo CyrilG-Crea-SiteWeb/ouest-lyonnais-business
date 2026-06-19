@@ -21,7 +21,8 @@ export function useProfile() {
     queryKey: ["profile", "me"],
     queryFn: async (): Promise<Membre | null> => {
       const { data: auth } = await supabase.auth.getUser();
-      if (!auth.user) return null;
+      // Session pas encore prête : on signale l'absence pour déclencher un retry.
+      if (!auth.user) throw new Error("auth-not-ready");
       const { data, error } = await supabase
         .from("membres")
         .select("*")
@@ -31,6 +32,14 @@ export function useProfile() {
       return data as Membre | null;
     },
     staleTime: 60_000,
+    retry: (failureCount, error) => {
+      // On retente uniquement le cas "session pas prête", jusqu'à 3 fois.
+      if (error instanceof Error && error.message === "auth-not-ready") {
+        return failureCount < 3;
+      }
+      return false;
+    },
+    retryDelay: 400,
   });
 }
 
