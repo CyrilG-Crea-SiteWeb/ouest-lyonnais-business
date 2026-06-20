@@ -97,6 +97,19 @@ function premierJeudiAnnee(year: number): string {
   return toISODate(d);
 }
 
+// Saison OLB : du 1er juin au 31 mai. Renvoie la saison contenant la date de réf.
+function saisonOlb(ref = new Date()): { debut: string; fin: string; label: string } {
+  const y = ref.getFullYear();
+  // getMonth : juin = 5. Avant juin, on est encore sur la saison commencée l'an passé.
+  const anneeDebut = ref.getMonth() >= 5 ? y : y - 1;
+  const anneeFin = anneeDebut + 1;
+  return {
+    debut: `${anneeDebut}-06-01`,
+    fin: `${anneeFin}-05-31`,
+    label: `Juin ${anneeDebut} – Mai ${anneeFin}`,
+  };
+}
+
 function PresencesPage() {
   const qc = useQueryClient();
   const [selectedId, setSelectedId] = useState<number | null>(null);
@@ -504,10 +517,16 @@ function ExportPresences() {
 }
 
 function TauxPresence() {
+  // Taux calculé sur la saison OLB en cours (1er juin -> 31 mai).
+  const saison = useMemo(() => saisonOlb(), []);
+
   const tauxQ = useQuery({
-    queryKey: ["presences", "taux"],
+    queryKey: ["presences", "taux", saison.debut, saison.fin],
     queryFn: async (): Promise<TauxRow[]> => {
-      const { data, error } = await supabase.from("v_taux_presence_membre").select("*");
+      const { data, error } = await supabase.rpc("stats_presence_periode", {
+        p_debut: saison.debut,
+        p_fin: saison.fin,
+      });
       if (error) throw error;
       return (data ?? []) as TauxRow[];
     },
@@ -522,6 +541,7 @@ function TauxPresence() {
     <Card>
       <CardHeader className="pb-3">
         <CardTitle className="text-lg">Taux de présence par membre</CardTitle>
+        <p className="text-xs text-muted-foreground">Saison {saison.label}</p>
       </CardHeader>
       <CardContent>
         {tauxQ.isLoading ? (
