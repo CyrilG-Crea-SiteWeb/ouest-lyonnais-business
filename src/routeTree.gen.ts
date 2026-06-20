@@ -20,6 +20,7 @@ import { Route as AuthenticatedMembresRouteImport } from './routes/_authenticate
 import { Route as AuthenticatedInvitesRouteImport } from './routes/_authenticated/invites'
 import { Route as AuthenticatedEvenementsRouteImport } from './routes/_authenticated/evenements'
 import { Route as AuthenticatedAdminRappelRouteImport } from './routes/_authenticated/admin-rappel'
+import { Route as AuthenticatedPresencesIndexRouteImport } from './routes/_authenticated/presences/index'
 import { Route as AuthenticatedDemandesIndexRouteImport } from './routes/_authenticated/demandes/index'
 import { Route as AuthenticatedDemandesNouvelleRouteImport } from './routes/_authenticated/demandes/nouvelle'
 import { Route as AuthenticatedDemandesDemandeIdRouteImport } from './routes/_authenticated/demandes/$demandeId'
@@ -80,6 +81,12 @@ const AuthenticatedAdminRappelRoute =
     path: '/admin-rappel',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedPresencesIndexRoute =
+  AuthenticatedPresencesIndexRouteImport.update({
+    id: '/presences/',
+    path: '/presences/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedDemandesIndexRoute =
   AuthenticatedDemandesIndexRouteImport.update({
     id: '/demandes/',
@@ -113,6 +120,7 @@ export interface FileRoutesByFullPath {
   '/demandes/$demandeId': typeof AuthenticatedDemandesDemandeIdRoute
   '/demandes/nouvelle': typeof AuthenticatedDemandesNouvelleRoute
   '/demandes/': typeof AuthenticatedDemandesIndexRoute
+  '/presences/': typeof AuthenticatedPresencesIndexRoute
 }
 export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
@@ -128,6 +136,7 @@ export interface FileRoutesByTo {
   '/demandes/$demandeId': typeof AuthenticatedDemandesDemandeIdRoute
   '/demandes/nouvelle': typeof AuthenticatedDemandesNouvelleRoute
   '/demandes': typeof AuthenticatedDemandesIndexRoute
+  '/presences': typeof AuthenticatedPresencesIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -145,6 +154,7 @@ export interface FileRoutesById {
   '/_authenticated/demandes/$demandeId': typeof AuthenticatedDemandesDemandeIdRoute
   '/_authenticated/demandes/nouvelle': typeof AuthenticatedDemandesNouvelleRoute
   '/_authenticated/demandes/': typeof AuthenticatedDemandesIndexRoute
+  '/_authenticated/presences/': typeof AuthenticatedPresencesIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -162,6 +172,7 @@ export interface FileRouteTypes {
     | '/demandes/$demandeId'
     | '/demandes/nouvelle'
     | '/demandes/'
+    | '/presences/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/auth'
@@ -177,6 +188,7 @@ export interface FileRouteTypes {
     | '/demandes/$demandeId'
     | '/demandes/nouvelle'
     | '/demandes'
+    | '/presences'
   id:
     | '__root__'
     | '/_authenticated'
@@ -193,6 +205,7 @@ export interface FileRouteTypes {
     | '/_authenticated/demandes/$demandeId'
     | '/_authenticated/demandes/nouvelle'
     | '/_authenticated/demandes/'
+    | '/_authenticated/presences/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -280,6 +293,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminRappelRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/presences/': {
+      id: '/_authenticated/presences/'
+      path: '/presences'
+      fullPath: '/presences/'
+      preLoaderRoute: typeof AuthenticatedPresencesIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/demandes/': {
       id: '/_authenticated/demandes/'
       path: '/demandes'
@@ -316,6 +336,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedDemandesDemandeIdRoute: typeof AuthenticatedDemandesDemandeIdRoute
   AuthenticatedDemandesNouvelleRoute: typeof AuthenticatedDemandesNouvelleRoute
   AuthenticatedDemandesIndexRoute: typeof AuthenticatedDemandesIndexRoute
+  AuthenticatedPresencesIndexRoute: typeof AuthenticatedPresencesIndexRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
@@ -330,6 +351,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedDemandesDemandeIdRoute: AuthenticatedDemandesDemandeIdRoute,
   AuthenticatedDemandesNouvelleRoute: AuthenticatedDemandesNouvelleRoute,
   AuthenticatedDemandesIndexRoute: AuthenticatedDemandesIndexRoute,
+  AuthenticatedPresencesIndexRoute: AuthenticatedPresencesIndexRoute,
 }
 
 const AuthenticatedRouteRouteWithChildren =
@@ -343,3 +365,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
