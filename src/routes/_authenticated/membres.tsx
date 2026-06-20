@@ -117,7 +117,7 @@ function MembresPage() {
       </header>
 
       <div className="flex gap-3">
-        <div className="relative" style={{ flex: "0 0 70%" }}>
+        <div className="relative min-w-0 flex-[7]">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
             value={search}
@@ -126,10 +126,10 @@ function MembresPage() {
             className="pl-9 w-full"
           />
         </div>
-        <div style={{ flex: "0 0 30%" }}>
+        <div className="min-w-0 flex-[3]">
           <Select value={sortBy} onValueChange={(v) => setSortBy(v as SortBy)}>
             <SelectTrigger className="w-full" aria-label="Trier les membres">
-              <ArrowDownUp className="h-4 w-4 text-muted-foreground" />
+              <ArrowDownUp className="h-4 w-4 shrink-0 text-muted-foreground" />
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
