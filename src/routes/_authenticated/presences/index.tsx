@@ -5,6 +5,7 @@ import {
   CheckSquare,
   ChevronLeft,
   ChevronRight,
+  Download,
   Plane,
   UserCheck,
   UserMinus,
@@ -16,7 +17,9 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
+import { exportPresencesXlsx } from "@/lib/exports";
 import {
   Table,
   TableBody,
@@ -76,6 +79,22 @@ function formatSemaine(s: Semaine): string {
     month: "long",
     year: "numeric",
   })}`;
+}
+
+// Date locale au format AAAA-MM-JJ (sans décalage de fuseau).
+function toISODate(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${dd}`;
+}
+
+// Premier jeudi de l'année civile (les réunions ont lieu le jeudi).
+function premierJeudiAnnee(year: number): string {
+  const d = new Date(year, 0, 1);
+  const offset = (4 - d.getDay() + 7) % 7; // jours jusqu'au jeudi (getDay: jeudi = 4)
+  d.setDate(d.getDate() + offset);
+  return toISODate(d);
 }
 
 function PresencesPage() {
@@ -280,58 +299,78 @@ function PresencesPage() {
             <SummaryTile label="Absents" value={nbAbsent} tone="absent" />
           </div>
 
-          {/* Liste de pointage */}
+          {/* Liste de pointage — grille de cartes à 3 colonnes (mobile inclus) */}
           <Card>
             <CardHeader className="pb-3">
               <CardTitle className="text-lg">Pointage des membres</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-2">
+            <CardContent>
               {membresQ.isLoading ? (
-                <Skeleton className="h-16 w-full" />
+                <Skeleton className="h-24 w-full" />
               ) : membres.length === 0 ? (
                 <p className="text-sm text-muted-foreground">Aucun membre actif.</p>
               ) : (
-                membres.map((mb) => {
-                  const current = presencesByMembre.get(mb.id)?.statut ?? "absent";
-                  return (
-                    <div
-                      key={mb.id}
-                      className="flex flex-col gap-2 rounded-lg border p-3 sm:flex-row sm:items-center sm:justify-between"
-                    >
-                      <span className="font-medium">
-                        {mb.prenom} {mb.nom}
-                      </span>
-                      <div className="grid grid-cols-3 gap-2 sm:flex sm:w-auto">
-                        <StatutButton
-                          statut="present"
-                          active={current === "present"}
-                          disabled={setStatut.isPending}
-                          onClick={() => setStatut.mutate({ membreId: mb.id, statut: "present" })}
-                        />
-                        <StatutButton
-                          statut="excuse"
-                          active={current === "excuse"}
-                          disabled={setStatut.isPending}
-                          onClick={() => setStatut.mutate({ membreId: mb.id, statut: "excuse" })}
-                        />
-                        <StatutButton
-                          statut="absent"
-                          active={current === "absent"}
-                          disabled={setStatut.isPending}
-                          onClick={() => setStatut.mutate({ membreId: mb.id, statut: "absent" })}
-                        />
-                      </div>
-                    </div>
-                  );
-                })
+                <div className="grid grid-cols-3 gap-2">
+                  {membres.map((mb) => {
+                    const current = presencesByMembre.get(mb.id)?.statut ?? "absent";
+                    return (
+                      <MembreCard
+                        key={mb.id}
+                        membre={mb}
+                        current={current}
+                        disabled={setStatut.isPending}
+                        onSet={(statut) => setStatut.mutate({ membreId: mb.id, statut })}
+                      />
+                    );
+                  })}
+                </div>
               )}
             </CardContent>
           </Card>
         </>
       )}
 
+      {/* Export Excel sur une plage de dates */}
+      <ExportPresences />
+
       {/* Taux de présence par membre */}
       <TauxPresence />
+    </div>
+  );
+}
+
+function MembreCard({
+  membre,
+  current,
+  disabled,
+  onSet,
+}: {
+  membre: MembreLite;
+  current: Statut;
+  disabled: boolean;
+  onSet: (statut: Statut) => void;
+}) {
+  return (
+    <div className="flex flex-col gap-2 rounded-lg border p-2">
+      <div className="text-center leading-tight">
+        <p className="text-sm font-semibold truncate" title={membre.prenom}>
+          {membre.prenom}
+        </p>
+        <p className="text-xs text-muted-foreground truncate" title={membre.nom}>
+          {membre.nom}
+        </p>
+      </div>
+      <div className="flex flex-col gap-1.5">
+        {(["present", "excuse", "absent"] as Statut[]).map((statut) => (
+          <StatutButton
+            key={statut}
+            statut={statut}
+            active={current === statut}
+            disabled={disabled}
+            onClick={() => onSet(statut)}
+          />
+        ))}
+      </div>
     </div>
   );
 }
@@ -389,11 +428,78 @@ function StatutButton({
       variant={active ? "default" : "outline"}
       disabled={disabled}
       onClick={onClick}
-      className={cn("gap-1.5", active && meta.activeClass)}
+      className={cn(
+        "h-auto w-full justify-center gap-1.5 px-1.5 py-3 text-xs",
+        active && meta.activeClass,
+      )}
     >
-      <Icon className="h-4 w-4" />
-      {meta.label}
+      <Icon className="h-4 w-4 shrink-0" />
+      <span className="truncate">{meta.label}</span>
     </Button>
+  );
+}
+
+function ExportPresences() {
+  const [debut, setDebut] = useState(() => premierJeudiAnnee(new Date().getFullYear()));
+  const [fin, setFin] = useState(() => toISODate(new Date()));
+  const [pending, setPending] = useState(false);
+
+  const handleExport = async () => {
+    if (fin < debut) {
+      toast.error("La date de fin doit être postérieure à la date de début.");
+      return;
+    }
+    setPending(true);
+    try {
+      await exportPresencesXlsx(debut, fin);
+      toast.success("Export Excel généré.");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Erreur lors de l'export.");
+    } finally {
+      setPending(false);
+    }
+  };
+
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <CardTitle className="text-lg">Export Excel des présences</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+          <div className="space-y-1.5 sm:flex-1">
+            <Label htmlFor="export-debut" className="text-xs">
+              Du
+            </Label>
+            <Input
+              id="export-debut"
+              type="date"
+              value={debut}
+              onChange={(e) => setDebut(e.target.value)}
+            />
+          </div>
+          <div className="space-y-1.5 sm:flex-1">
+            <Label htmlFor="export-fin" className="text-xs">
+              Au
+            </Label>
+            <Input
+              id="export-fin"
+              type="date"
+              value={fin}
+              onChange={(e) => setFin(e.target.value)}
+            />
+          </div>
+          <Button
+            onClick={handleExport}
+            disabled={pending}
+            className="gap-1.5 bg-accent text-accent-foreground hover:bg-accent/90"
+          >
+            <Download className="h-4 w-4" />
+            Exporter (.xlsx)
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
   );
 }
 
