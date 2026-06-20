@@ -802,11 +802,36 @@ export type Database = {
       }
     }
     Functions: {
+      detail_presence_periode: {
+        Args: { p_debut: string; p_fin: string }
+        Returns: {
+          membre_id: string
+          prenom: string
+          nom: string
+          semaine_id: number
+          date_debut: string
+          libelle: string
+          statut: Database["public"]["Enums"]["statut_presence"] | null
+        }[]
+      }
       envoyer_rappel_contributions: { Args: never; Returns: undefined }
       est_admin: { Args: never; Returns: boolean }
       est_bureau: { Args: never; Returns: boolean }
       est_comite: { Args: never; Returns: boolean }
       get_or_create_semaine: { Args: { p_date?: string }; Returns: number }
+      stats_presence_periode: {
+        Args: { p_debut: string; p_fin: string }
+        Returns: {
+          membre_id: string
+          prenom: string
+          nom: string
+          nb_reunions_dues: number
+          nb_present: number
+          nb_excuse: number
+          nb_absent: number
+          taux_presence: number | null
+        }[]
+      }
       set_semaine_sans_reunion: {
         Args: { p_semaine_id: number; p_sans_reunion: boolean }
         Returns: undefined
