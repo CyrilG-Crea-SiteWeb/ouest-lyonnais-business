@@ -330,11 +330,11 @@ function PresencesPage() {
         </>
       )}
 
-      {/* Export Excel sur une plage de dates */}
-      <ExportPresences />
-
       {/* Taux de présence par membre */}
       <TauxPresence />
+      
+      {/* Export Excel sur une plage de dates */}
+      <ExportPresences />
     </div>
   );
 }
