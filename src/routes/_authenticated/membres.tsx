@@ -106,14 +106,14 @@ function MembresPage() {
 
   return (
     <div className="space-y-6">
-      <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-        <div>
+      <header>
+        <div className="flex items-center gap-3">
           <h1 className="text-2xl md:text-3xl font-bold">Membres</h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            {membres.length} membre{membres.length > 1 ? "s" : ""}
-          </p>
+          {isBureau && <InviteDialog />}
         </div>
-        {isBureau && <InviteDialog />}
+        <p className="text-sm text-muted-foreground mt-1">
+          {membres.length} membre{membres.length > 1 ? "s" : ""}
+        </p>
       </header>
 
       <div className="flex gap-3">
