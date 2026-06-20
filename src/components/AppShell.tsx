@@ -14,6 +14,7 @@ import {
   Inbox,
   BellRing,
   UserPlus,
+  CheckSquare,
 } from "lucide-react";
 import { NotificationsBell } from "./NotificationsBell";
 import { HelpButton } from "./HelpButton";
@@ -32,6 +33,7 @@ const NAV = [
   { to: "/recommandations", label: "Recommandations", icon: HandshakeIcon },
   { to: "/sondages", label: "Sondages", icon: Vote },
   { to: "/evenements", label: "Événements", icon: CalendarDays },
+  { to: "/presences", label: "Présences", icon: CheckSquare, bureauOnly: true },
   { to: "/demandes", label: "Demandes", icon: Inbox },
   { to: "/invites", label: "Invités", icon: UserPlus, comiteOnly: true },
   { to: "/mon-profil", label: "Mon profil", icon: UserCircle },
@@ -74,6 +76,8 @@ export function AppShell({ children }: { children: ReactNode }) {
       <nav className="flex-1 overflow-y-auto p-3 space-y-1">
         {NAV.filter((item) => {
           if ((item as { adminOnly?: boolean }).adminOnly && profile?.role !== "admin") return false;
+          if ((item as { bureauOnly?: boolean }).bureauOnly &&
+              !["bureau", "admin"].includes(profile?.role ?? "")) return false;
           if ((item as { comiteOnly?: boolean }).comiteOnly &&
               !["comite_membres", "bureau", "admin"].includes(profile?.role ?? "")) return false;
           return true;
