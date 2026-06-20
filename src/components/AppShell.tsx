@@ -32,7 +32,7 @@ const NAV = [
   { to: "/membres", label: "Membres", icon: Users },
   { to: "/recommandations", label: "Recommandations", icon: HandshakeIcon },
   { to: "/demandes", label: "Demandes", icon: Inbox },
-  { to: "/sondages", label: "Sondage", icon: Vote },
+  { to: "/sondages", label: "Sondages", icon: Vote },
   { to: "/evenements", label: "Événements", icon: CalendarDays },
   { to: "/presences", label: "Présences", icon: CheckSquare, bureauOnly: true },
   { to: "/invites", label: "Invités", icon: UserPlus, comiteOnly: true },
