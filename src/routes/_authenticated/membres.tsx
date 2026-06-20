@@ -109,34 +109,36 @@ function MembresPage() {
       <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
           <h1 className="text-2xl md:text-3xl font-bold">Membres</h1>
-          <div className="flex items-center gap-2 mt-1">
-            <p className="text-sm text-muted-foreground">
-              {membres.length} membre{membres.length > 1 ? "s" : ""}
-            </p>
-            <Select value={sortBy} onValueChange={(v) => setSortBy(v as SortBy)}>
-              <SelectTrigger className="h-6 px-2 text-xs gap-1 border-0 shadow-none text-muted-foreground hover:text-foreground" aria-label="Trier les membres">
-                <ArrowDownUp className="h-3 w-3" />
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="prenom_asc">Prénom (A→Z)</SelectItem>
-                <SelectItem value="prenom_desc">Prénom (Z→A)</SelectItem>
-                <SelectItem value="role">Par rôle</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+          <p className="text-sm text-muted-foreground mt-1">
+            {membres.length} membre{membres.length > 1 ? "s" : ""}
+          </p>
         </div>
         {isBureau && <InviteDialog />}
       </header>
 
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <Input
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Rechercher par nom, entreprise ou catégorie…"
-          className="pl-9"
-        />
+      <div className="flex gap-3">
+        <div className="relative" style={{ flex: "0 0 70%" }}>
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Rechercher par nom, entreprise ou catégorie…"
+            className="pl-9 w-full"
+          />
+        </div>
+        <div style={{ flex: "0 0 30%" }}>
+          <Select value={sortBy} onValueChange={(v) => setSortBy(v as SortBy)}>
+            <SelectTrigger className="w-full" aria-label="Trier les membres">
+              <ArrowDownUp className="h-4 w-4 text-muted-foreground" />
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="prenom_asc">Prénom (A→Z)</SelectItem>
+              <SelectItem value="prenom_desc">Prénom (Z→A)</SelectItem>
+              <SelectItem value="role">Par rôle</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
       {isLoading ? (
