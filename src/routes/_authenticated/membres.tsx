@@ -43,7 +43,7 @@ type Membre = {
   statut: "actif" | "inactif";
 };
 
-type SortBy = "prenom" | "role";
+type SortBy = "prenom_asc" | "prenom_desc" | "role";
 
 // Ordre d'affichage des rôles (hiérarchie décroissante) et libellés associés.
 const ROLE_ORDER: Record<Membre["role"], number> = {
@@ -64,7 +64,7 @@ function MembresPage() {
   const isBureau = hasRole(profile?.role, "bureau");
   const isAdmin = hasRole(profile?.role, "admin");
   const [search, setSearch] = useState("");
-  const [sortBy, setSortBy] = useState<SortBy>("prenom");
+  const [sortBy, setSortBy] = useState<SortBy>("prenom_asc");
 
   const { data: membres = [], isLoading } = useQuery({
     queryKey: ["membres", "list"],
@@ -86,16 +86,21 @@ function MembresPage() {
           [m.nom, m.prenom, m.entreprise, m.categorie].filter(Boolean).join(" ").toLowerCase().includes(q),
         );
 
-    const byPrenom = (a: Membre, b: Membre) =>
-      a.prenom.localeCompare(b.prenom, "fr", { sensitivity: "base" }) ||
-      a.nom.localeCompare(b.nom, "fr", { sensitivity: "base" });
+    const byPrenom = (a: Membre, b: Membre, asc: boolean) => {
+      const dir = asc ? 1 : -1;
+      return (
+        dir * (a.prenom.localeCompare(b.prenom, "fr", { sensitivity: "base" }) ||
+          a.nom.localeCompare(b.nom, "fr", { sensitivity: "base" }))
+      );
+    };
 
     return [...list].sort((a, b) => {
       if (sortBy === "role") {
         const diff = ROLE_ORDER[a.role] - ROLE_ORDER[b.role];
         if (diff !== 0) return diff;
+        return byPrenom(a, b, true);
       }
-      return byPrenom(a, b);
+      return byPrenom(a, b, sortBy === "prenom_asc");
     });
   }, [membres, search, sortBy]);
 
@@ -104,33 +109,34 @@ function MembresPage() {
       <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
           <h1 className="text-2xl md:text-3xl font-bold">Membres</h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            {membres.length} membre{membres.length > 1 ? "s" : ""}
-          </p>
+          <div className="flex items-center gap-2 mt-1">
+            <p className="text-sm text-muted-foreground">
+              {membres.length} membre{membres.length > 1 ? "s" : ""}
+            </p>
+            <Select value={sortBy} onValueChange={(v) => setSortBy(v as SortBy)}>
+              <SelectTrigger className="h-6 px-2 text-xs gap-1 border-0 shadow-none text-muted-foreground hover:text-foreground" aria-label="Trier les membres">
+                <ArrowDownUp className="h-3 w-3" />
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="prenom_asc">Prénom (A→Z)</SelectItem>
+                <SelectItem value="prenom_desc">Prénom (Z→A)</SelectItem>
+                <SelectItem value="role">Par rôle</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
         </div>
         {isBureau && <InviteDialog />}
       </header>
 
-      <div className="flex flex-col sm:flex-row gap-3">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Rechercher par nom, entreprise ou catégorie…"
-            className="pl-9"
-          />
-        </div>
-        <Select value={sortBy} onValueChange={(v) => setSortBy(v as SortBy)}>
-          <SelectTrigger className="sm:w-56" aria-label="Trier les membres">
-            <ArrowDownUp className="h-4 w-4 text-muted-foreground" />
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="prenom">Trier par prénom (A→Z)</SelectItem>
-            <SelectItem value="role">Trier par rôle</SelectItem>
-          </SelectContent>
-        </Select>
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <Input
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Rechercher par nom, entreprise ou catégorie…"
+          className="pl-9"
+        />
       </div>
 
       {isLoading ? (
