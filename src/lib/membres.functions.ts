@@ -83,6 +83,42 @@ export const updateMembre = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+const uploadAvatarSchema = z.object({
+  membreId: z.string().uuid(),
+  // Image encodée en base64 (sans préfixe data:).
+  fileBase64: z.string().min(1),
+  contentType: z.string().regex(/^image\//, "Le fichier doit être une image."),
+  ext: z.string().regex(/^[a-z0-9]+$/i).max(10),
+});
+
+// URL signée valable 1 an (en secondes).
+const DUREE_URL_AVATAR = 60 * 60 * 24 * 365;
+
+export const uploadMembreAvatar = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: unknown) => uploadAvatarSchema.parse(data))
+  .handler(async ({ data, context }) => {
+    const role = await getCallerRole(context);
+    assertBureau(role);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    const buffer = Buffer.from(data.fileBase64, "base64");
+    if (buffer.length > 5 * 1024 * 1024) throw new Error("Image trop lourde (5 Mo maximum).");
+
+    const chemin = `${data.membreId}/avatar.${data.ext}`;
+    const { error: upErr } = await supabaseAdmin.storage
+      .from("avatars")
+      .upload(chemin, buffer, { upsert: true, contentType: data.contentType });
+    if (upErr) throw new Error(upErr.message);
+
+    const { data: signed, error: signErr } = await supabaseAdmin.storage
+      .from("avatars")
+      .createSignedUrl(chemin, DUREE_URL_AVATAR);
+    if (signErr) throw new Error(signErr.message);
+
+    return { url: signed.signedUrl };
+  });
+
 const roleStatutSchema = z.object({
   id: z.string().uuid(),
   role: z.enum(["membre", "comite_membres", "comite_fetes", "bureau", "admin"]).optional(),

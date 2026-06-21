@@ -15,12 +15,19 @@ type AvatarUploadProps = {
   initiales?: string;
   /** remonte la nouvelle URL (upload signé ou lien collé) */
   onChange: (url: string) => void;
+  /**
+   * Optionnel : remplace l'upload client direct. Utilisé côté admin pour
+   * téléverser la photo d'un autre membre via une server function (service role),
+   * l'upload direct étant bloqué par les règles RLS du bucket privé. Doit
+   * renvoyer l'URL (signée) de l'image téléversée.
+   */
+  uploadFile?: (file: File) => Promise<string>;
 };
 
 // URL signée valable 1 an (en secondes).
 const DUREE_URL = 60 * 60 * 24 * 365;
 
-export function AvatarUpload({ value, membreId, initiales, onChange }: AvatarUploadProps) {
+export function AvatarUpload({ value, membreId, initiales, onChange, uploadFile }: AvatarUploadProps) {
   const [enCours, setEnCours] = useState(false);
   const [erreur, setErreur] = useState<string | null>(null);
 
@@ -40,21 +47,26 @@ export function AvatarUpload({ value, membreId, initiales, onChange }: AvatarUpl
 
     setEnCours(true);
     try {
-      const ext = file.name.split(".").pop()?.toLowerCase() || "jpg";
-      const chemin = `${membreId}/avatar.${ext}`;
+      if (uploadFile) {
+        // Upload délégué (ex. admin téléversant pour un autre membre).
+        onChange(await uploadFile(file));
+      } else {
+        const ext = file.name.split(".").pop()?.toLowerCase() || "jpg";
+        const chemin = `${membreId}/avatar.${ext}`;
 
-      const { error: upErr } = await supabase.storage
-        .from("avatars")
-        .upload(chemin, file, { upsert: true });
-      if (upErr) throw upErr;
+        const { error: upErr } = await supabase.storage
+          .from("avatars")
+          .upload(chemin, file, { upsert: true });
+        if (upErr) throw upErr;
 
-      // Bucket privé -> URL signée.
-      const { data, error: signErr } = await supabase.storage
-        .from("avatars")
-        .createSignedUrl(chemin, DUREE_URL);
-      if (signErr) throw signErr;
+        // Bucket privé -> URL signée.
+        const { data, error: signErr } = await supabase.storage
+          .from("avatars")
+          .createSignedUrl(chemin, DUREE_URL);
+        if (signErr) throw signErr;
 
-      onChange(data.signedUrl);
+        onChange(data.signedUrl);
+      }
     } catch (err) {
       setErreur(err instanceof Error ? err.message : "Échec de l'upload.");
     } finally {
