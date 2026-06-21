@@ -74,9 +74,11 @@ type TauxRow = {
 };
 
 function formatSemaine(s: Semaine): string {
-  if (s.libelle) return s.libelle;
-  const d = new Date(s.date_debut);
-  return `Semaine du ${d.toLocaleDateString("fr-FR", {
+  // Toujours formater en français à partir de date_debut (AAAA-MM-JJ), en
+  // construisant la date en heure locale pour éviter tout décalage de fuseau.
+  const [y, m, d] = s.date_debut.split("-").map(Number);
+  const date = new Date(y, (m ?? 1) - 1, d ?? 1);
+  return `Semaine du ${date.toLocaleDateString("fr-FR", {
     day: "numeric",
     month: "long",
     year: "numeric",
@@ -183,21 +185,6 @@ function PresencesPage() {
   const nbExcuse = membres.filter((mb) => presencesByMembre.get(mb.id)?.statut === "excuse").length;
   const nbAbsent = membres.length - nbPresent - nbExcuse;
 
-  // Aller à (et créer au besoin) la semaine contenant une date donnée. Permet
-  // de pointer une réunion passée dont la ligne semaines n'existe pas encore.
-  const goToDate = useMutation({
-    mutationFn: async (dateStr: string): Promise<number> => {
-      const { data, error } = await supabase.rpc("get_or_create_semaine", { p_date: dateStr });
-      if (error) throw error;
-      return data as number;
-    },
-    onSuccess: async (id) => {
-      await qc.invalidateQueries({ queryKey: ["presences", "semaines"] });
-      setSelectedId(id);
-    },
-    onError: (e: Error) => toast.error(e.message),
-  });
-
   // Bascule "semaine sans réunion" via RPC réservée au bureau.
   const toggleSansReunion = useMutation({
     mutationFn: async (value: boolean) => {
@@ -281,25 +268,6 @@ function PresencesPage() {
             >
               <ChevronRight className="h-5 w-5" />
             </Button>
-          </div>
-
-          <div className="flex flex-col gap-1.5 rounded-lg border p-3 sm:flex-row sm:items-end">
-            <div className="space-y-1.5 sm:flex-1">
-              <Label htmlFor="aller-semaine" className="text-xs">
-                Aller à une réunion (par date)
-              </Label>
-              <Input
-                id="aller-semaine"
-                type="date"
-                disabled={goToDate.isPending}
-                onChange={(e) => {
-                  if (e.target.value) goToDate.mutate(e.target.value);
-                }}
-              />
-            </div>
-            <p className="text-xs text-muted-foreground sm:max-w-[12rem]">
-              Sélectionnez n'importe quel jour de la semaine voulue pour la pointer.
-            </p>
           </div>
 
           <div className="flex items-center justify-between gap-3 rounded-lg border p-3">
