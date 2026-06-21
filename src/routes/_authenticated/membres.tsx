@@ -81,11 +81,16 @@ function MembresPage() {
   });
 
   const filtered = useMemo(() => {
-    const q = search.trim().toLowerCase();
+    const normalize = (s: string) =>
+      s
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .toLowerCase();
+    const q = normalize(search.trim());
     const list = !q
       ? membres
       : membres.filter((m) =>
-          [m.nom, m.prenom, m.entreprise, m.categorie].filter(Boolean).join(" ").toLowerCase().includes(q),
+          normalize([m.nom, m.prenom, m.entreprise, m.categorie].filter(Boolean).join(" ")).includes(q),
         );
 
     const byPrenom = (a: Membre, b: Membre) =>
