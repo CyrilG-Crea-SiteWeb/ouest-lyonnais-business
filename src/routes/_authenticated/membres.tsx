@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { AvatarUpload } from "@/components/AvatarUpload";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogTrigger,
 } from "@/components/ui/dialog";
@@ -22,7 +23,18 @@ import {
 } from "@/components/ui/select";
 import { toast } from "sonner";
 import { Mail, Phone, Globe, Plus, Pencil, Trash2, Search, Shield, Building2, Tag, ArrowDownUp } from "lucide-react";
-import { inviteMembre, updateMembre, updateMembreRoleStatut, deleteMembre } from "@/lib/membres.functions";
+import { inviteMembre, updateMembre, updateMembreRoleStatut, deleteMembre, uploadMembreAvatar } from "@/lib/membres.functions";
+
+/** Convertit un ArrayBuffer en base64 par tranches pour éviter de saturer la pile. */
+function arrayBufferToBase64(buf: ArrayBuffer): string {
+  const bytes = new Uint8Array(buf);
+  let binary = "";
+  const chunk = 0x8000;
+  for (let i = 0; i < bytes.length; i += chunk) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + chunk));
+  }
+  return btoa(binary);
+}
 
 export const Route = createFileRoute("/_authenticated/membres")({
   head: () => ({ meta: [{ title: "Membres — OLB" }] }),
@@ -382,6 +394,20 @@ function EditDialog({ membre, canAdmin }: { membre: Membre; canAdmin: boolean })
 
   const update = useServerFn(updateMembre);
   const updateRS = useServerFn(updateMembreRoleStatut);
+  const uploadAvatar = useServerFn(uploadMembreAvatar);
+
+  // Upload délégué : l'upload client direct est bloqué par les RLS du bucket
+  // pour le dossier d'un autre membre, on passe donc par la server function (service role).
+  async function uploadAvatarFile(file: File): Promise<string> {
+    const fileBase64 = arrayBufferToBase64(await file.arrayBuffer());
+    const ext = file.name.split(".").pop()?.toLowerCase() || "jpg";
+    const { url } = await uploadAvatar({
+      data: { membreId: membre.id, fileBase64, contentType: file.type, ext },
+    });
+    return url;
+  }
+
+  const initiales = `${membre.prenom?.[0] ?? ""}${membre.nom?.[0] ?? ""}`.toUpperCase();
 
   const mutation = useMutation({
     mutationFn: async () => {
@@ -423,7 +449,16 @@ function EditDialog({ membre, canAdmin }: { membre: Membre; canAdmin: boolean })
             <Field label="Prénom" value={form.prenom} onChange={(v) => setForm({ ...form, prenom: v })} required />
             <Field label="Nom" value={form.nom} onChange={(v) => setForm({ ...form, nom: v })} required />
           </div>
-          <Field label="Photo (URL)" value={form.photo_url} onChange={(v) => setForm({ ...form, photo_url: v })} />
+          <div className="space-y-1.5">
+            <Label>Photo de profil</Label>
+            <AvatarUpload
+              value={form.photo_url}
+              membreId={membre.id}
+              initiales={initiales}
+              onChange={(v) => setForm({ ...form, photo_url: v })}
+              uploadFile={uploadAvatarFile}
+            />
+          </div>
           <Field label="Entreprise" value={form.entreprise} onChange={(v) => setForm({ ...form, entreprise: v })} />
           <Field label="Catégorie" value={form.categorie} onChange={(v) => setForm({ ...form, categorie: v })} />
           <Field label="Téléphone" type="tel" value={form.telephone} onChange={(v) => setForm({ ...form, telephone: v })} />
