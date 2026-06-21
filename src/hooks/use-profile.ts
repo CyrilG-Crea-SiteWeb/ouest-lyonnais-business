@@ -10,6 +10,7 @@ export type Membre = {
   entreprise: string | null;
   categorie: string | null;
   telephone: string | null;
+  site_internet: string | null;
   role: "admin" | "bureau" | "membre" | "comite_membres" | "comite_fetes";
   statut: string;
   date_entree: string;

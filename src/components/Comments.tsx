@@ -177,6 +177,7 @@ function CommentItem({
   typeContenu,
   contenuId,
   queryKey,
+  comments,
 }: {
   comment: Commentaire;
   author: Auteur | undefined;
@@ -185,6 +186,7 @@ function CommentItem({
   typeContenu: TypeContenu;
   contenuId: number;
   queryKey: readonly unknown[];
+  comments: Commentaire[];
 }) {
   const [replying, setReplying] = useState(false);
   return (
