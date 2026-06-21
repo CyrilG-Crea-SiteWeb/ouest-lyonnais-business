@@ -1,9 +1,9 @@
 import { useMemo, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Plus, Trash2, Lock, Calendar } from "lucide-react";
+import { Plus, Pencil, Trash2, Lock, Calendar } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { useProfile, hasRole } from "@/hooks/use-profile";
+import { useProfile, peutGererEvenementsSondages } from "@/hooks/use-profile";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -50,9 +50,16 @@ type Sondage = {
 type Option = { id: number; sondage_id: number; libelle: string };
 type Vote = { id: number; sondage_id: number; option_id: number; membre_id: string };
 
+// Convertit une date ISO en valeur acceptée par <input type="datetime-local">.
+function toDatetimeLocal(iso: string) {
+  const d = new Date(iso);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
 function SondagesPage() {
   const { data: profile } = useProfile();
-  const isBureau = hasRole(profile?.role, "bureau");
+  const canManage = peutGererEvenementsSondages(profile?.role);
 
   const sondagesQ = useQuery({
     queryKey: ["sondages"],
@@ -91,7 +98,7 @@ function SondagesPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <h1 className="text-2xl md:text-3xl font-bold">Sondages</h1>
-        {isBureau && <CreateSondageDialog />}
+        {canManage && <CreateSondageDialog />}
       </div>
 
       {loading && <p className="text-sm text-muted-foreground">Chargement…</p>}
@@ -104,7 +111,7 @@ function SondagesPage() {
             options={optionsQ.data?.filter((o) => o.sondage_id === s.id) ?? []}
             votes={votesQ.data?.filter((v) => v.sondage_id === s.id) ?? []}
             myId={profile?.id}
-            isBureau={isBureau}
+            canManage={canManage}
           />
         ))}
         {sondagesQ.data?.length === 0 && (
@@ -124,13 +131,13 @@ function SondageCard({
   options,
   votes,
   myId,
-  isBureau,
+  canManage,
 }: {
   sondage: Sondage;
   options: Option[];
   votes: Vote[];
   myId: string | undefined;
-  isBureau: boolean;
+  canManage: boolean;
 }) {
   const qc = useQueryClient();
   const isOpen = sondage.statut === "ouvert";
@@ -209,7 +216,7 @@ function SondageCard({
               </p>
             )}
           </div>
-          {isBureau && (
+          {canManage && (
             <div className="flex gap-2">
               {isOpen && (
                 <Button size="sm" variant="outline" onClick={() => close.mutate()}>
@@ -217,6 +224,7 @@ function SondageCard({
                   Clôturer
                 </Button>
               )}
+              <EditSondageDialog sondage={sondage} />
               <AlertDialog>
                 <AlertDialogTrigger asChild>
                   <Button size="icon" variant="ghost">
@@ -393,6 +401,104 @@ function CreateSondageDialog() {
             onClick={() => create.mutate()}
           >
             Créer
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function EditSondageDialog({ sondage }: { sondage: Sondage }) {
+  const qc = useQueryClient();
+  const [open, setOpen] = useState(false);
+  const [titre, setTitre] = useState(sondage.titre);
+  const [question, setQuestion] = useState(sondage.question);
+  const [dateLimite, setDateLimite] = useState(
+    sondage.date_limite ? toDatetimeLocal(sondage.date_limite) : "",
+  );
+
+  // Réinitialise le formulaire à chaque ouverture.
+  function resetForm() {
+    setTitre(sondage.titre);
+    setQuestion(sondage.question);
+    setDateLimite(sondage.date_limite ? toDatetimeLocal(sondage.date_limite) : "");
+  }
+
+  const update = useMutation({
+    mutationFn: async () => {
+      if (!titre.trim() || !question.trim()) throw new Error("Titre et question requis");
+      const { error } = await supabase
+        .from("sondages")
+        .update({
+          titre: titre.trim(),
+          question: question.trim(),
+          date_limite: dateLimite ? new Date(dateLimite).toISOString() : null,
+        })
+        .eq("id", sondage.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["sondages"] });
+      toast.success("Sondage modifié");
+      setOpen(false);
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  return (
+    <Dialog
+      open={open}
+      onOpenChange={(v) => {
+        if (v) resetForm();
+        setOpen(v);
+      }}
+    >
+      <DialogTrigger asChild>
+        <Button size="icon" variant="ghost" aria-label="Modifier le sondage">
+          <Pencil className="h-4 w-4" />
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>Modifier le sondage</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-3">
+          <div className="space-y-1.5">
+            <Label htmlFor={`edit-titre-${sondage.id}`}>Titre</Label>
+            <Input
+              id={`edit-titre-${sondage.id}`}
+              value={titre}
+              onChange={(e) => setTitre(e.target.value)}
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor={`edit-question-${sondage.id}`}>Question</Label>
+            <Textarea
+              id={`edit-question-${sondage.id}`}
+              rows={2}
+              value={question}
+              onChange={(e) => setQuestion(e.target.value)}
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor={`edit-date-${sondage.id}`}>Date limite (optionnelle)</Label>
+            <Input
+              id={`edit-date-${sondage.id}`}
+              type="datetime-local"
+              value={dateLimite}
+              onChange={(e) => setDateLimite(e.target.value)}
+            />
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Les options de réponse ne sont pas modifiables après création afin de préserver les votes déjà exprimés.
+          </p>
+        </div>
+        <DialogFooter>
+          <Button
+            disabled={update.isPending || !titre.trim() || !question.trim()}
+            onClick={() => update.mutate()}
+          >
+            Enregistrer
           </Button>
         </DialogFooter>
       </DialogContent>

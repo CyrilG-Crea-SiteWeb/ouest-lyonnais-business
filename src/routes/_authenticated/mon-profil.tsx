@@ -10,8 +10,11 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { AvatarUpload } from "@/components/AvatarUpload";
+import {
+  Collapsible, CollapsibleContent, CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 import { toast } from "sonner";
-import { Shield, ShieldCheck, Globe } from "lucide-react";
+import { Shield, ShieldCheck, Globe, ChevronRight } from "lucide-react";
 
 function normaliseUrl(v: string): string | null {
   const t = v.trim();
@@ -37,6 +40,8 @@ function ProfilPage() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [changingPwd, setChangingPwd] = useState(false);
   const [sendingLink, setSendingLink] = useState(false);
+  const [identiteOpen, setIdentiteOpen] = useState(false);
+  const [securiteOpen, setSecuriteOpen] = useState(false);
 
   useEffect(() => {
     if (!profile) return;
@@ -134,19 +139,31 @@ function ProfilPage() {
       </header>
 
       <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Identité</CardTitle>
-        </CardHeader>
-        <CardContent className="flex items-center gap-4">
-          <Avatar className="h-16 w-16">
-            <AvatarImage src={photo_url || undefined} alt={`${profile.prenom} ${profile.nom}`} />
-            <AvatarFallback>{initiales || "?"}</AvatarFallback>
-          </Avatar>
-          <div className="space-y-0.5 text-sm">
-            <p className="font-semibold text-foreground">{profile.prenom} {profile.nom}</p>
-            <p className="text-muted-foreground">{profile.email}</p>
-          </div>
-        </CardContent>
+        <Collapsible open={identiteOpen} onOpenChange={setIdentiteOpen}>
+          <CollapsibleTrigger asChild>
+            <button className="w-full text-left">
+              <CardHeader className="flex-row items-start gap-2 space-y-0">
+                <ChevronRight className={"h-5 w-5 shrink-0 mt-0.5 transition-transform " + (identiteOpen ? "rotate-90" : "")} />
+                <div className="space-y-1">
+                  <CardTitle className="text-base">Identité</CardTitle>
+                  <CardDescription>Ces informations ne sont pas modifiables</CardDescription>
+                </div>
+              </CardHeader>
+            </button>
+          </CollapsibleTrigger>
+          <CollapsibleContent>
+            <CardContent className="flex items-center gap-4">
+              <Avatar className="h-16 w-16">
+                <AvatarImage src={photo_url || undefined} alt={`${profile.prenom} ${profile.nom}`} />
+                <AvatarFallback>{initiales || "?"}</AvatarFallback>
+              </Avatar>
+              <div className="space-y-0.5 text-sm">
+                <p className="font-semibold text-foreground">{profile.prenom} {profile.nom}</p>
+                <p className="text-muted-foreground">{profile.email}</p>
+              </div>
+            </CardContent>
+          </CollapsibleContent>
+        </Collapsible>
       </Card>
 
       <Card>
@@ -196,38 +213,49 @@ function ProfilPage() {
         </CardContent>
       </Card>
       <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Sécurité — mot de passe</CardTitle>
-          <CardDescription>
-            Modifiez votre mot de passe directement, ou recevez un lien par email.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          <form onSubmit={handleChangePassword} className="space-y-4">
-            <div className="space-y-1.5">
-              <Label htmlFor="new-password">Nouveau mot de passe</Label>
-              <Input id="new-password" type="password" autoComplete="new-password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} minLength={6} />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="confirm-password">Confirmer le mot de passe</Label>
-              <Input id="confirm-password" type="password" autoComplete="new-password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} minLength={6} />
-            </div>
-            <Button type="submit" disabled={changingPwd || !newPassword}>
-              {changingPwd ? "Modification…" : "Changer mon mot de passe"}
-            </Button>
-          </form>
+        <Collapsible open={securiteOpen} onOpenChange={setSecuriteOpen}>
+          <CollapsibleTrigger asChild>
+            <button className="w-full text-left">
+              <CardHeader className="flex-row items-start gap-2 space-y-0">
+                <ChevronRight className={"h-5 w-5 shrink-0 mt-0.5 transition-transform " + (securiteOpen ? "rotate-90" : "")} />
+                <div className="space-y-1">
+                  <CardTitle className="text-base">Sécurité — mot de passe</CardTitle>
+                  <CardDescription>
+                    Modifiez votre mot de passe directement, ou recevez un lien par email.
+                  </CardDescription>
+                </div>
+              </CardHeader>
+            </button>
+          </CollapsibleTrigger>
+          <CollapsibleContent>
+            <CardContent className="space-y-6">
+              <form onSubmit={handleChangePassword} className="space-y-4">
+                <div className="space-y-1.5">
+                  <Label htmlFor="new-password">Nouveau mot de passe</Label>
+                  <Input id="new-password" type="password" autoComplete="new-password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} minLength={6} />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="confirm-password">Confirmer le mot de passe</Label>
+                  <Input id="confirm-password" type="password" autoComplete="new-password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} minLength={6} />
+                </div>
+                <Button type="submit" disabled={changingPwd || !newPassword}>
+                  {changingPwd ? "Modification…" : "Changer mon mot de passe"}
+                </Button>
+              </form>
 
-          <div className="border-t pt-4">
-            <p className="text-sm text-muted-foreground mb-3">
-              Vous préférez confirmer par email ? Recevez un lien sécurisé sur {profile.email}.
-            </p>
-            <Button type="button" variant="outline" onClick={handleSendResetLink} disabled={sendingLink}>
-              {sendingLink ? "Envoi…" : "Recevoir un lien par email"}
-            </Button>
-          </div>
-        </CardContent>
+              <div className="border-t pt-4">
+                <p className="text-sm text-muted-foreground mb-3">
+                  Vous préférez confirmer par email ? Recevez un lien sécurisé sur {profile.email}.
+                </p>
+                <Button type="button" variant="outline" onClick={handleSendResetLink} disabled={sendingLink}>
+                  {sendingLink ? "Envoi…" : "Recevoir un lien par email"}
+                </Button>
+              </div>
+            </CardContent>
+          </CollapsibleContent>
+        </Collapsible>
       </Card>
-      
+
       {isBureau && (
         <Card className="border-primary/30">
           <CardHeader>

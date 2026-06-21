@@ -573,24 +573,69 @@ export type Database = {
           },
         ]
       }
+      presences: {
+        Row: {
+          created_at: string
+          id: number
+          membre_id: string
+          semaine_id: number
+          statut: Database["public"]["Enums"]["statut_presence"]
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: never
+          membre_id: string
+          semaine_id: number
+          statut: Database["public"]["Enums"]["statut_presence"]
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: never
+          membre_id?: string
+          semaine_id?: number
+          statut?: Database["public"]["Enums"]["statut_presence"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "presences_membre_id_fkey"
+            columns: ["membre_id"]
+            isOneToOne: false
+            referencedRelation: "membres"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "presences_semaine_id_fkey"
+            columns: ["semaine_id"]
+            isOneToOne: false
+            referencedRelation: "semaines"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       semaines: {
         Row: {
           date_debut: string
           date_fin: string
           id: number
           libelle: string
+          sans_reunion: boolean
         }
         Insert: {
           date_debut: string
           date_fin: string
           id?: never
           libelle: string
+          sans_reunion?: boolean
         }
         Update: {
           date_debut?: string
           date_fin?: string
           id?: never
           libelle?: string
+          sans_reunion?: boolean
         }
         Relationships: []
       }
@@ -707,6 +752,27 @@ export type Database = {
           },
         ]
       }
+      v_taux_presence_membre: {
+        Row: {
+          membre_id: string | null
+          nb_absent: number | null
+          nb_excuse: number | null
+          nb_present: number | null
+          nb_reunions_dues: number | null
+          nom: string | null
+          prenom: string | null
+          taux_presence: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "presences_membre_id_fkey"
+            columns: ["membre_id"]
+            isOneToOne: false
+            referencedRelation: "membres"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       v_stats_membre_semaine: {
         Row: {
           ca_valide: number | null
@@ -736,17 +802,47 @@ export type Database = {
       }
     }
     Functions: {
+      detail_presence_periode: {
+        Args: { p_debut: string; p_fin: string }
+        Returns: {
+          membre_id: string
+          prenom: string
+          nom: string
+          semaine_id: number
+          date_debut: string
+          libelle: string
+          statut: Database["public"]["Enums"]["statut_presence"] | null
+        }[]
+      }
       envoyer_rappel_contributions: { Args: never; Returns: undefined }
       est_admin: { Args: never; Returns: boolean }
       est_bureau: { Args: never; Returns: boolean }
       est_comite: { Args: never; Returns: boolean }
       get_or_create_semaine: { Args: { p_date?: string }; Returns: number }
+      stats_presence_periode: {
+        Args: { p_debut: string; p_fin: string }
+        Returns: {
+          membre_id: string
+          prenom: string
+          nom: string
+          nb_reunions_dues: number
+          nb_present: number
+          nb_excuse: number
+          nb_absent: number
+          taux_presence: number | null
+        }[]
+      }
+      set_semaine_sans_reunion: {
+        Args: { p_semaine_id: number; p_sans_reunion: boolean }
+        Returns: undefined
+      }
     }
     Enums: {
-      role_membre: "admin" | "bureau" | "membre" | "comite_membres"
+      role_membre: "admin" | "bureau" | "membre" | "comite_membres" | "comite_fetes"
       statut_demande: "ouverte" | "cloturee"
       statut_inscription: "present" | "absent" | "peut_etre"
       statut_membre: "actif" | "inactif"
+      statut_presence: "present" | "excuse" | "absent"
       statut_sondage: "ouvert" | "cloture"
       type_contenu:
         | "recommandation"
@@ -886,10 +982,11 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      role_membre: ["admin", "bureau", "membre", "comite_membres"],
+      role_membre: ["admin", "bureau", "membre", "comite_membres", "comite_fetes"],
       statut_demande: ["ouverte", "cloturee"],
       statut_inscription: ["present", "absent", "peut_etre"],
       statut_membre: ["actif", "inactif"],
+      statut_presence: ["present", "excuse", "absent"],
       statut_sondage: ["ouvert", "cloture"],
       type_contenu: [
         "recommandation",

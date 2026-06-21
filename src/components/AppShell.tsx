@@ -14,6 +14,7 @@ import {
   Inbox,
   BellRing,
   UserPlus,
+  CheckSquare,
 } from "lucide-react";
 import { NotificationsBell } from "./NotificationsBell";
 import { HelpButton } from "./HelpButton";
@@ -30,9 +31,10 @@ const NAV = [
   { to: "/", label: "Tableau de bord", icon: LayoutDashboard },
   { to: "/membres", label: "Membres", icon: Users },
   { to: "/recommandations", label: "Recommandations", icon: HandshakeIcon },
+  { to: "/demandes", label: "Demandes", icon: Inbox },
   { to: "/sondages", label: "Sondages", icon: Vote },
   { to: "/evenements", label: "Événements", icon: CalendarDays },
-  { to: "/demandes", label: "Demandes", icon: Inbox },
+  { to: "/presences", label: "Présences", icon: CheckSquare, bureauOnly: true },
   { to: "/invites", label: "Invités", icon: UserPlus, comiteOnly: true },
   { to: "/mon-profil", label: "Mon profil", icon: UserCircle },
   { to: "/admin-rappel", label: "Rappel auto", icon: BellRing, adminOnly: true },
@@ -64,6 +66,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             </p>
             <Badge variant="outline" className="mt-1 border-sidebar-border text-sidebar-foreground">
               {profile.role === "comite_membres" ? "Comité membres"
+                : profile.role === "comite_fetes" ? "Comité des fêtes"
                 : profile.role === "bureau" ? "Bureau"
                 : profile.role === "admin" ? "Admin"
                 : "Membre"}
@@ -74,6 +77,8 @@ export function AppShell({ children }: { children: ReactNode }) {
       <nav className="flex-1 overflow-y-auto p-3 space-y-1">
         {NAV.filter((item) => {
           if ((item as { adminOnly?: boolean }).adminOnly && profile?.role !== "admin") return false;
+          if ((item as { bureauOnly?: boolean }).bureauOnly &&
+              !["bureau", "admin"].includes(profile?.role ?? "")) return false;
           if ((item as { comiteOnly?: boolean }).comiteOnly &&
               !["comite_membres", "bureau", "admin"].includes(profile?.role ?? "")) return false;
           return true;

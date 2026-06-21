@@ -93,6 +93,7 @@ function RecosPage() {
         .from("membres")
         .select("id, nom, prenom, entreprise")
         .eq("statut", "actif")
+        .order("prenom")
         .order("nom");
       if (error) throw error;
       return (data ?? []) as MembreLite[];
