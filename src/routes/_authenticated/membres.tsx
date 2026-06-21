@@ -192,7 +192,9 @@ function MembreCard({ membre, canEdit, canAdmin }: { membre: Membre; canEdit: bo
             <AvatarFallback className="rounded-2xl">{initiales || "?"}</AvatarFallback>
           </Avatar>
           <p className="font-semibold text-sm leading-tight break-words">
-            {membre.prenom} {membre.nom}
+            {membre.prenom}
+            <br />
+            {membre.nom}
           </p>
           {membre.role !== "membre" && (
             <Badge variant="secondary" className="text-[10px]">
