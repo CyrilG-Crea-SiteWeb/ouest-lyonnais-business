@@ -205,7 +205,13 @@ VALUES
    'jean-pierre.venot@sadec-akelys.fr', crypt('OLB2026!', gen_salt('bf')),
    now(), now(), now(), '', '', '', '',
    '{"provider":"email","providers":["email"]}'::jsonb,
-   '{"prenom":"Jean-Pierre","nom":"Venot"}'::jsonb, false, false);
+   '{"prenom":"Jean-Pierre","nom":"Venot"}'::jsonb, false, false),
+
+  (gen_random_uuid(), '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated',
+   'cyrilgabert@gmail.com', crypt('OLB2026!', gen_salt('bf')),
+   now(), now(), now(), '', '', '', '',
+   '{"provider":"email","providers":["email"]}'::jsonb,
+   '{"prenom":"Test","nom":"Compte"}'::jsonb, false, false);
 
 -- ============================================================
 -- PARTIE 3 — Complète les fiches membres + date_entree
@@ -248,6 +254,7 @@ FROM (VALUES
   ('lionel@maisonbutaud.fr',               'Lionel',          'Blin',               'Ets Jean Butaud',              'Plombier Chauffagiste',                        '06 63 81 60 46', 'https://www.jean-butaud.fr'),
   ('charlene.hazard.agt@axa.fr',           'Charlène',        'Hazard',             'AXA',                          'Agent Général d''Assurance',                   '06 06 99 01 24', 'https://agence.axa.fr/craponne'),
   ('jean-pierre.venot@sadec-akelys.fr',    'Jean-Pierre',     'Venot',              'SADEC AKELYS',                 'Expertise comptable',                          '06 14 74 08 13', 'https://www.sadec-akelys.fr'),
+  ('cyrilgabert@gmail.com',                'Test',            'Compte',             NULL,                           NULL,                                           NULL,             NULL),
   -- Compte admin : date_entree + coordonnées (rôle admin conservé ci-dessous)
   ('cyril@crea-siteweb.com',               'Cyril',           'Gabert',             'Créa-SiteWeb',                 'Création/Reprise de site internet',            '06 74 73 57 49', 'https://www.crea-siteweb.com')
 ) AS v(email, prenom, nom, entreprise, categorie, telephone, site_web)
