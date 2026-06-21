@@ -204,6 +204,20 @@ function Dashboard() {
     },
   });
 
+  const { data: tauxPresence } = useQuery({
+    enabled: !!membreId,
+    queryKey: ["dashboard", "taux-presence", membreId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("v_taux_presence_membre")
+        .select("taux_presence, nb_present, nb_reunions_dues")
+        .eq("membre_id", membreId!)
+        .maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+  });
+
   const stats = [
     { label: "Tête-à-tête (semaine)", value: nbTeteATete, icon: Coffee },
     { label: "Recos (semaine)", value: nbRecos, icon: HandshakeIcon },
@@ -390,12 +404,21 @@ function Dashboard() {
           </Select>
 
           {membreId && statsIndiv && (
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
               <MiniStat label="Recos données" value={statsIndiv.recosDonnees} color={TEAL} />
               <MiniStat label="Recos reçues" value={statsIndiv.recosRecues} color={TEAL} />
               <MiniStat label="Tête-à-tête" value={statsIndiv.teteATete} color={TEAL} />
               <MiniStat label="CA apporté" value={euros(statsIndiv.caApporte)} color={ORANGE} />
               <MiniStat label="CA perçu" value={euros(statsIndiv.caPercu)} color={ORANGE} />
+              <MiniStat
+                label="Taux de présence"
+                value={
+                  tauxPresence?.taux_presence != null
+                    ? `${Math.round(tauxPresence.taux_presence * 100)} %`
+                    : "—"
+                }
+                color={TEAL}
+              />
             </div>
           )}
 
