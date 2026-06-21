@@ -838,7 +838,7 @@ export type Database = {
       }
     }
     Enums: {
-      role_membre: "admin" | "bureau" | "membre" | "comite_membres"
+      role_membre: "admin" | "bureau" | "membre" | "comite_membres" | "comite_fetes"
       statut_demande: "ouverte" | "cloturee"
       statut_inscription: "present" | "absent" | "peut_etre"
       statut_membre: "actif" | "inactif"
@@ -982,7 +982,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      role_membre: ["admin", "bureau", "membre", "comite_membres"],
+      role_membre: ["admin", "bureau", "membre", "comite_membres", "comite_fetes"],
       statut_demande: ["ouverte", "cloturee"],
       statut_inscription: ["present", "absent", "peut_etre"],
       statut_membre: ["actif", "inactif"],

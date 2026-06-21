@@ -39,7 +39,7 @@ type Membre = {
   categorie: string | null;
   telephone: string | null;
   site_web: string | null;
-  role: "admin" | "bureau" | "membre" | "comite_membres";
+  role: "admin" | "bureau" | "membre" | "comite_membres" | "comite_fetes";
   statut: "actif" | "inactif";
 };
 
@@ -49,12 +49,14 @@ type SortBy = "prenom" | "role";
 const ROLE_ORDER: Record<Membre["role"], number> = {
   admin: 0,
   bureau: 1,
-  comite_membres: 2,
-  membre: 3,
+  comite_fetes: 2,
+  comite_membres: 3,
+  membre: 4,
 };
 const ROLE_LABELS: Record<Membre["role"], string> = {
   admin: "Admin",
   bureau: "Bureau",
+  comite_fetes: "Comité des fêtes",
   comite_membres: "Comité membres",
   membre: "Membre",
 };
@@ -431,6 +433,7 @@ function EditDialog({ membre, canAdmin }: { membre: Membre; canAdmin: boolean })
                   <SelectContent>
                     <SelectItem value="membre">Membre</SelectItem>
                     <SelectItem value="comite_membres">Comité membres</SelectItem>
+                    <SelectItem value="comite_fetes">Comité des fêtes</SelectItem>
                     <SelectItem value="bureau">Bureau</SelectItem>
                     <SelectItem value="admin">Admin</SelectItem>
                   </SelectContent>

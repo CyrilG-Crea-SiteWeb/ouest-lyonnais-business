@@ -66,6 +66,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             </p>
             <Badge variant="outline" className="mt-1 border-sidebar-border text-sidebar-foreground">
               {profile.role === "comite_membres" ? "Comité membres"
+                : profile.role === "comite_fetes" ? "Comité des fêtes"
                 : profile.role === "bureau" ? "Bureau"
                 : profile.role === "admin" ? "Admin"
                 : "Membre"}

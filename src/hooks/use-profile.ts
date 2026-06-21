@@ -10,7 +10,7 @@ export type Membre = {
   entreprise: string | null;
   categorie: string | null;
   telephone: string | null;
-  role: "admin" | "bureau" | "membre" | "comite_membres";
+  role: "admin" | "bureau" | "membre" | "comite_membres" | "comite_fetes";
   statut: string;
   date_entree: string;
   mdp_defini: boolean | null;
@@ -45,6 +45,15 @@ export function useProfile() {
 
 export function hasRole(role: Membre["role"] | undefined, min: "membre" | "bureau" | "admin") {
   if (!role) return false;
-  const order = { membre: 0, bureau: 1, admin: 2 } as const;
+  const order: Record<string, number> = { membre: 0, bureau: 1, admin: 2 };
+  if (!(role in order)) return false;
   return order[role] >= order[min];
+}
+
+/**
+ * Droit de gérer (créer / modifier / supprimer) les événements et les sondages.
+ * Accordé au comité des fêtes, au bureau et aux admins.
+ */
+export function peutGererEvenementsSondages(role: Membre["role"] | undefined) {
+  return role === "admin" || role === "bureau" || role === "comite_fetes";
 }
