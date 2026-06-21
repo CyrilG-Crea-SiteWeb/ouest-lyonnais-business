@@ -160,7 +160,7 @@ function Dashboard() {
         .from("membres")
         .select("id, nom, prenom, photo_url, entreprise")
         .eq("statut", "actif")
-        .order("nom", { ascending: true });
+        .order("prenom", { ascending: true });
       if (error) throw error;
       return data ?? [];
     },
@@ -404,12 +404,10 @@ function Dashboard() {
           </Select>
 
           {membreId && statsIndiv && (
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+            <div className="grid grid-cols-2 gap-3">
               <MiniStat label="Recos données" value={statsIndiv.recosDonnees} color={TEAL} />
               <MiniStat label="Recos reçues" value={statsIndiv.recosRecues} color={TEAL} />
               <MiniStat label="Tête-à-tête" value={statsIndiv.teteATete} color={TEAL} />
-              <MiniStat label="CA apporté" value={euros(statsIndiv.caApporte)} color={ORANGE} />
-              <MiniStat label="CA perçu" value={euros(statsIndiv.caPercu)} color={ORANGE} />
               <MiniStat
                 label="Taux de présence"
                 value={
@@ -419,6 +417,8 @@ function Dashboard() {
                 }
                 color={TEAL}
               />
+              <MiniStat label="CA perçu" value={euros(statsIndiv.caPercu)} color={ORANGE} />
+              <MiniStat label="CA apporté" value={euros(statsIndiv.caApporte)} color={ORANGE} />
             </div>
           )}
 
