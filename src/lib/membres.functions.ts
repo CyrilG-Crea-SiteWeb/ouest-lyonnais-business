@@ -85,7 +85,7 @@ export const updateMembre = createServerFn({ method: "POST" })
 
 const roleStatutSchema = z.object({
   id: z.string().uuid(),
-  role: z.enum(["membre", "comite_membres", "bureau", "admin"]).optional(),
+  role: z.enum(["membre", "comite_membres", "comite_fetes", "bureau", "admin"]).optional(),
   statut: z.enum(["actif", "inactif"]).optional(),
 });
 
@@ -96,7 +96,10 @@ export const updateMembreRoleStatut = createServerFn({ method: "POST" })
     const callerRole = await getCallerRole(context);
     assertAdmin(callerRole);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const patch: { role?: "membre" | "bureau" | "admin"; statut?: "actif" | "inactif" } = {};
+    const patch: {
+      role?: "membre" | "comite_membres" | "comite_fetes" | "bureau" | "admin";
+      statut?: "actif" | "inactif";
+    } = {};
     if (data.role) patch.role = data.role;
     if (data.statut) patch.statut = data.statut;
     if (!patch.role && !patch.statut) return { ok: true };

@@ -1,9 +1,9 @@
 import { useMemo, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Plus, Trash2, MapPin, Calendar, Users } from "lucide-react";
+import { Plus, Pencil, Trash2, MapPin, Calendar, Users } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { useProfile, hasRole } from "@/hooks/use-profile";
+import { useProfile, peutGererEvenementsSondages } from "@/hooks/use-profile";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -56,9 +56,16 @@ type Inscription = {
 };
 type MembreLite = { id: string; prenom: string; nom: string };
 
+// Convertit une date ISO en valeur acceptée par <input type="datetime-local">.
+function toDatetimeLocal(iso: string) {
+  const d = new Date(iso);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
 function EvenementsPage() {
   const { data: profile } = useProfile();
-  const isBureau = hasRole(profile?.role, "bureau");
+  const canManage = peutGererEvenementsSondages(profile?.role);
 
   const evQ = useQuery({
     queryKey: ["evenements"],
@@ -112,7 +119,7 @@ function EvenementsPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <h1 className="text-2xl md:text-3xl font-bold">Événements</h1>
-        {isBureau && <CreateEvenementDialog />}
+        {canManage && <CreateEvenementDialog />}
       </div>
 
       <Section
@@ -121,7 +128,7 @@ function EvenementsPage() {
         inscriptions={insQ.data ?? []}
         membres={membresMap}
         myId={profile?.id}
-        isBureau={isBureau}
+        canManage={canManage}
         past={false}
       />
 
@@ -131,7 +138,7 @@ function EvenementsPage() {
         inscriptions={insQ.data ?? []}
         membres={membresMap}
         myId={profile?.id}
-        isBureau={isBureau}
+        canManage={canManage}
         past
       />
     </div>
@@ -144,7 +151,7 @@ function Section({
   inscriptions,
   membres,
   myId,
-  isBureau,
+  canManage,
   past,
 }: {
   title: string;
@@ -152,7 +159,7 @@ function Section({
   inscriptions: Inscription[];
   membres: Map<string, MembreLite>;
   myId: string | undefined;
-  isBureau: boolean;
+  canManage: boolean;
   past: boolean;
 }) {
   return (
@@ -172,7 +179,7 @@ function Section({
             inscriptions={inscriptions.filter((i) => i.evenement_id === e.id)}
             membres={membres}
             myId={myId}
-            isBureau={isBureau}
+            canManage={canManage}
             past={past}
           />
         ))
@@ -192,14 +199,14 @@ function EvenementCard({
   inscriptions,
   membres,
   myId,
-  isBureau,
+  canManage,
   past,
 }: {
   ev: Evenement;
   inscriptions: Inscription[];
   membres: Map<string, MembreLite>;
   myId: string | undefined;
-  isBureau: boolean;
+  canManage: boolean;
   past: boolean;
 }) {
   const qc = useQueryClient();
@@ -283,26 +290,29 @@ function EvenementCard({
               </p>
             </div>
           </div>
-          {isBureau && (
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button size="icon" variant="ghost">
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Supprimer cet événement ?</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    Cette action est irréversible et supprimera également toutes les inscriptions.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Annuler</AlertDialogCancel>
-                  <AlertDialogAction onClick={() => remove.mutate()}>Supprimer</AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
+          {canManage && (
+            <div className="flex gap-1 shrink-0">
+              <EditEvenementDialog ev={ev} />
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button size="icon" variant="ghost">
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Supprimer cet événement ?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Cette action est irréversible et supprimera également toutes les inscriptions.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Annuler</AlertDialogCancel>
+                    <AlertDialogAction onClick={() => remove.mutate()}>Supprimer</AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            </div>
           )}
         </div>
       </CardHeader>
@@ -356,7 +366,7 @@ function EvenementCard({
           )}
         </div>
 
-        {isBureau && (peutEtres.length > 0 || absents.length > 0) && (
+        {canManage && (peutEtres.length > 0 || absents.length > 0) && (
           <div className="space-y-2 pt-2 border-t">
             {peutEtres.length > 0 && (
               <div className="space-y-1.5">
@@ -499,6 +509,115 @@ function CreateEvenementDialog() {
             onClick={() => create.mutate()}
           >
             Créer
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function EditEvenementDialog({ ev }: { ev: Evenement }) {
+  const qc = useQueryClient();
+  const [open, setOpen] = useState(false);
+  const [titre, setTitre] = useState(ev.titre);
+  const [dateEvent, setDateEvent] = useState(toDatetimeLocal(ev.date_event));
+  const [lieu, setLieu] = useState(ev.lieu ?? "");
+  const [description, setDescription] = useState(ev.description ?? "");
+  const [capacite, setCapacite] = useState(ev.capacite != null ? String(ev.capacite) : "");
+
+  // Réinitialise le formulaire à chaque ouverture (au cas où l'événement a changé).
+  function resetForm() {
+    setTitre(ev.titre);
+    setDateEvent(toDatetimeLocal(ev.date_event));
+    setLieu(ev.lieu ?? "");
+    setDescription(ev.description ?? "");
+    setCapacite(ev.capacite != null ? String(ev.capacite) : "");
+  }
+
+  const update = useMutation({
+    mutationFn: async () => {
+      if (!titre.trim() || !dateEvent) throw new Error("Titre et date requis");
+      const { error } = await supabase
+        .from("evenements")
+        .update({
+          titre: titre.trim(),
+          date_event: new Date(dateEvent).toISOString(),
+          lieu: lieu.trim() || null,
+          description: description.trim() || null,
+          capacite: capacite ? Number(capacite) : null,
+        })
+        .eq("id", ev.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["evenements"] });
+      toast.success("Événement modifié");
+      setOpen(false);
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  return (
+    <Dialog
+      open={open}
+      onOpenChange={(v) => {
+        if (v) resetForm();
+        setOpen(v);
+      }}
+    >
+      <DialogTrigger asChild>
+        <Button size="icon" variant="ghost" aria-label="Modifier l'événement">
+          <Pencil className="h-4 w-4" />
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>Modifier l'événement</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-3">
+          <div className="space-y-1.5">
+            <Label htmlFor={`edit-titre-${ev.id}`}>Titre</Label>
+            <Input id={`edit-titre-${ev.id}`} value={titre} onChange={(e) => setTitre(e.target.value)} />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor={`edit-date-${ev.id}`}>Date et heure</Label>
+            <Input
+              id={`edit-date-${ev.id}`}
+              type="datetime-local"
+              value={dateEvent}
+              onChange={(e) => setDateEvent(e.target.value)}
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor={`edit-lieu-${ev.id}`}>Lieu</Label>
+            <Input id={`edit-lieu-${ev.id}`} value={lieu} onChange={(e) => setLieu(e.target.value)} />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor={`edit-desc-${ev.id}`}>Description</Label>
+            <Textarea
+              id={`edit-desc-${ev.id}`}
+              rows={3}
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor={`edit-cap-${ev.id}`}>Capacité (optionnelle)</Label>
+            <Input
+              id={`edit-cap-${ev.id}`}
+              type="number"
+              min={1}
+              value={capacite}
+              onChange={(e) => setCapacite(e.target.value)}
+            />
+          </div>
+        </div>
+        <DialogFooter>
+          <Button
+            disabled={update.isPending || !titre.trim() || !dateEvent}
+            onClick={() => update.mutate()}
+          >
+            Enregistrer
           </Button>
         </DialogFooter>
       </DialogContent>
