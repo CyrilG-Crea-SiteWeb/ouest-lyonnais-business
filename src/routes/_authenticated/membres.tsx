@@ -168,7 +168,8 @@ function MembresPage() {
 }
 
 function MembreCard({ membre, canEdit, canAdmin }: { membre: Membre; canEdit: boolean; canAdmin: boolean }) {
-  const [open, setOpen] = useState(false);
+  const [detailOpen, setDetailOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
   const initiales = `${membre.prenom?.[0] ?? ""}${membre.nom?.[0] ?? ""}`.toUpperCase();
   const inactif = membre.statut === "inactif";
 
@@ -176,13 +177,13 @@ function MembreCard({ membre, canEdit, canAdmin }: { membre: Membre; canEdit: bo
     <>
       <Card
         className={`rounded-2xl shadow-sm hover:shadow-md transition-shadow cursor-pointer ${inactif ? "opacity-60" : ""}`}
-        onClick={() => setOpen(true)}
+        onClick={() => setDetailOpen(true)}
         role="button"
         tabIndex={0}
         onKeyDown={(e) => {
           if (e.key === "Enter" || e.key === " ") {
             e.preventDefault();
-            setOpen(true);
+            setDetailOpen(true);
           }
         }}
       >
@@ -206,30 +207,41 @@ function MembreCard({ membre, canEdit, canAdmin }: { membre: Membre; canEdit: bo
 
       <MembreDetailDialog
         membre={membre}
-        open={open}
-        onOpenChange={setOpen}
+        open={detailOpen}
+        onOpenChange={setDetailOpen}
         canEdit={canEdit}
         canAdmin={canAdmin}
+        onEdit={canEdit ? () => { setDetailOpen(false); setEditOpen(true); } : undefined}
       />
+
+      {canEdit && (
+        <EditDialog
+          membre={membre}
+          canAdmin={canAdmin}
+          open={editOpen}
+          onOpenChange={setEditOpen}
+        />
+      )}
     </>
   );
 }
 
 function MembreDetailDialog({
-  membre, open, onOpenChange, canEdit, canAdmin,
+  membre, open, onOpenChange, canEdit, canAdmin, onEdit,
 }: {
   membre: Membre;
   open: boolean;
   onOpenChange: (v: boolean) => void;
   canEdit: boolean;
   canAdmin: boolean;
+  onEdit?: () => void;
 }) {
   const initiales = `${membre.prenom?.[0] ?? ""}${membre.nom?.[0] ?? ""}`.toUpperCase();
   const inactif = membre.statut === "inactif";
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="flex max-h-[90vh] flex-col gap-0 p-0">
+      <DialogContent className="flex max-h-[90vh] flex-col gap-0 p-0" style={{ display: "flex" }}>
         <DialogHeader className="shrink-0 px-6 pt-6">
           <div className="flex flex-col items-center gap-3 pt-2">
             <Avatar className="h-28 w-28 rounded-2xl">
@@ -302,7 +314,11 @@ function MembreDetailDialog({
 
         {(canEdit || canAdmin) && (
           <DialogFooter className="shrink-0 flex-row flex-wrap gap-2 border-t px-6 py-4 sm:justify-end">
-            {canEdit && <EditDialog membre={membre} canAdmin={canAdmin} />}
+            {canEdit && onEdit && (
+              <Button size="sm" variant="outline" onClick={onEdit}>
+                <Pencil className="h-4 w-4" /> Modifier
+              </Button>
+            )}
             {canAdmin && <DeleteButton membre={membre} onDeleted={() => onOpenChange(false)} />}
           </DialogFooter>
         )}
@@ -373,9 +389,8 @@ function InviteDialog() {
   );
 }
 
-function EditDialog({ membre, canAdmin }: { membre: Membre; canAdmin: boolean }) {
+function EditDialog({ membre, canAdmin, open, onOpenChange }: { membre: Membre; canAdmin: boolean; open: boolean; onOpenChange: (v: boolean) => void }) {
   const qc = useQueryClient();
-  const [open, setOpen] = useState(false);
   const [form, setForm] = useState({
     prenom: membre.prenom, nom: membre.nom,
     entreprise: membre.entreprise ?? "", categorie: membre.categorie ?? "",
@@ -431,19 +446,14 @@ function EditDialog({ membre, canAdmin }: { membre: Membre; canAdmin: boolean })
     onSuccess: () => {
       toast.success("Membre mis à jour");
       qc.invalidateQueries({ queryKey: ["membres", "list"] });
-      setOpen(false);
+      onOpenChange(false);
     },
     onError: (e) => toast.error(e instanceof Error ? e.message : "Erreur"),
   });
 
   return (
-    <Dialog open={open} onOpenChange={setOpen} modal={false}>
-      <DialogTrigger asChild>
-        <Button size="sm" variant="outline">
-          <Pencil className="h-4 w-4" /> Modifier
-        </Button>
-      </DialogTrigger>
-      <DialogContent className="flex max-h-[90vh] flex-col gap-0 p-0">
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="flex max-h-[90vh] flex-col gap-0 p-0" style={{ display: "flex" }}>
         <DialogHeader className="shrink-0 px-6 pt-6 pb-2">
           <DialogTitle>Modifier {membre.prenom} {membre.nom}</DialogTitle>
           <DialogDescription>{membre.email}</DialogDescription>
