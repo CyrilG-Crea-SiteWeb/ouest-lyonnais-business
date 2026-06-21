@@ -3,6 +3,7 @@ import { createFileRoute, redirect } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   CheckSquare,
+  ChevronDown,
   ChevronLeft,
   ChevronRight,
   Download,
@@ -19,6 +20,7 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { exportPresencesXlsx } from "@/lib/exports";
 import {
   Table,
@@ -140,7 +142,7 @@ function PresencesPage() {
         .from("membres")
         .select("id, prenom, nom")
         .eq("statut", "actif")
-        .order("nom", { ascending: true });
+        .order("prenom", { ascending: true });
       if (error) throw error;
       return (data ?? []) as MembreLite[];
     },
@@ -180,6 +182,21 @@ function PresencesPage() {
   ).length;
   const nbExcuse = membres.filter((mb) => presencesByMembre.get(mb.id)?.statut === "excuse").length;
   const nbAbsent = membres.length - nbPresent - nbExcuse;
+
+  // Aller à (et créer au besoin) la semaine contenant une date donnée. Permet
+  // de pointer une réunion passée dont la ligne semaines n'existe pas encore.
+  const goToDate = useMutation({
+    mutationFn: async (dateStr: string): Promise<number> => {
+      const { data, error } = await supabase.rpc("get_or_create_semaine", { p_date: dateStr });
+      if (error) throw error;
+      return data as number;
+    },
+    onSuccess: async (id) => {
+      await qc.invalidateQueries({ queryKey: ["presences", "semaines"] });
+      setSelectedId(id);
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
 
   // Bascule "semaine sans réunion" via RPC réservée au bureau.
   const toggleSansReunion = useMutation({
@@ -266,6 +283,25 @@ function PresencesPage() {
             </Button>
           </div>
 
+          <div className="flex flex-col gap-1.5 rounded-lg border p-3 sm:flex-row sm:items-end">
+            <div className="space-y-1.5 sm:flex-1">
+              <Label htmlFor="aller-semaine" className="text-xs">
+                Aller à une réunion (par date)
+              </Label>
+              <Input
+                id="aller-semaine"
+                type="date"
+                disabled={goToDate.isPending}
+                onChange={(e) => {
+                  if (e.target.value) goToDate.mutate(e.target.value);
+                }}
+              />
+            </div>
+            <p className="text-xs text-muted-foreground sm:max-w-[12rem]">
+              Sélectionnez n'importe quel jour de la semaine voulue pour la pointer.
+            </p>
+          </div>
+
           <div className="flex items-center justify-between gap-3 rounded-lg border p-3">
             <div className="flex items-center gap-2 min-w-0">
               <Plane className="h-4 w-4 shrink-0 text-accent" />
@@ -332,7 +368,7 @@ function PresencesPage() {
 
       {/* Taux de présence par membre */}
       <TauxPresence />
-      
+
       {/* Export Excel sur une plage de dates */}
       <ExportPresences />
     </div>
@@ -504,6 +540,7 @@ function ExportPresences() {
 }
 
 function TauxPresence() {
+  const [open, setOpen] = useState(false);
   const tauxQ = useQuery({
     queryKey: ["presences", "taux"],
     queryFn: async (): Promise<TauxRow[]> => {
@@ -520,67 +557,81 @@ function TauxPresence() {
 
   return (
     <Card>
-      <CardHeader className="pb-3">
-        <CardTitle className="text-lg">Taux de présence par membre</CardTitle>
-      </CardHeader>
-      <CardContent>
-        {tauxQ.isLoading ? (
-          <Skeleton className="h-32 w-full" />
-        ) : rows.length === 0 ? (
-          <p className="text-sm text-muted-foreground">
-            Aucune donnée. Vérifiez que la date d'entrée des membres est renseignée.
-          </p>
-        ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Membre</TableHead>
-                <TableHead className="text-right">Présence</TableHead>
-                <TableHead className="text-right">Taux</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {rows.map((r) => {
-                const pct = r.taux_presence != null ? Math.round(r.taux_presence * 100) : null;
-                return (
-                  <TableRow key={r.membre_id}>
-                    <TableCell className="font-medium">
-                      {r.prenom} {r.nom}
-                    </TableCell>
-                    <TableCell className="text-right tabular-nums">
-                      {r.nb_present}/{r.nb_reunions_dues}
-                      {r.nb_excuse > 0 && (
-                        <span className="block text-xs text-muted-foreground">
-                          dont {r.nb_excuse} excusé{r.nb_excuse > 1 ? "s" : ""}
-                        </span>
-                      )}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      {pct == null ? (
-                        <span className="text-muted-foreground">—</span>
-                      ) : (
-                        <Badge
-                          variant="secondary"
-                          className={cn(
-                            "tabular-nums",
-                            pct >= 80
-                              ? "bg-primary/10 text-primary"
-                              : pct >= 50
-                                ? "bg-accent/10 text-accent"
-                                : "bg-destructive/10 text-destructive",
-                          )}
-                        >
-                          {pct} %
-                        </Badge>
-                      )}
-                    </TableCell>
+      <Collapsible open={open} onOpenChange={setOpen}>
+        <CollapsibleTrigger asChild>
+          <CardHeader className="cursor-pointer pb-3">
+            <div className="flex items-center justify-between gap-2">
+              <CardTitle className="text-lg">Taux de présence par membre</CardTitle>
+              <ChevronDown
+                className={cn(
+                  "h-5 w-5 shrink-0 text-muted-foreground transition-transform",
+                  open && "rotate-180",
+                )}
+              />
+            </div>
+          </CardHeader>
+        </CollapsibleTrigger>
+        <CollapsibleContent>
+          <CardContent>
+            {tauxQ.isLoading ? (
+              <Skeleton className="h-32 w-full" />
+            ) : rows.length === 0 ? (
+              <p className="text-sm text-muted-foreground">
+                Aucune donnée. Vérifiez que la date d'entrée des membres est renseignée.
+              </p>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Membre</TableHead>
+                    <TableHead className="text-right">Présence</TableHead>
+                    <TableHead className="w-24 text-right">Taux</TableHead>
                   </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
-        )}
-      </CardContent>
+                </TableHeader>
+                <TableBody>
+                  {rows.map((r) => {
+                    const pct = r.taux_presence != null ? Math.round(r.taux_presence * 100) : null;
+                    return (
+                      <TableRow key={r.membre_id}>
+                        <TableCell className="font-medium">
+                          {r.prenom} {r.nom}
+                        </TableCell>
+                        <TableCell className="text-right tabular-nums">
+                          {r.nb_present}/{r.nb_reunions_dues}
+                          {r.nb_excuse > 0 && (
+                            <span className="block text-xs text-muted-foreground">
+                              dont {r.nb_excuse} excusé{r.nb_excuse > 1 ? "s" : ""}
+                            </span>
+                          )}
+                        </TableCell>
+                        <TableCell className="w-24 text-right">
+                          {pct == null ? (
+                            <span className="text-muted-foreground">—</span>
+                          ) : (
+                            <Badge
+                              variant="secondary"
+                              className={cn(
+                                "whitespace-nowrap tabular-nums",
+                                pct >= 80
+                                  ? "bg-primary/10 text-primary"
+                                  : pct >= 50
+                                    ? "bg-accent/10 text-accent"
+                                    : "bg-destructive/10 text-destructive",
+                              )}
+                            >
+                              {pct} %
+                            </Badge>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            )}
+          </CardContent>
+        </CollapsibleContent>
+      </Collapsible>
     </Card>
   );
 }
