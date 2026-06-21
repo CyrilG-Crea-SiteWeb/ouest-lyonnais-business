@@ -227,8 +227,8 @@ function MembreDetailDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
+      <DialogContent className="flex max-h-[90vh] flex-col gap-0 p-0">
+        <DialogHeader className="shrink-0 px-6 pt-6">
           <div className="flex flex-col items-center gap-3 pt-2">
             <Avatar className="h-28 w-28 rounded-2xl">
               <AvatarImage src={membre.photo_url ?? undefined} alt={`${membre.prenom} ${membre.nom}`} className="object-cover" />
@@ -249,7 +249,8 @@ function MembreDetailDialog({
           <DialogDescription className="sr-only">Détail du membre</DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-2 mt-2">
+        <div className="flex-1 overflow-y-auto px-6 py-4">
+          <div className="space-y-2">
           {membre.entreprise && (
             <InfoRow icon={<Building2 className="h-4 w-4" />} label="Entreprise" value={membre.entreprise} />
           )}
@@ -294,10 +295,11 @@ function MembreDetailDialog({
               }
             />
           )}
+          </div>
         </div>
 
         {(canEdit || canAdmin) && (
-          <DialogFooter className="flex-row flex-wrap gap-2 sm:justify-end pt-4 border-t mt-4">
+          <DialogFooter className="shrink-0 flex-row flex-wrap gap-2 border-t px-6 py-4 sm:justify-end">
             {canEdit && <EditDialog membre={membre} canAdmin={canAdmin} />}
             {canAdmin && <DeleteButton membre={membre} onDeleted={() => onOpenChange(false)} />}
           </DialogFooter>
@@ -439,12 +441,12 @@ function EditDialog({ membre, canAdmin }: { membre: Membre; canAdmin: boolean })
           <Pencil className="h-4 w-4" /> Modifier
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
+      <DialogContent className="flex max-h-[90vh] flex-col gap-0 p-0">
+        <DialogHeader className="shrink-0 px-6 pt-6 pb-2">
           <DialogTitle>Modifier {membre.prenom} {membre.nom}</DialogTitle>
           <DialogDescription>{membre.email}</DialogDescription>
         </DialogHeader>
-        <div className="space-y-3">
+        <div className="flex-1 space-y-3 overflow-y-auto px-6 py-2">
           <div className="grid grid-cols-2 gap-3">
             <Field label="Prénom" value={form.prenom} onChange={(v) => setForm({ ...form, prenom: v })} required />
             <Field label="Nom" value={form.nom} onChange={(v) => setForm({ ...form, nom: v })} required />
@@ -491,17 +493,17 @@ function EditDialog({ membre, canAdmin }: { membre: Membre; canAdmin: boolean })
               </div>
             </div>
           )}
-
-          <DialogFooter>
-            <Button
-              type="button"
-              onClick={() => mutation.mutate()}
-              disabled={mutation.isPending}
-            >
-              {mutation.isPending ? "Enregistrement…" : "Enregistrer"}
-            </Button>
-          </DialogFooter>
         </div>
+
+        <DialogFooter className="shrink-0 border-t px-6 py-4">
+          <Button
+            type="button"
+            onClick={() => mutation.mutate()}
+            disabled={mutation.isPending}
+          >
+            {mutation.isPending ? "Enregistrement…" : "Enregistrer"}
+          </Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );
