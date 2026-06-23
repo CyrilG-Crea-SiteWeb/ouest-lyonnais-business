@@ -9,7 +9,6 @@ import {
   Download,
   Plane,
   UserCheck,
-  UserMinus,
   UserX,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -52,7 +51,7 @@ export const Route = createFileRoute("/_authenticated/presences/")({
   component: PresencesPage,
 });
 
-type Statut = "present" | "excuse" | "absent";
+type Statut = "present" | "absent";
 type Semaine = {
   id: number;
   date_debut: string;
@@ -68,7 +67,6 @@ type TauxRow = {
   nom: string;
   nb_reunions_dues: number;
   nb_present: number;
-  nb_excuse: number;
   nb_absent: number;
   taux_presence: number | null;
 };
@@ -177,13 +175,11 @@ function PresencesPage() {
     return m;
   }, [presencesQ.data]);
 
-  // Synthèse : présent / excusé / absent (absent = pas de ligne 'present'/'excuse').
   const membres = membresQ.data ?? [];
   const nbPresent = membres.filter(
     (mb) => presencesByMembre.get(mb.id)?.statut === "present",
   ).length;
-  const nbExcuse = membres.filter((mb) => presencesByMembre.get(mb.id)?.statut === "excuse").length;
-  const nbAbsent = membres.length - nbPresent - nbExcuse;
+  const nbAbsent = membres.length - nbPresent;
 
   // Bascule "semaine sans réunion" via RPC réservée au bureau.
   const toggleSansReunion = useMutation({
@@ -297,9 +293,8 @@ function PresencesPage() {
       ) : (
         <>
           {/* Synthèse */}
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-2 gap-3">
             <SummaryTile label="Présents" value={nbPresent} tone="present" />
-            <SummaryTile label="Excusés" value={nbExcuse} tone="excuse" />
             <SummaryTile label="Absents" value={nbAbsent} tone="absent" />
           </div>
 
@@ -365,7 +360,7 @@ function MembreCard({
         </p>
       </div>
       <div className="flex flex-col gap-1.5">
-        {(["present", "excuse", "absent"] as Statut[]).map((statut) => (
+        {(["present", "absent"] as Statut[]).map((statut) => (
           <StatutButton
             key={statut}
             statut={statut}
@@ -382,7 +377,6 @@ function MembreCard({
 function SummaryTile({ label, value, tone }: { label: string; value: number; tone: Statut }) {
   const tones: Record<Statut, string> = {
     present: "bg-primary/10 text-primary",
-    excuse: "bg-accent/10 text-accent",
     absent: "bg-muted text-muted-foreground",
   };
   return (
@@ -399,11 +393,6 @@ const STATUT_META: Record<Statut, { label: string; icon: typeof UserCheck; activ
       label: "Présent",
       icon: UserCheck,
       activeClass: "bg-primary text-primary-foreground hover:bg-primary/90",
-    },
-    excuse: {
-      label: "Excusé",
-      icon: UserMinus,
-      activeClass: "bg-accent text-accent-foreground hover:bg-accent/90",
     },
     absent: {
       label: "Absent",
@@ -566,11 +555,6 @@ function TauxPresence() {
                         </TableCell>
                         <TableCell className="text-right tabular-nums">
                           {r.nb_present}/{r.nb_reunions_dues}
-                          {r.nb_excuse > 0 && (
-                            <span className="block text-xs text-muted-foreground">
-                              dont {r.nb_excuse} excusé{r.nb_excuse > 1 ? "s" : ""}
-                            </span>
-                          )}
                         </TableCell>
                         <TableCell className="w-24 text-right">
                           {pct == null ? (
