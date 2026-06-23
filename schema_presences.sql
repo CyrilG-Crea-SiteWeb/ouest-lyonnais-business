@@ -19,7 +19,7 @@
 DO $$
 BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'statut_presence') THEN
-    CREATE TYPE statut_presence AS ENUM ('present', 'excuse', 'absent');
+    CREATE TYPE statut_presence AS ENUM ('present', 'absent');
   END IF;
 END$$;
 
@@ -57,7 +57,7 @@ GRANT EXECUTE ON FUNCTION public.set_semaine_sans_reunion(BIGINT, BOOLEAN) TO au
 -- -----------------------------------------------------------------------------
 -- (c) Table presences
 --     Convention RETENUE : "absence = pas de ligne". Le bureau ne crée des
---     lignes que pour 'present' et 'excuse' (et 'absent' s'il veut le marquer
+--     lignes que pour 'present' (et 'absent' s'il veut le marquer
 --     explicitement, mais ce n'est pas obligatoire). Le calcul du taux ne
 --     dépend PAS de lignes 'absent' explicites (voir la vue plus bas).
 -- -----------------------------------------------------------------------------
@@ -130,8 +130,7 @@ CREATE POLICY presences_delete_bureau ON public.presences
 --       semaine éligible = sans_reunion = false
 --                          ET date_debut (le jeudi) >= membres.date_entree
 --                          ET date_debut <= CURRENT_DATE
---     UN SEUL taux : présence STRICTE. L'excusé n'est PAS valorisé dans le taux
---     (juste affiché à titre indicatif via nb_excuse).
+--     Taux STRICT : seul 'present' compte.
 --
 --     NOTE : cette vue dépend d'une date_entree correctement renseignée pour
 --     chaque membre. Un membre sans date_entree fiable verra un taux faussé.
@@ -165,8 +164,6 @@ SELECT
   ma.nom,
   COUNT(sd.semaine_id)                                     AS nb_reunions_dues,
   COUNT(*) FILTER (WHERE p.statut = 'present')             AS nb_present,
-  COUNT(*) FILTER (WHERE p.statut = 'excuse')              AS nb_excuse,
-  -- L'excusé compte comme absent dans le taux strict.
   COUNT(sd.semaine_id) - COUNT(*) FILTER (WHERE p.statut = 'present') AS nb_absent,
   COUNT(*) FILTER (WHERE p.statut = 'present')::numeric
     / NULLIF(COUNT(sd.semaine_id), 0)                      AS taux_presence

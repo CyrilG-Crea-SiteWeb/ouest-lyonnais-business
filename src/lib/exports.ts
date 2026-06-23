@@ -71,7 +71,6 @@ export function exportRecommandationsXlsx(opts: {
 // NULL (pas de ligne) ou 'absent' => "A".
 const STATUT_LETTRE: Record<string, string> = {
   present: "P",
-  excuse: "E",
   absent: "A",
 };
 
@@ -99,7 +98,6 @@ export async function exportPresencesXlsx(debut: string, fin: string) {
     Nom: r.nom,
     "Réunions dues": r.nb_reunions_dues,
     Présents: r.nb_present,
-    Excusés: r.nb_excuse,
     Absents: r.nb_absent,
     "Taux de présence":
       r.taux_presence != null ? `${Math.round(Number(r.taux_presence) * 100)} %` : "—",
@@ -109,7 +107,6 @@ export async function exportPresencesXlsx(debut: string, fin: string) {
     { wch: 16 },
     { wch: 16 },
     { wch: 14 },
-    { wch: 10 },
     { wch: 10 },
     { wch: 10 },
     { wch: 16 },
