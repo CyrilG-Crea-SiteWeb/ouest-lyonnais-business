@@ -21,7 +21,7 @@
 --       sans_reunion = false
 --       ET date_debut BETWEEN p_debut AND p_fin
 --       ET date_debut >= membre.date_entree
---     Taux STRICT : seul 'present' compte ; l'excusé est compté comme absent.
+--     Taux STRICT : seul 'present' compte.
 -- -----------------------------------------------------------------------------
 CREATE OR REPLACE FUNCTION public.stats_presence_periode(
   p_debut DATE,
@@ -33,7 +33,6 @@ RETURNS TABLE (
   nom              TEXT,
   nb_reunions_dues BIGINT,
   nb_present       BIGINT,
-  nb_excuse        BIGINT,
   nb_absent        BIGINT,
   taux_presence    NUMERIC
 )
@@ -63,7 +62,6 @@ AS $$
     ma.nom::text,
     COUNT(sd.semaine_id)                                     AS nb_reunions_dues,
     COUNT(*) FILTER (WHERE p.statut = 'present')             AS nb_present,
-    COUNT(*) FILTER (WHERE p.statut = 'excuse')              AS nb_excuse,
     COUNT(sd.semaine_id) - COUNT(*) FILTER (WHERE p.statut = 'present') AS nb_absent,
     COUNT(*) FILTER (WHERE p.statut = 'present')::numeric
       / NULLIF(COUNT(sd.semaine_id), 0)                      AS taux_presence
@@ -90,7 +88,7 @@ $$;
 --       semaine_id BIGINT
 --       date_debut DATE            -- le jeudi de la semaine (= entête de colonne)
 --       libelle    TEXT            -- libellé de la semaine
---       statut     statut_presence -- 'present' | 'excuse' | 'absent' | NULL
+--       statut     statut_presence -- 'present' | 'absent' | NULL
 --                                  -- NULL = aucune ligne (à afficher "A" = absent)
 --     NB : ce détail ne filtre PAS sur date_entree (grille visuelle complète sur
 --     la période) ; le calcul officiel du taux reste celui de

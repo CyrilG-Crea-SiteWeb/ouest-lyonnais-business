@@ -756,7 +756,6 @@ export type Database = {
         Row: {
           membre_id: string | null
           nb_absent: number | null
-          nb_excuse: number | null
           nb_present: number | null
           nb_reunions_dues: number | null
           nom: string | null
@@ -827,7 +826,6 @@ export type Database = {
           nom: string
           nb_reunions_dues: number
           nb_present: number
-          nb_excuse: number
           nb_absent: number
           taux_presence: number | null
         }[]
@@ -842,7 +840,7 @@ export type Database = {
       statut_demande: "ouverte" | "cloturee"
       statut_inscription: "present" | "absent" | "peut_etre"
       statut_membre: "actif" | "inactif"
-      statut_presence: "present" | "excuse" | "absent"
+      statut_presence: "present" | "absent"
       statut_sondage: "ouvert" | "cloture"
       type_contenu:
         | "recommandation"
@@ -986,7 +984,7 @@ export const Constants = {
       statut_demande: ["ouverte", "cloturee"],
       statut_inscription: ["present", "absent", "peut_etre"],
       statut_membre: ["actif", "inactif"],
-      statut_presence: ["present", "excuse", "absent"],
+      statut_presence: ["present", "absent"],
       statut_sondage: ["ouvert", "cloture"],
       type_contenu: [
         "recommandation",
