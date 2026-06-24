@@ -29,19 +29,40 @@ self.addEventListener("notificationclick", (event) => {
   const cible = new URL(url, self.location.origin).href;
 
   event.waitUntil(
-    self.clients
-      .matchAll({ type: "window", includeUncontrolled: true })
-      .then((clientsList) => {
-        for (const client of clientsList) {
-          if ("focus" in client) {
-            return client.focus().then((c) => {
-              const win = c || client;
-              if ("navigate" in win) return win.navigate(cible);
-              return win;
-            });
-          }
+    (async () => {
+      const clientsList = await self.clients.matchAll({
+        type: "window",
+        includeUncontrolled: true,
+      });
+
+      // 1) Un onglet est déjà ouvert EXACTEMENT sur la cible : on le focus.
+      for (const client of clientsList) {
+        if (client.url === cible && "focus" in client) {
+          return client.focus();
         }
-        if (self.clients.openWindow) return self.clients.openWindow(cible);
-      }),
+      }
+
+      // 2) Un onglet de l'app est ouvert ailleurs : on le focus puis on
+      //    tente d'y naviguer. navigate() peut rejeter (client non contrôlé
+      //    par le SW, fréquent sur mobile) : dans ce cas on retombe sur
+      //    openWindow pour garantir d'arriver sur la bonne page.
+      for (const client of clientsList) {
+        if ("focus" in client) {
+          await client.focus();
+          if ("navigate" in client) {
+            try {
+              const navigated = await client.navigate(cible);
+              if (navigated) return;
+            } catch (_e) {
+              // navigate impossible : on ouvre une fenêtre ci-dessous.
+            }
+          }
+          break;
+        }
+      }
+
+      // 3) Aucun onglet exploitable (ou navigate impossible) : on ouvre.
+      if (self.clients.openWindow) return self.clients.openWindow(cible);
+    })(),
   );
 });

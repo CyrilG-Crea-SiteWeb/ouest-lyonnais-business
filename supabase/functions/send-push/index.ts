@@ -18,6 +18,7 @@ webpush.setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC, VAPID_PRIVATE);
 function lienVers(typeContenu: string, contenuId: number): string {
   switch (typeContenu) {
     case "rappel":
+    case "recommandation":
       return `/recommandations`;
     case "demande":
       return `/demandes/${contenuId}`;
