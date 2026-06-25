@@ -153,7 +153,7 @@ VALUES
    '{"prenom":"Charleyne","nom":"David"}'::jsonb, false, false),
 
   (gen_random_uuid(), '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated',
-   'restaurantleflagrantdelice@gmail.com', crypt('OLB2026!', gen_salt('bf')),
+   'contact@le-flagrant-delice-lyon.fr', crypt('OLB2026!', gen_salt('bf')),
    now(), now(), now(), '', '', '', '',
    '{"provider":"email","providers":["email"]}'::jsonb,
    '{"prenom":"Damien","nom":"Agram"}'::jsonb, false, false),
@@ -245,7 +245,7 @@ FROM (VALUES
   ('aurelie@adadmin.fr',                   'Aurélie',         'Dussouillez - Poix', 'AD''ADMIN',                    'Gestionnaire administrative & commerciale',    '06 41 79 47 10', 'http://adadmin.fr'),
   ('lmarical.pro@gmail.com',               'Loïc',            'Marical',            'Wood Sun Menuiserie',          'Menuisier',                                    '07 71 22 81 78', NULL),
   ('charleyne.david@centralautos.fr',      'Charleyne',       'David',              'Hyundai Groupe Central Autos', 'Conseillère Commerciale automobile',           '06 29 52 16 48', 'https://www.centralautos.fr'),
-  ('restaurantleflagrantdelice@gmail.com', 'Damien',          'Agram',              'Le Flagrant Délice',           'Restaurateur / traiteur / Épicier',            '06 16 69 30 42', 'https://www.le-flagrant-delice-lyon.fr/'),
+  ('contact@le-flagrant-delice-lyon.fr', 'Damien',          'Agram',              'Le Flagrant Délice',           'Restaurateur / traiteur / Épicier',            '06 16 69 30 42', 'https://www.le-flagrant-delice-lyon.fr/'),
   ('axelec.fermigier@gmail.com',           'Christophe',      'Fermigier',          'Axelec',                       'Électricité / Climatisation / Photovoltaïque', '06 75 19 25 45', 'https://axelec-electricite.fr'),
   ('stephanie@lydeco.fr',                  'Stéphanie',       'Rosset',             'LYDECO',                       'Décoration d''intérieur',                      '06 35 25 83 97', 'https://www.lydeco.fr'),
   ('erika.dumas@free.fr',                  'Erika',           'Dumas',              'Popott''d''Aujourd''hui',      'Cuisiniste / Architecte d''intérieur',         '06 76 18 50 61', 'https://popottdaujourdhui.com'),
