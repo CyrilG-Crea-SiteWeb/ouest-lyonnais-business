@@ -194,11 +194,11 @@ function ProfilPage() {
               <Input id="telephone" type="tel" value={telephone} onChange={(e) => setTelephone(e.target.value)} />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="site_internet" className="flex items-center gap-1.5">
+              <Label htmlFor="site_web" className="flex items-center gap-1.5">
                 <Globe className="h-3.5 w-3.5" /> Lien site internet
               </Label>
               <Input
-                id="site_internet"
+                id="site_web"
                 type="url"
                 inputMode="url"
                 value={siteInternet}

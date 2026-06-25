@@ -312,7 +312,6 @@ export type Database = {
           photo_url: string | null
           prenom: string
           role: Database["public"]["Enums"]["role_membre"]
-          site_internet: string | null
           site_web: string | null
           statut: Database["public"]["Enums"]["statut_membre"]
           telephone: string | null
@@ -329,7 +328,6 @@ export type Database = {
           photo_url?: string | null
           prenom: string
           role?: Database["public"]["Enums"]["role_membre"]
-          site_internet?: string | null
           site_web?: string | null
           statut?: Database["public"]["Enums"]["statut_membre"]
           telephone?: string | null
@@ -346,7 +344,6 @@ export type Database = {
           photo_url?: string | null
           prenom?: string
           role?: Database["public"]["Enums"]["role_membre"]
-          site_internet?: string | null
           site_web?: string | null
           statut?: Database["public"]["Enums"]["statut_membre"]
           telephone?: string | null
