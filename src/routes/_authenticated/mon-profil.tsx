@@ -49,7 +49,7 @@ function ProfilPage() {
     setEntreprise(profile.entreprise ?? "");
     setCategorie(profile.categorie ?? "");
     setTelephone(profile.telephone ?? "");
-    setSiteInternet(profile.site_internet ?? "");
+    setSiteInternet(profile.site_web ?? "");
   }, [profile]);
 
   if (isLoading || isError) return <p className="text-sm text-muted-foreground">Chargement…</p>;
@@ -67,7 +67,7 @@ function ProfilPage() {
           entreprise: entreprise || null,
           categorie: categorie || null,
           telephone: telephone || null,
-          site_internet: normaliseUrl(siteInternet),
+          site_web: normaliseUrl(siteInternet),
         })
         .eq("id", profile.id);
       if (error) throw error;
@@ -194,11 +194,11 @@ function ProfilPage() {
               <Input id="telephone" type="tel" value={telephone} onChange={(e) => setTelephone(e.target.value)} />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="site_internet" className="flex items-center gap-1.5">
+              <Label htmlFor="site_web" className="flex items-center gap-1.5">
                 <Globe className="h-3.5 w-3.5" /> Lien site internet
               </Label>
               <Input
-                id="site_internet"
+                id="site_web"
                 type="url"
                 inputMode="url"
                 value={siteInternet}
