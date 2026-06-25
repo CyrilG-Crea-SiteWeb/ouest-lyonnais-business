@@ -49,7 +49,7 @@ function ProfilPage() {
     setEntreprise(profile.entreprise ?? "");
     setCategorie(profile.categorie ?? "");
     setTelephone(profile.telephone ?? "");
-    setSiteInternet(profile.site_internet ?? "");
+    setSiteInternet(profile.site_web ?? "");
   }, [profile]);
 
   if (isLoading || isError) return <p className="text-sm text-muted-foreground">Chargement…</p>;
@@ -67,7 +67,7 @@ function ProfilPage() {
           entreprise: entreprise || null,
           categorie: categorie || null,
           telephone: telephone || null,
-          site_internet: normaliseUrl(siteInternet),
+          site_web: normaliseUrl(siteInternet),
         })
         .eq("id", profile.id);
       if (error) throw error;
