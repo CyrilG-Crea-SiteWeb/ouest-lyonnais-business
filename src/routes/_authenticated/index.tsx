@@ -369,8 +369,15 @@ function Dashboard() {
                       {row.nb_recos} reco{row.nb_recos > 1 ? "s" : ""} · {row.nb_tete_a_tete} T-à-T
                     </p>
                   </div>
-                  <span className="text-sm font-semibold" style={{ color: ORANGE }}>
-                    {euros(Number(row.ca_valide ?? 0))}
+                  <span
+                    className="text-sm font-semibold whitespace-nowrap"
+                    style={{ color: ORANGE }}
+                  >
+                    {triPalmares === "recos"
+                      ? `${Number(row.nb_recos ?? 0)} reco${Number(row.nb_recos ?? 0) > 1 ? "s" : ""}`
+                      : triPalmares === "tete"
+                        ? `${Number(row.nb_tete_a_tete ?? 0)} T-à-T`
+                        : euros(Number(row.ca_valide ?? 0))}
                   </span>
                 </li>
               ))}
