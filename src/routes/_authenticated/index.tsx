@@ -231,6 +231,7 @@ function Dashboard() {
       if (triPalmares === "tete") return Number(b.nb_tete_a_tete ?? 0) - Number(a.nb_tete_a_tete ?? 0);
       return Number(b.ca_valide ?? 0) - Number(a.ca_valide ?? 0);
     })
+    .slice(0, 3)
     .map((row: any, i: number) => ({ ...row, rangAffiche: i + 1 }));
 
   return (
