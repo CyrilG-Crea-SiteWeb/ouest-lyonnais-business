@@ -5,9 +5,11 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Users, HandshakeIcon, Euro, Trophy, Coffee, Download } from "lucide-react";
+import { Users, HandshakeIcon, Euro, Trophy, Coffee, Download, Mic } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { exportPalmaresPdf } from "@/lib/exports";
+import { titreConference } from "@/lib/conferences";
 import {
   ResponsiveContainer,
   LineChart,
@@ -33,6 +35,37 @@ export const Route = createFileRoute("/_authenticated/")({
 
 function Dashboard() {
   const { data: profile } = useProfile();
+
+  // Prochaine conférence (encart en tête de page). Renvoie null si aucune.
+  const { data: prochaineConf } = useQuery({
+    queryKey: ["dashboard", "prochaine-conference"],
+    queryFn: async () => {
+      // est_conference / conference_intervenants pas encore dans les types
+      // générés → cast minimal (à régénérer côté Lovable).
+      const { data: ev, error } = await (supabase as any)
+        .from("evenements")
+        .select("id, date_event")
+        .eq("est_conference", true)
+        .gte("date_event", new Date().toISOString())
+        .order("date_event", { ascending: true })
+        .limit(1)
+        .maybeSingle();
+      if (error) throw error;
+      if (!ev) return null;
+
+      const { data: ci, error: e2 } = await (supabase as any)
+        .from("conference_intervenants")
+        .select("membre_id, membres(prenom, nom)")
+        .eq("evenement_id", ev.id);
+      if (e2) throw e2;
+
+      const noms = (ci ?? []).map((row: any) =>
+        row.membres ? `${row.membres.prenom} ${row.membres.nom}` : "Membre",
+      );
+      return { id: ev.id as number, date_event: ev.date_event as string, noms };
+    },
+    staleTime: 60_000,
+  });
 
   // Semaine en cours
   const { data: semaineId } = useQuery({
@@ -242,6 +275,45 @@ function Dashboard() {
           Indicateurs de la semaine OLB en cours et évolution du groupe.
         </p>
       </header>
+
+      {/* Prochaine conférence — masqué s'il n'y en a aucune à venir. */}
+      {prochaineConf && (
+        <Card style={{ borderColor: TEAL }} className="bg-[#006875]/5">
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-base" style={{ color: TEAL }}>
+              <Mic className="h-5 w-5" style={{ color: TEAL }} />
+              Prochaine conférence
+            </CardTitle>
+            <CardDescription>
+              {titreConference(prochaineConf.date_event, prochaineConf.noms)}
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            <p className="text-sm font-medium">
+              {new Date(prochaineConf.date_event).toLocaleDateString("fr-FR", {
+                weekday: "long",
+                day: "numeric",
+                month: "long",
+                year: "numeric",
+              })}{" "}
+              à{" "}
+              {new Date(prochaineConf.date_event).toLocaleTimeString("fr-FR", {
+                hour: "2-digit",
+                minute: "2-digit",
+              })}
+            </p>
+            {prochaineConf.noms.length > 0 && (
+              <div className="flex flex-wrap gap-1.5">
+                {prochaineConf.noms.map((nom: string, i: number) => (
+                  <Badge key={i} variant="secondary">
+                    {nom}
+                  </Badge>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {/* KPIs semaine */}
       <div className="grid grid-cols-3 gap-3 md:gap-4">
