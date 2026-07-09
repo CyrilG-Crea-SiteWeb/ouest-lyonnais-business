@@ -5,6 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -249,8 +250,8 @@ function InviteCard({
   const complet = nb >= 2;
   const converti = invite.statut_conversion === "converti";
   const accepte = invite.statut_conversion === "accepte";
-  const peutGerer =
-    estGestionnaire(profil?.role) || (!!invite.cree_par && invite.cree_par === profil?.id);
+  const gestionnaire = estGestionnaire(profil?.role);
+  const auteur = !!invite.cree_par && invite.cree_par === profil?.id;
   const ajoutePar = invite.cree_par ? (nomsMembres.get(invite.cree_par) ?? "—") : "—";
 
   return (
@@ -294,6 +295,12 @@ function InviteCard({
           )}
         </div>
 
+        {invite.notes && (
+          <p className="text-sm text-muted-foreground whitespace-pre-wrap">
+            Infos : {invite.notes}
+          </p>
+        )}
+
         <p className="text-xs text-muted-foreground flex items-center gap-1">
           <User className="h-3.5 w-3.5 shrink-0" /> Ajouté par : {ajoutePar}
         </p>
@@ -307,16 +314,16 @@ function InviteCard({
           </div>
         )}
 
-        {peutGerer && (
+        {(gestionnaire || auteur) && (
           <div className="flex flex-wrap gap-2 pt-1">
-            {!converti && !accepte && (
+            {gestionnaire && !converti && !accepte && (
               <>
                 <PresenceDialog invite={invite} nb={nb} />
                 <ConvertDialog invite={invite} />
               </>
             )}
             <EditInviteDialog invite={invite} />
-            <DeleteInvite invite={invite} />
+            {gestionnaire && <DeleteInvite invite={invite} />}
           </div>
         )}
 
@@ -332,6 +339,7 @@ function InviteCard({
 
 const CHAMPS_VIDES = {
   prenom: "", nom: "", email: "", telephone: "", entreprise: "", categorie: "",
+  notes: "",
 };
 
 function useCategorieAlerte() {
@@ -397,6 +405,14 @@ function ChampsInvite({
           </p>
         )}
       </div>
+      <div className="space-y-1.5">
+        <Label>Informations complémentaires</Label>
+        <Textarea
+          value={form.notes}
+          onChange={(e) => setForm({ ...form, notes: e.target.value })}
+          rows={3}
+        />
+      </div>
     </div>
   );
 }
@@ -425,6 +441,7 @@ function AddInviteDialog({ membresActifs }: { membresActifs: MembreActif[] }) {
         telephone: form.telephone.trim() || null,
         entreprise: form.entreprise.trim() || null,
         categorie: form.categorie.trim() || null,
+        notes: form.notes.trim() || null,
         cree_par: (gestionnaire ? parrainId : profil?.id) ?? auth.user?.id ?? null,
       });
       if (error) throw error;
@@ -496,6 +513,7 @@ function EditInviteDialog({ invite }: { invite: Invite }) {
     telephone: invite.telephone ?? "",
     entreprise: invite.entreprise ?? "",
     categorie: invite.categorie ?? "",
+    notes: invite.notes ?? "",
   });
   const { alerte, check, reset } = useCategorieAlerte();
 
@@ -510,6 +528,7 @@ function EditInviteDialog({ invite }: { invite: Invite }) {
           telephone: form.telephone.trim() || null,
           entreprise: form.entreprise.trim() || null,
           categorie: form.categorie.trim() || null,
+          notes: form.notes.trim() || null,
         })
         .eq("id", invite.id);
       if (error) throw error;
@@ -531,7 +550,7 @@ function EditInviteDialog({ invite }: { invite: Invite }) {
       if (o) setForm({
         prenom: invite.prenom, nom: invite.nom, email: invite.email,
         telephone: invite.telephone ?? "", entreprise: invite.entreprise ?? "",
-        categorie: invite.categorie ?? "",
+        categorie: invite.categorie ?? "", notes: invite.notes ?? "",
       });
     }}>
       <DialogTrigger asChild>
