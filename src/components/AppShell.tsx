@@ -35,7 +35,7 @@ const NAV = [
   { to: "/sondages", label: "Sondages", icon: Vote },
   { to: "/evenements", label: "Événements", icon: CalendarDays },
   { to: "/presences", label: "Présences", icon: CheckSquare, bureauOnly: true },
-  { to: "/invites", label: "Invités", icon: UserPlus, comiteOnly: true },
+  { to: "/invites", label: "Invités", icon: UserPlus },
   { to: "/mon-profil", label: "Mon profil", icon: UserCircle },
   { to: "/admin-rappel", label: "Rappel auto", icon: BellRing, adminOnly: true },
 ] as const;

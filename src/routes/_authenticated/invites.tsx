@@ -1,5 +1,5 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
@@ -19,28 +19,23 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
 import { toast } from "sonner";
 import {
   Mail, Phone, Building2, Tag, Plus, Trash2, Search, CalendarPlus,
-  UserPlus, AlertTriangle, Pencil, ChevronDown,
+  UserPlus, User, AlertTriangle, Pencil, ChevronDown,
 } from "lucide-react";
 import { convertirInvite } from "@/lib/invites.functions";
 import { useServerFn } from "@tanstack/react-start";
+import { useProfile, type Membre } from "@/hooks/use-profile";
 
 export const Route = createFileRoute("/_authenticated/invites")({
   head: () => ({ meta: [{ title: "Invités — OLB" }] }),
   beforeLoad: async () => {
     const { data: auth } = await supabase.auth.getUser();
     if (!auth.user) throw redirect({ to: "/auth" });
-    const { data: m } = await supabase
-      .from("membres")
-      .select("role")
-      .eq("id", auth.user.id)
-      .maybeSingle();
-    const role = m?.role;
-    if (role !== "comite_membres" && role !== "bureau" && role !== "admin") {
-      throw redirect({ to: "/" });
-    }
   },
   component: InvitesPage,
 });
@@ -55,9 +50,18 @@ type Invite = {
   categorie: string | null;
   notes: string | null;
   statut_conversion: string;
+  cree_par: string | null;
 };
 
 type Presence = { id: number; invite_id: number; date_reunion: string };
+
+type MembreActif = { id: string; prenom: string; nom: string };
+
+const ROLES_GESTIONNAIRES: Membre["role"][] = ["comite_membres", "bureau", "admin"];
+
+function estGestionnaire(role: Membre["role"] | undefined) {
+  return !!role && ROLES_GESTIONNAIRES.includes(role);
+}
 
 function InvitesPage() {
   const [search, setSearch] = useState("");
@@ -67,7 +71,7 @@ function InvitesPage() {
     queryFn: async (): Promise<Invite[]> => {
       const { data, error } = await supabase
         .from("invites")
-        .select("id, nom, prenom, email, telephone, entreprise, categorie, notes, statut_conversion")
+        .select("id, nom, prenom, email, telephone, entreprise, categorie, notes, statut_conversion, cree_par")
         .order("nom", { ascending: true });
       if (error) throw error;
       return (data ?? []) as Invite[];
@@ -85,6 +89,25 @@ function InvitesPage() {
       return (data ?? []) as Presence[];
     },
   });
+
+  const { data: membresActifs = [] } = useQuery({
+    queryKey: ["membres", "actifs-liste"],
+    queryFn: async (): Promise<MembreActif[]> => {
+      const { data, error } = await supabase
+        .from("membres")
+        .select("id, prenom, nom")
+        .eq("statut", "actif")
+        .order("nom");
+      if (error) throw error;
+      return (data ?? []) as MembreActif[];
+    },
+  });
+
+  const nomsMembres = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const m of membresActifs) map.set(m.id, `${m.prenom} ${m.nom}`);
+    return map;
+  }, [membresActifs]);
 
   const presencesParInvite = useMemo(() => {
     const map = new Map<number, Presence[]>();
@@ -133,7 +156,7 @@ function InvitesPage() {
             {invites.length} fiche{invites.length > 1 ? "s" : ""} · 2 réunions gratuites maximum
           </p>
         </div>
-        <AddInviteDialog />
+        <AddInviteDialog membresActifs={membresActifs} />
       </header>
 
       <div className="relative">
@@ -153,7 +176,7 @@ function InvitesPage() {
           {actifs.length === 0 ? (
             <Card><CardContent className="p-6 text-sm text-muted-foreground">Aucun invité actif.</CardContent></Card>
           ) : (
-            <Grille invites={actifs} presencesParInvite={presencesParInvite} />
+            <Grille invites={actifs} presencesParInvite={presencesParInvite} nomsMembres={nomsMembres} />
           )}
 
           {anciens.length > 0 && (
@@ -161,7 +184,7 @@ function InvitesPage() {
               titre={`Anciens invités (${anciens.length})`}
               sousTitre="2 réunions gratuites effectuées, sans candidature"
             >
-              <Grille invites={anciens} presencesParInvite={presencesParInvite} />
+              <Grille invites={anciens} presencesParInvite={presencesParInvite} nomsMembres={nomsMembres} />
             </SectionRepliable>
           )}
 
@@ -170,7 +193,7 @@ function InvitesPage() {
               titre={`Anciens invités devenus membres (${membres.length})`}
               sousTitre="Invitation acceptée, compte activé"
             >
-              <Grille invites={membres} presencesParInvite={presencesParInvite} />
+              <Grille invites={membres} presencesParInvite={presencesParInvite} nomsMembres={nomsMembres} />
             </SectionRepliable>
           )}
         </div>
@@ -198,8 +221,12 @@ function SectionRepliable({
 }
 
 function Grille({
-  invites, presencesParInvite,
-}: { invites: Invite[]; presencesParInvite: Map<number, Presence[]> }) {
+  invites, presencesParInvite, nomsMembres,
+}: {
+  invites: Invite[];
+  presencesParInvite: Map<number, Presence[]>;
+  nomsMembres: Map<string, string>;
+}) {
   return (
     <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
       {invites.map((inv) => (
@@ -207,17 +234,24 @@ function Grille({
           key={inv.id}
           invite={inv}
           presences={presencesParInvite.get(inv.id) ?? []}
+          nomsMembres={nomsMembres}
         />
       ))}
     </div>
   );
 }
 
-function InviteCard({ invite, presences }: { invite: Invite; presences: Presence[] }) {
+function InviteCard({
+  invite, presences, nomsMembres,
+}: { invite: Invite; presences: Presence[]; nomsMembres: Map<string, string> }) {
+  const { data: profil } = useProfile();
   const nb = presences.length;
   const complet = nb >= 2;
   const converti = invite.statut_conversion === "converti";
   const accepte = invite.statut_conversion === "accepte";
+  const peutGerer =
+    estGestionnaire(profil?.role) || (!!invite.cree_par && invite.cree_par === profil?.id);
+  const ajoutePar = invite.cree_par ? (nomsMembres.get(invite.cree_par) ?? "—") : "—";
 
   return (
     <Card className="rounded-2xl shadow-sm">
@@ -260,6 +294,10 @@ function InviteCard({ invite, presences }: { invite: Invite; presences: Presence
           )}
         </div>
 
+        <p className="text-xs text-muted-foreground flex items-center gap-1">
+          <User className="h-3.5 w-3.5 shrink-0" /> Ajouté par : {ajoutePar}
+        </p>
+
         {presences.length > 0 && (
           <div className="text-xs text-muted-foreground">
             Présences :{" "}
@@ -269,16 +307,18 @@ function InviteCard({ invite, presences }: { invite: Invite; presences: Presence
           </div>
         )}
 
-        <div className="flex flex-wrap gap-2 pt-1">
-          {!converti && !accepte && (
-            <>
-              <PresenceDialog invite={invite} nb={nb} />
-              <ConvertDialog invite={invite} />
-            </>
-          )}
-          <EditInviteDialog invite={invite} />
-          <DeleteInvite invite={invite} />
-        </div>
+        {peutGerer && (
+          <div className="flex flex-wrap gap-2 pt-1">
+            {!converti && !accepte && (
+              <>
+                <PresenceDialog invite={invite} nb={nb} />
+                <ConvertDialog invite={invite} />
+              </>
+            )}
+            <EditInviteDialog invite={invite} />
+            <DeleteInvite invite={invite} />
+          </div>
+        )}
 
         {converti && (
           <p className="text-xs text-muted-foreground">
@@ -361,11 +401,19 @@ function ChampsInvite({
   );
 }
 
-function AddInviteDialog() {
+function AddInviteDialog({ membresActifs }: { membresActifs: MembreActif[] }) {
   const qc = useQueryClient();
+  const { data: profil } = useProfile();
+  const gestionnaire = estGestionnaire(profil?.role);
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState(CHAMPS_VIDES);
+  const [parrainId, setParrainId] = useState<string | null>(null);
   const { alerte, check, reset } = useCategorieAlerte();
+
+  // Parrain par défaut : l'utilisateur courant (dès que le profil est chargé).
+  useEffect(() => {
+    if (profil?.id) setParrainId((prev) => prev ?? profil.id);
+  }, [profil?.id]);
 
   const mutation = useMutation({
     mutationFn: async () => {
@@ -377,7 +425,7 @@ function AddInviteDialog() {
         telephone: form.telephone.trim() || null,
         entreprise: form.entreprise.trim() || null,
         categorie: form.categorie.trim() || null,
-        cree_par: auth.user?.id ?? null,
+        cree_par: (gestionnaire ? parrainId : profil?.id) ?? auth.user?.id ?? null,
       });
       if (error) throw error;
     },
@@ -385,6 +433,7 @@ function AddInviteDialog() {
       toast.success("Invité ajouté.");
       qc.invalidateQueries({ queryKey: ["invites"] });
       setForm(CHAMPS_VIDES);
+      setParrainId(profil?.id ?? null);
       reset();
       setOpen(false);
     },
@@ -406,6 +455,23 @@ function AddInviteDialog() {
           <DialogDescription>Renseignez les coordonnées de l'invité.</DialogDescription>
         </DialogHeader>
         <ChampsInvite form={form} setForm={setForm} alerte={alerte} onCategorie={check} />
+        {gestionnaire && (
+          <div className="space-y-1.5">
+            <Label>Attribuer à un membre</Label>
+            <Select value={parrainId ?? undefined} onValueChange={(v) => setParrainId(v)}>
+              <SelectTrigger>
+                <SelectValue placeholder="Choisir un membre…" />
+              </SelectTrigger>
+              <SelectContent>
+                {membresActifs.map((m) => (
+                  <SelectItem key={m.id} value={m.id}>
+                    {m.prenom} {m.nom}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
         <DialogFooter>
           <Button
             className="bg-[#006875] hover:bg-[#00525c]"
