@@ -13,7 +13,7 @@ import { supabase } from "@/integrations/supabase/client";
  * @param exclureId    id à exclure (généralement l'auteur)
  */
 export async function creerNotifications(opts: {
-  typeContenu: "demande" | "evenement" | "sondage" | "recommandation";
+  typeContenu: "demande" | "evenement" | "sondage" | "recommandation" | "invite";
   contenuId: number;
   titre: string;
   membreIds: string[];
@@ -74,6 +74,17 @@ export async function getMembresActifsIds(): Promise<string[]> {
     .from("membres")
     .select("id")
     .eq("statut", "actif");
+  if (error) throw error;
+  return (data ?? []).map((m) => m.id);
+}
+
+/** Ids des membres gestionnaires d'invités (comité membres, bureau, admin). */
+export async function getGestionnairesInvitesIds(): Promise<string[]> {
+  const { data, error } = await supabase
+    .from("membres")
+    .select("id")
+    .eq("statut", "actif")
+    .in("role", ["comite_membres", "bureau", "admin"]);
   if (error) throw error;
   return (data ?? []).map((m) => m.id);
 }
