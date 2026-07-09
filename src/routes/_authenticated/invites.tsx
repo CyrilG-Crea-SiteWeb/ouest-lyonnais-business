@@ -29,6 +29,7 @@ import {
   UserPlus, User, AlertTriangle, Pencil, ChevronDown,
 } from "lucide-react";
 import { convertirInvite } from "@/lib/invites.functions";
+import { creerNotificationsSafe, getGestionnairesInvitesIds } from "@/lib/notifications";
 import { useServerFn } from "@tanstack/react-start";
 import { useProfile, type Membre } from "@/hooks/use-profile";
 
@@ -434,17 +435,31 @@ function AddInviteDialog({ membresActifs }: { membresActifs: MembreActif[] }) {
   const mutation = useMutation({
     mutationFn: async () => {
       const { data: auth } = await supabase.auth.getUser();
-      const { error } = await supabase.from("invites").insert({
-        prenom: form.prenom.trim(),
-        nom: form.nom.trim(),
-        email: form.email.trim(),
-        telephone: form.telephone.trim() || null,
-        entreprise: form.entreprise.trim() || null,
-        categorie: form.categorie.trim() || null,
-        notes: form.notes.trim() || null,
-        cree_par: (gestionnaire ? parrainId : profil?.id) ?? auth.user?.id ?? null,
-      });
+      const { data: nouvelInvite, error } = await supabase
+        .from("invites")
+        .insert({
+          prenom: form.prenom.trim(),
+          nom: form.nom.trim(),
+          email: form.email.trim(),
+          telephone: form.telephone.trim() || null,
+          entreprise: form.entreprise.trim() || null,
+          categorie: form.categorie.trim() || null,
+          notes: form.notes.trim() || null,
+          cree_par: (gestionnaire ? parrainId : profil?.id) ?? auth.user?.id ?? null,
+        })
+        .select("id")
+        .single();
       if (error) throw error;
+
+      // Notifie les gestionnaires d'invités (best-effort : n'échoue pas la création).
+      const gestionnaires = await getGestionnairesInvitesIds();
+      await creerNotificationsSafe({
+        typeContenu: "invite",
+        contenuId: nouvelInvite.id,
+        titre: `Nouvel invité : ${form.prenom.trim()} ${form.nom.trim()}`,
+        membreIds: gestionnaires,
+        exclureId: auth.user?.id ?? null,
+      });
     },
     onSuccess: () => {
       toast.success("Invité ajouté.");

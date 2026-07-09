@@ -26,6 +26,8 @@ function lienVers(typeContenu: string, contenuId: number): string {
       return `/evenements`;
     case "sondage":
       return `/sondages`;
+    case "invite":
+      return `/invites`;
     default:
       return `/`;
   }
