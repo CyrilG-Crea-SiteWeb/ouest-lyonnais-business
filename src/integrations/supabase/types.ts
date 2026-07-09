@@ -51,6 +51,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "commentaires_membre_id_fkey"
+            columns: ["membre_id"]
+            isOneToOne: false
+            referencedRelation: "v_taux_presence_membre"
+            referencedColumns: ["membre_id"]
+          },
+          {
             foreignKeyName: "commentaires_parent_id_fkey"
             columns: ["parent_id"]
             isOneToOne: false
@@ -98,6 +105,13 @@ export type Database = {
             referencedRelation: "membres"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "demandes_membre_id_fkey"
+            columns: ["membre_id"]
+            isOneToOne: false
+            referencedRelation: "v_taux_presence_membre"
+            referencedColumns: ["membre_id"]
+          },
         ]
       }
       demandes_cibles: {
@@ -127,6 +141,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "membres"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "demandes_cibles_membre_id_fkey"
+            columns: ["membre_id"]
+            isOneToOne: false
+            referencedRelation: "v_taux_presence_membre"
+            referencedColumns: ["membre_id"]
           },
         ]
       }
@@ -169,6 +190,13 @@ export type Database = {
             referencedRelation: "membres"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "evenements_createur_id_fkey"
+            columns: ["createur_id"]
+            isOneToOne: false
+            referencedRelation: "v_taux_presence_membre"
+            referencedColumns: ["membre_id"]
+          },
         ]
       }
       inscriptions: {
@@ -207,6 +235,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "membres"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inscriptions_membre_id_fkey"
+            columns: ["membre_id"]
+            isOneToOne: false
+            referencedRelation: "v_taux_presence_membre"
+            referencedColumns: ["membre_id"]
           },
         ]
       }
@@ -262,11 +297,25 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "invites_cree_par_fkey"
+            columns: ["cree_par"]
+            isOneToOne: false
+            referencedRelation: "v_taux_presence_membre"
+            referencedColumns: ["membre_id"]
+          },
+          {
             foreignKeyName: "invites_membre_id_fkey"
             columns: ["membre_id"]
             isOneToOne: false
             referencedRelation: "membres"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invites_membre_id_fkey"
+            columns: ["membre_id"]
+            isOneToOne: false
+            referencedRelation: "v_taux_presence_membre"
+            referencedColumns: ["membre_id"]
           },
         ]
       }
@@ -386,6 +435,13 @@ export type Database = {
             referencedRelation: "membres"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "notifications_membre_id_fkey"
+            columns: ["membre_id"]
+            isOneToOne: false
+            referencedRelation: "v_taux_presence_membre"
+            referencedColumns: ["membre_id"]
+          },
         ]
       }
       options_sondage: {
@@ -410,6 +466,55 @@ export type Database = {
             columns: ["sondage_id"]
             isOneToOne: false
             referencedRelation: "sondages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      presences: {
+        Row: {
+          created_at: string
+          id: number
+          membre_id: string
+          semaine_id: number
+          statut: Database["public"]["Enums"]["statut_presence"]
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: never
+          membre_id: string
+          semaine_id: number
+          statut: Database["public"]["Enums"]["statut_presence"]
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: never
+          membre_id?: string
+          semaine_id?: number
+          statut?: Database["public"]["Enums"]["statut_presence"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "presences_membre_id_fkey"
+            columns: ["membre_id"]
+            isOneToOne: false
+            referencedRelation: "membres"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "presences_membre_id_fkey"
+            columns: ["membre_id"]
+            isOneToOne: false
+            referencedRelation: "v_taux_presence_membre"
+            referencedColumns: ["membre_id"]
+          },
+          {
+            foreignKeyName: "presences_semaine_id_fkey"
+            columns: ["semaine_id"]
+            isOneToOne: false
+            referencedRelation: "semaines"
             referencedColumns: ["id"]
           },
         ]
@@ -446,6 +551,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "membres"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "push_subscriptions_membre_id_fkey"
+            columns: ["membre_id"]
+            isOneToOne: false
+            referencedRelation: "v_taux_presence_membre"
+            referencedColumns: ["membre_id"]
           },
         ]
       }
@@ -499,6 +611,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "membres"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reco_participants_membre_id_fkey"
+            columns: ["membre_id"]
+            isOneToOne: false
+            referencedRelation: "v_taux_presence_membre"
+            referencedColumns: ["membre_id"]
           },
           {
             foreignKeyName: "reco_participants_recommandation_id_fkey"
@@ -555,6 +674,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "recommandations_membre_cible_id_fkey"
+            columns: ["membre_cible_id"]
+            isOneToOne: false
+            referencedRelation: "v_taux_presence_membre"
+            referencedColumns: ["membre_id"]
+          },
+          {
             foreignKeyName: "recommandations_membre_id_fkey"
             columns: ["membre_id"]
             isOneToOne: false
@@ -562,49 +688,14 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "recommandations_semaine_id_fkey"
-            columns: ["semaine_id"]
-            isOneToOne: false
-            referencedRelation: "semaines"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      presences: {
-        Row: {
-          created_at: string
-          id: number
-          membre_id: string
-          semaine_id: number
-          statut: Database["public"]["Enums"]["statut_presence"]
-          updated_at: string
-        }
-        Insert: {
-          created_at?: string
-          id?: never
-          membre_id: string
-          semaine_id: number
-          statut: Database["public"]["Enums"]["statut_presence"]
-          updated_at?: string
-        }
-        Update: {
-          created_at?: string
-          id?: never
-          membre_id?: string
-          semaine_id?: number
-          statut?: Database["public"]["Enums"]["statut_presence"]
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "presences_membre_id_fkey"
+            foreignKeyName: "recommandations_membre_id_fkey"
             columns: ["membre_id"]
             isOneToOne: false
-            referencedRelation: "membres"
-            referencedColumns: ["id"]
+            referencedRelation: "v_taux_presence_membre"
+            referencedColumns: ["membre_id"]
           },
           {
-            foreignKeyName: "presences_semaine_id_fkey"
+            foreignKeyName: "recommandations_semaine_id_fkey"
             columns: ["semaine_id"]
             isOneToOne: false
             referencedRelation: "semaines"
@@ -672,6 +763,13 @@ export type Database = {
             referencedRelation: "membres"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "sondages_createur_id_fkey"
+            columns: ["createur_id"]
+            isOneToOne: false
+            referencedRelation: "v_taux_presence_membre"
+            referencedColumns: ["membre_id"]
+          },
         ]
       }
       votes: {
@@ -703,6 +801,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "membres"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "votes_membre_id_fkey"
+            columns: ["membre_id"]
+            isOneToOne: false
+            referencedRelation: "v_taux_presence_membre"
+            referencedColumns: ["membre_id"]
           },
           {
             foreignKeyName: "votes_option_id_fkey"
@@ -741,30 +846,17 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "recommandations_membre_id_fkey"
+            columns: ["membre_id"]
+            isOneToOne: false
+            referencedRelation: "v_taux_presence_membre"
+            referencedColumns: ["membre_id"]
+          },
+          {
             foreignKeyName: "recommandations_semaine_id_fkey"
             columns: ["semaine_id"]
             isOneToOne: false
             referencedRelation: "semaines"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      v_taux_presence_membre: {
-        Row: {
-          membre_id: string | null
-          nb_absent: number | null
-          nb_present: number | null
-          nb_reunions_dues: number | null
-          nom: string | null
-          prenom: string | null
-          taux_presence: number | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "presences_membre_id_fkey"
-            columns: ["membre_id"]
-            isOneToOne: false
-            referencedRelation: "membres"
             referencedColumns: ["id"]
           },
         ]
@@ -788,6 +880,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "recommandations_membre_id_fkey"
+            columns: ["membre_id"]
+            isOneToOne: false
+            referencedRelation: "v_taux_presence_membre"
+            referencedColumns: ["membre_id"]
+          },
+          {
             foreignKeyName: "recommandations_semaine_id_fkey"
             columns: ["semaine_id"]
             isOneToOne: false
@@ -796,44 +895,64 @@ export type Database = {
           },
         ]
       }
+      v_taux_presence_membre: {
+        Row: {
+          membre_id: string | null
+          nb_absent: number | null
+          nb_present: number | null
+          nb_reunions_dues: number | null
+          nom: string | null
+          prenom: string | null
+          taux_presence: number | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       detail_presence_periode: {
         Args: { p_debut: string; p_fin: string }
         Returns: {
-          membre_id: string
-          prenom: string
-          nom: string
-          semaine_id: number
           date_debut: string
           libelle: string
-          statut: Database["public"]["Enums"]["statut_presence"] | null
+          membre_id: string
+          nom: string
+          prenom: string
+          semaine_id: number
+          statut: Database["public"]["Enums"]["statut_presence"]
         }[]
       }
       envoyer_rappel_contributions: { Args: never; Returns: undefined }
       est_admin: { Args: never; Returns: boolean }
       est_bureau: { Args: never; Returns: boolean }
       est_comite: { Args: never; Returns: boolean }
+      est_comite_fetes: { Args: never; Returns: boolean }
+      est_gestionnaire_invites: { Args: never; Returns: boolean }
       get_or_create_semaine: { Args: { p_date?: string }; Returns: number }
+      set_semaine_sans_reunion: {
+        Args: { p_sans_reunion: boolean; p_semaine_id: number }
+        Returns: undefined
+      }
       stats_presence_periode: {
         Args: { p_debut: string; p_fin: string }
         Returns: {
           membre_id: string
-          prenom: string
-          nom: string
-          nb_reunions_dues: number
-          nb_present: number
           nb_absent: number
-          taux_presence: number | null
+          nb_excuse: number
+          nb_present: number
+          nb_reunions_dues: number
+          nom: string
+          prenom: string
+          taux_presence: number
         }[]
-      }
-      set_semaine_sans_reunion: {
-        Args: { p_semaine_id: number; p_sans_reunion: boolean }
-        Returns: undefined
       }
     }
     Enums: {
-      role_membre: "admin" | "bureau" | "membre" | "comite_membres" | "comite_fetes"
+      role_membre:
+        | "admin"
+        | "bureau"
+        | "membre"
+        | "comite_membres"
+        | "comite_fetes"
       statut_demande: "ouverte" | "cloturee"
       statut_inscription: "present" | "absent" | "peut_etre"
       statut_membre: "actif" | "inactif"
@@ -845,6 +964,7 @@ export type Database = {
         | "evenement"
         | "demande"
         | "rappel"
+        | "invite"
       type_recommandation:
         | "tete_a_tete"
         | "reco_interne"
@@ -977,7 +1097,13 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      role_membre: ["admin", "bureau", "membre", "comite_membres", "comite_fetes"],
+      role_membre: [
+        "admin",
+        "bureau",
+        "membre",
+        "comite_membres",
+        "comite_fetes",
+      ],
       statut_demande: ["ouverte", "cloturee"],
       statut_inscription: ["present", "absent", "peut_etre"],
       statut_membre: ["actif", "inactif"],
@@ -989,6 +1115,7 @@ export const Constants = {
         "evenement",
         "demande",
         "rappel",
+        "invite",
       ],
       type_recommandation: [
         "tete_a_tete",
