@@ -85,7 +85,7 @@ export const convertirInvite = createServerFn({ method: "POST" })
     // 4) Marque l'invité "converti" + lien vers le membre
     const { error: markErr } = await supabaseAdmin
       .from("invites")
-      .update({ statut_conversion: "converti", membre_id: userId })
+      .update({ statut_conversion: "converti", membre_id: userId, notes: null })
       .eq("id", data.invite_id);
     if (markErr) throw new Error(markErr.message);
 
