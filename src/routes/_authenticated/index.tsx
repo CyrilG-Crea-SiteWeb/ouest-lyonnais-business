@@ -6,8 +6,14 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/com
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Users, HandshakeIcon, Euro, Trophy, Coffee, Download, Mic } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  Carousel,
+  CarouselContent,
+  CarouselItem,
+  CarouselNext,
+  CarouselPrevious,
+} from "@/components/ui/carousel";
 import { exportPalmaresPdf } from "@/lib/exports";
 import { titreConference } from "@/lib/conferences";
 import {
@@ -36,33 +42,41 @@ export const Route = createFileRoute("/_authenticated/")({
 function Dashboard() {
   const { data: profile } = useProfile();
 
-  // Prochaine conférence (encart en tête de page). Renvoie null si aucune.
-  const { data: prochaineConf } = useQuery({
-    queryKey: ["dashboard", "prochaine-conference"],
+  // Conférences à venir (carrousel en tête de page), triées par date croissante.
+  const { data: prochainesConfs } = useQuery({
+    queryKey: ["dashboard", "prochaines-conferences"],
     queryFn: async () => {
       // est_conference / conference_intervenants pas encore dans les types
       // générés → cast minimal (à régénérer côté Lovable).
-      const { data: ev, error } = await (supabase as any)
+      const { data: evs, error } = await (supabase as any)
         .from("evenements")
         .select("id, date_event")
         .eq("est_conference", true)
         .gte("date_event", new Date().toISOString())
-        .order("date_event", { ascending: true })
-        .limit(1)
-        .maybeSingle();
+        .order("date_event", { ascending: true });
       if (error) throw error;
-      if (!ev) return null;
+      if (!evs?.length) return [] as { id: number; date_event: string; noms: string[] }[];
 
+      const ids = evs.map((e: any) => e.id);
       const { data: ci, error: e2 } = await (supabase as any)
         .from("conference_intervenants")
-        .select("membre_id, membres(prenom, nom)")
-        .eq("evenement_id", ev.id);
+        .select("evenement_id, membres(prenom, nom)")
+        .in("evenement_id", ids);
       if (e2) throw e2;
 
-      const noms = (ci ?? []).map((row: any) =>
-        row.membres ? `${row.membres.prenom} ${row.membres.nom}` : "Membre",
-      );
-      return { id: ev.id as number, date_event: ev.date_event as string, noms };
+      const nomsByEv = new Map<number, string[]>();
+      (ci ?? []).forEach((row: any) => {
+        if (!row.membres) return;
+        const arr = nomsByEv.get(row.evenement_id) ?? [];
+        arr.push(`${row.membres.prenom} ${row.membres.nom}`);
+        nomsByEv.set(row.evenement_id, arr);
+      });
+
+      return evs.map((e: any) => ({
+        id: e.id as number,
+        date_event: e.date_event as string,
+        noms: nomsByEv.get(e.id) ?? [],
+      }));
     },
     staleTime: 60_000,
   });
@@ -276,43 +290,37 @@ function Dashboard() {
         </p>
       </header>
 
-      {/* Prochaine conférence — masqué s'il n'y en a aucune à venir. */}
-      {prochaineConf && (
-        <Card style={{ borderColor: TEAL }} className="bg-[#006875]/5">
-          <CardHeader className="pb-3">
-            <CardTitle className="flex items-center gap-2 text-base" style={{ color: TEAL }}>
+      {/* Prochaines conférences — carrousel, masqué s'il n'y en a aucune à venir. */}
+      {prochainesConfs && prochainesConfs.length > 0 && (
+        <section className="space-y-3">
+          <div className="flex items-center justify-between gap-3">
+            <h2 className="flex items-center gap-2 text-lg font-semibold" style={{ color: TEAL }}>
               <Mic className="h-5 w-5" style={{ color: TEAL }} />
-              Prochaine conférence
-            </CardTitle>
-            <CardDescription>
-              {titreConference(prochaineConf.date_event, prochaineConf.noms)}
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            <p className="text-sm font-medium">
-              {new Date(prochaineConf.date_event).toLocaleDateString("fr-FR", {
-                weekday: "long",
-                day: "numeric",
-                month: "long",
-                year: "numeric",
-              })}{" "}
-              à{" "}
-              {new Date(prochaineConf.date_event).toLocaleTimeString("fr-FR", {
-                hour: "2-digit",
-                minute: "2-digit",
-              })}
-            </p>
-            {prochaineConf.noms.length > 0 && (
-              <div className="flex flex-wrap gap-1.5">
-                {prochaineConf.noms.map((nom: string, i: number) => (
-                  <Badge key={i} variant="secondary">
-                    {nom}
-                  </Badge>
-                ))}
+              Prochaines conférences
+            </h2>
+          </div>
+          <Carousel opts={{ align: "start" }} className="w-full">
+            <CarouselContent>
+              {prochainesConfs.map((conf: { id: number; date_event: string; noms: string[] }) => (
+                <CarouselItem key={conf.id} className="sm:basis-1/2 lg:basis-1/3">
+                  <Card style={{ borderColor: TEAL }} className="h-full bg-[#006875]/5">
+                    <CardContent className="flex h-full items-center p-4">
+                      <p className="text-sm font-medium">
+                        {titreConference(conf.date_event, conf.noms)}
+                      </p>
+                    </CardContent>
+                  </Card>
+                </CarouselItem>
+              ))}
+            </CarouselContent>
+            {prochainesConfs.length > 1 && (
+              <div className="mt-3 flex justify-end gap-2">
+                <CarouselPrevious className="static translate-y-0" />
+                <CarouselNext className="static translate-y-0" />
               </div>
             )}
-          </CardContent>
-        </Card>
+          </Carousel>
+        </section>
       )}
 
       {/* KPIs semaine */}

@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Plus, Pencil, Trash2, MapPin, Calendar, Users, ChevronDown } from "lucide-react";
+import { Plus, Pencil, Trash2, MapPin, Calendar, Users, ChevronDown, Check } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useProfile, peutGererEvenementsSondages } from "@/hooks/use-profile";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,7 +10,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { Checkbox } from "@/components/ui/checkbox";
 import {
   Collapsible,
   CollapsibleContent,
@@ -78,6 +77,30 @@ function toDatetimeLocal(iso: string) {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
+// Tri alphabétique des membres sur le prénom (insensible à la casse/accents).
+function trierParPrenom(list: MembreLite[]) {
+  return [...list].sort((a, b) =>
+    a.prenom.localeCompare(b.prenom, "fr", { sensitivity: "base" }),
+  );
+}
+
+// Case à cocher carrée purement visuelle (le <button> parent gère le clic),
+// calquée sur la page Recommandations. Évite d'imbriquer un <button> Radix
+// dans un <button> (React #185).
+function FauxCheck({ checked }: { checked: boolean }) {
+  return (
+    <span
+      aria-hidden
+      className={
+        "flex h-4 w-4 shrink-0 items-center justify-center rounded border " +
+        (checked ? "border-primary bg-primary text-primary-foreground" : "border-input")
+      }
+    >
+      {checked && <Check className="h-3 w-3" />}
+    </span>
+  );
+}
+
 function EvenementsPage() {
   const { data: profile } = useProfile();
   const canManage = peutGererEvenementsSondages(profile?.role);
@@ -126,18 +149,23 @@ function EvenementsPage() {
     staleTime: 60_000,
   });
 
-  const { conferencesAVenir, upcoming, past } = useMemo(() => {
+  const { conferencesAVenir, conferencesPassees, upcoming, past } = useMemo(() => {
     const now = Date.now();
     const list = evQ.data ?? [];
     const aVenir = (e: Evenement) => new Date(e.date_event).getTime() >= now;
     return {
-      // Conférences à venir : bloc dédié, au-dessus des événements classiques.
+      // Conférences à venir : bloc dédié, au-dessus des événements classiques
+      // (ordre chronologique croissant, hérité de la requête).
       conferencesAVenir: list.filter((e) => e.est_conference && aVenir(e)),
+      // Conférences passées : bloc dédié, la plus récente en premier.
+      conferencesPassees: [...list]
+        .filter((e) => e.est_conference && !aVenir(e))
+        .reverse(),
       // Événements classiques à venir (les conférences en sont exclues).
       upcoming: list.filter((e) => !e.est_conference && aVenir(e)),
-      // Passés : tous les événements (conférences incluses), inchangé.
+      // Événements classiques passés (les conférences en sont exclues).
       past: [...list]
-        .filter((e) => new Date(e.date_event).getTime() < now)
+        .filter((e) => !e.est_conference && !aVenir(e))
         .reverse(),
     };
   }, [evQ.data]);
@@ -168,7 +196,19 @@ function EvenementsPage() {
 
       {conferencesAVenir.length > 0 && (
         <ConferencesSection
+          title="Conférences à venir"
           conferences={conferencesAVenir}
+          intervenantsByEv={intervenantsByEv}
+          membres={membresMap}
+          membresList={membresQ.data ?? []}
+          canManage={canManage}
+        />
+      )}
+
+      {conferencesPassees.length > 0 && (
+        <ConferencesSection
+          title="Conférences passées"
+          conferences={conferencesPassees}
           intervenantsByEv={intervenantsByEv}
           membres={membresMap}
           membresList={membresQ.data ?? []}
@@ -245,12 +285,14 @@ function Section({
 // Section repliable des conférences à venir (fermée par défaut), calquée
 // sur la section « Demandes clôturées ».
 function ConferencesSection({
+  title,
   conferences,
   intervenantsByEv,
   membres,
   membresList,
   canManage,
 }: {
+  title: string;
   conferences: Evenement[];
   intervenantsByEv: Map<number, string[]>;
   membres: Map<string, MembreLite>;
@@ -260,7 +302,7 @@ function ConferencesSection({
   return (
     <Collapsible className="border-t pt-4">
       <CollapsibleTrigger className="group flex w-full items-center justify-between gap-2 rounded-md py-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground">
-        <span>Conférence à venir ({conferences.length})</span>
+        <span>{title} ({conferences.length})</span>
         <ChevronDown className="h-4 w-4 transition-transform group-data-[state=open]:rotate-180" />
       </CollapsibleTrigger>
       <CollapsibleContent className="space-y-3 pt-4">
@@ -294,7 +336,6 @@ function ConferenceCard({
 }) {
   const qc = useQueryClient();
   const noms = intervenantIds.map((id) => nomComplet(membres, id));
-  const date = new Date(ev.date_event);
 
   const remove = useMutation({
     mutationFn: async () => {
@@ -311,75 +352,39 @@ function ConferenceCard({
 
   return (
     <Card>
-      <CardHeader className="pb-3">
-        <div className="flex items-start justify-between gap-3">
-          <div className="space-y-1">
-            <CardTitle className="text-lg">
-              {titreConference(ev.date_event, noms)}
-            </CardTitle>
-            <p className="flex items-center gap-1.5 text-sm text-muted-foreground">
-              <Calendar className="h-3.5 w-3.5" />
-              {date.toLocaleDateString("fr-FR", {
-                weekday: "long",
-                day: "numeric",
-                month: "long",
-                year: "numeric",
-              })}{" "}
-              à{" "}
-              {date.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}
-            </p>
+      <CardContent className="flex items-center justify-between gap-3 p-4">
+        <p className="text-sm font-medium">{titreConference(ev.date_event, noms)}</p>
+        {canManage && (
+          <div className="flex gap-1 shrink-0">
+            <EditConferenceDialog
+              ev={ev}
+              intervenantIds={intervenantIds}
+              membresList={membresList}
+            />
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button size="icon" variant="ghost">
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Supprimer cette conférence ?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Cette action est irréversible et supprimera également les
+                    intervenants associés.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Annuler</AlertDialogCancel>
+                  <AlertDialogAction onClick={() => remove.mutate()}>
+                    Supprimer
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
           </div>
-          {canManage && (
-            <div className="flex gap-1 shrink-0">
-              <EditConferenceDialog
-                ev={ev}
-                intervenantIds={intervenantIds}
-                membresList={membresList}
-              />
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <Button size="icon" variant="ghost">
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>Supprimer cette conférence ?</AlertDialogTitle>
-                    <AlertDialogDescription>
-                      Cette action est irréversible et supprimera également les
-                      intervenants associés.
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>Annuler</AlertDialogCancel>
-                    <AlertDialogAction onClick={() => remove.mutate()}>
-                      Supprimer
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
-            </div>
-          )}
-        </div>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="space-y-1.5">
-          <p className="text-xs font-medium text-muted-foreground uppercase">
-            Conférencier{intervenantIds.length > 1 ? "s" : ""}
-          </p>
-          {intervenantIds.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Aucun intervenant.</p>
-          ) : (
-            <div className="flex flex-wrap gap-1.5">
-              {intervenantIds.map((id) => (
-                <Badge key={id} variant="secondary">
-                  {nomComplet(membres, id)}
-                </Badge>
-              ))}
-            </div>
-          )}
-        </div>
-        <Comments typeContenu="evenement" contenuId={ev.id} />
+        )}
       </CardContent>
     </Card>
   );
@@ -742,13 +747,14 @@ function CreateEvenementDialog() {
           </DialogTitle>
         </DialogHeader>
         <div className="space-y-3">
-          <label className="flex items-center gap-2 text-sm font-medium cursor-pointer">
-            <Checkbox
-              checked={estConference}
-              onCheckedChange={(v) => setEstConference(v === true)}
-            />
+          <button
+            type="button"
+            onClick={() => setEstConference((v) => !v)}
+            className="flex w-full items-center gap-3 rounded-lg border p-3 text-left text-sm font-medium hover:bg-accent transition-colors"
+          >
+            <FauxCheck checked={estConference} />
             Conférence hebdo
-          </label>
+          </button>
 
           {estConference ? (
             <>
@@ -763,19 +769,23 @@ function CreateEvenementDialog() {
               </div>
               <div className="space-y-1.5">
                 <Label>Intervenants</Label>
-                <div className="max-h-52 space-y-1.5 overflow-y-auto rounded-md border p-2">
-                  {(membresQ.data ?? []).map((m) => (
-                    <label
-                      key={m.id}
-                      className="flex items-center gap-2 text-sm cursor-pointer"
-                    >
-                      <Checkbox
-                        checked={intervenants.includes(m.id)}
-                        onCheckedChange={() => toggleIntervenant(m.id)}
-                      />
-                      {m.prenom} {m.nom}
-                    </label>
-                  ))}
+                <div className="max-h-56 overflow-y-auto rounded-lg border divide-y">
+                  {trierParPrenom(membresQ.data ?? []).map((m) => {
+                    const checked = intervenants.includes(m.id);
+                    return (
+                      <button
+                        key={m.id}
+                        type="button"
+                        onClick={() => toggleIntervenant(m.id)}
+                        className="flex w-full items-center gap-3 px-3 py-2.5 text-left text-sm hover:bg-accent transition-colors"
+                      >
+                        <FauxCheck checked={checked} />
+                        <span className="truncate">
+                          {m.prenom} {m.nom}
+                        </span>
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
             </>
@@ -925,19 +935,23 @@ function EditConferenceDialog({
           </div>
           <div className="space-y-1.5">
             <Label>Intervenants</Label>
-            <div className="max-h-52 space-y-1.5 overflow-y-auto rounded-md border p-2">
-              {membresList.map((m) => (
-                <label
-                  key={m.id}
-                  className="flex items-center gap-2 text-sm cursor-pointer"
-                >
-                  <Checkbox
-                    checked={intervenants.includes(m.id)}
-                    onCheckedChange={() => toggleIntervenant(m.id)}
-                  />
-                  {m.prenom} {m.nom}
-                </label>
-              ))}
+            <div className="max-h-56 overflow-y-auto rounded-lg border divide-y">
+              {trierParPrenom(membresList).map((m) => {
+                const checked = intervenants.includes(m.id);
+                return (
+                  <button
+                    key={m.id}
+                    type="button"
+                    onClick={() => toggleIntervenant(m.id)}
+                    className="flex w-full items-center gap-3 px-3 py-2.5 text-left text-sm hover:bg-accent transition-colors"
+                  >
+                    <FauxCheck checked={checked} />
+                    <span className="truncate">
+                      {m.prenom} {m.nom}
+                    </span>
+                  </button>
+                );
+              })}
             </div>
           </div>
         </div>
