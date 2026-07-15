@@ -5,7 +5,7 @@ import { Bell, Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useProfile } from "@/hooks/use-profile";
 import { Button } from "@/components/ui/button";
-import { activerPush, permissionPush } from "@/lib/push";
+import { activerPush, permissionPush, synchroniserPush } from "@/lib/push";
 
 type Notification = {
   id: number;
@@ -77,10 +77,7 @@ export function NotificationsBell() {
 
   const marquerLue = useMutation({
     mutationFn: async (id: number) => {
-      const { error } = await supabase
-        .from("notifications")
-        .update({ lu: true })
-        .eq("id", id);
+      const { error } = await supabase.from("notifications").update({ lu: true }).eq("id", id);
       if (error) throw error;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: key }),
@@ -100,10 +97,7 @@ export function NotificationsBell() {
 
   const supprimer = useMutation({
     mutationFn: async (id: number) => {
-      const { error } = await supabase
-        .from("notifications")
-        .delete()
-        .eq("id", id);
+      const { error } = await supabase.from("notifications").delete().eq("id", id);
       if (error) throw error;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: key }),
@@ -123,6 +117,16 @@ export function NotificationsBell() {
   useEffect(() => {
     setPushEtat(permissionPush());
   }, []);
+
+  // Si la permission est déjà accordée, on garantit (en silence) qu'un
+  // abonnement push valide existe bien en base pour cet appareil. Corrige
+  // le cas où l'utilisateur a autorisé les notifications mais ne reçoit
+  // plus rien car son abonnement a expiré / n'a jamais été enregistré.
+  const profileId = profile?.id;
+  useEffect(() => {
+    if (!profileId) return;
+    void synchroniserPush(profileId);
+  }, [profileId]);
 
   async function activerNotifsPush() {
     if (!profile) return;
@@ -204,9 +208,7 @@ export function NotificationsBell() {
                   className="flex flex-1 flex-col items-start gap-0.5 px-3 py-2.5 text-left"
                 >
                   <span className="flex items-center gap-2 text-sm font-medium">
-                    {!n.lu && (
-                      <span className="h-2 w-2 shrink-0 rounded-full bg-accent" />
-                    )}
+                    {!n.lu && <span className="h-2 w-2 shrink-0 rounded-full bg-accent" />}
                     {n.titre}
                   </span>
                   <span className="text-xs text-muted-foreground">
