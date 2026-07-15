@@ -6,6 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useProfile } from "@/hooks/use-profile";
 import {
   creerNotificationsSafe,
+  getAdminsIds,
   getMembresActifsIds,
 } from "@/lib/notifications";
 import { Button } from "@/components/ui/button";
@@ -138,14 +139,19 @@ function NouvelleDemandePage() {
         if (cibErr) throw cibErr;
       }
 
-      // 3. Notifier (in-app). L'auteur est exclu.
+      // 3. Notifier (in-app + push). L'auteur est exclu.
+      // Les admins sont toujours ajoutés aux destinataires, y compris pour une
+      // demande spécifique (ciblage sélectif), afin d'être avertis de toute
+      // nouvelle demande. La déduplication évite les doublons si un admin est
+      // déjà ciblé.
       // Version "safe" : si les notifs échouent, la demande est quand même
       // créée — on ne bloque pas l'utilisateur, on l'avertit seulement.
+      const admins = await getAdminsIds();
       const notif = await creerNotificationsSafe({
         typeContenu: "demande",
         contenuId: demandeId,
         titre: `Nouvelle demande : ${t}`,
-        membreIds: destinataires,
+        membreIds: [...destinataires, ...admins],
         exclureId: profile.id,
       });
 

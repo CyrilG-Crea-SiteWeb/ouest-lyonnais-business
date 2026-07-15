@@ -15,7 +15,7 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
-import { creerNotificationsSafe, getMembresActifsIds } from "@/lib/notifications";
+import { creerNotificationsSafe, getAdminsIds, getMembresActifsIds } from "@/lib/notifications";
 import { titreConference } from "@/lib/conferences";
 import {
   Dialog,
@@ -685,6 +685,18 @@ function CreateEvenementDialog() {
           membreIds: intervenants,
           exclureId: profile.id,
         });
+
+        // Notifie aussi les admins de la création de la conférence, avec un
+        // libellé générique (les admins déjà intervenants ont reçu le message
+        // ci-dessus : on les exclut ici pour éviter un doublon).
+        const adminsConf = await getAdminsIds();
+        await creerNotificationsSafe({
+          typeContenu: "evenement",
+          contenuId: evId,
+          titre: "Nouvelle conférence programmée",
+          membreIds: adminsConf.filter((id) => !intervenants.includes(id)),
+          exclureId: profile.id,
+        });
         return;
       }
 
@@ -702,13 +714,16 @@ function CreateEvenementDialog() {
         .single();
       if (error) throw error;
 
-      // Notifier tous les membres actifs (créateur exclu).
+      // Notifier tous les membres actifs (créateur exclu). Les admins sont
+      // ajoutés explicitement pour garantir leur notification (dédup avec les
+      // actifs, où ils figurent déjà).
       const actifs = await getMembresActifsIds();
+      const adminsEv = await getAdminsIds();
       await creerNotificationsSafe({
         typeContenu: "evenement",
         contenuId: (ev as { id: number }).id,
         titre: `Nouvel événement : ${titre.trim()}`,
-        membreIds: actifs,
+        membreIds: [...actifs, ...adminsEv],
         exclureId: profile.id,
       });
     },

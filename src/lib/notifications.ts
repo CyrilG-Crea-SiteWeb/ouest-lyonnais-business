@@ -88,3 +88,22 @@ export async function getGestionnairesInvitesIds(): Promise<string[]> {
   if (error) throw error;
   return (data ?? []).map((m) => m.id);
 }
+
+/**
+ * Ids des administrateurs actifs.
+ *
+ * Sert à garantir que le rôle « admin » est toujours notifié (in-app + push)
+ * lors des créations clés — invité, événement, demande, sondage — même quand
+ * le ciblage par défaut ne les inclut pas (ex. conférence, demande spécifique).
+ * À fusionner dans `membreIds` : `creerNotifications` déduplique et exclut
+ * l'auteur, donc l'ajout est sans effet là où les admins figurent déjà.
+ */
+export async function getAdminsIds(): Promise<string[]> {
+  const { data, error } = await supabase
+    .from("membres")
+    .select("id")
+    .eq("statut", "actif")
+    .eq("role", "admin");
+  if (error) throw error;
+  return (data ?? []).map((m) => m.id);
+}
