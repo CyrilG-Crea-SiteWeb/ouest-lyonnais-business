@@ -22,7 +22,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Mail, Phone, Globe, Plus, Pencil, Trash2, Search, Shield, Building2, Tag, ArrowDownUp, Share2 } from "lucide-react";
+import { Mail, Phone, Globe, Plus, Pencil, Trash2, Search, Shield, Building2, Tag, Share2, Check } from "lucide-react";
 import { inviteMembre, updateMembre, updateMembreRoleStatut, deleteMembre, uploadMembreAvatar } from "@/lib/membres.functions";
 
 /** Convertit un ArrayBuffer en base64 par tranches pour éviter de saturer la pile. */
@@ -55,16 +55,7 @@ type Membre = {
   statut: "actif" | "inactif";
 };
 
-type SortBy = "prenom" | "role";
-
-// Ordre d'affichage des rôles (hiérarchie décroissante) et libellés associés.
-const ROLE_ORDER: Record<Membre["role"], number> = {
-  admin: 0,
-  bureau: 1,
-  comite_fetes: 2,
-  comite_membres: 3,
-  membre: 4,
-};
+// Libellés associés aux rôles.
 const ROLE_LABELS: Record<Membre["role"], string> = {
   admin: "Admin",
   bureau: "Bureau",
@@ -78,7 +69,6 @@ function MembresPage() {
   const isBureau = hasRole(profile?.role, "bureau");
   const isAdmin = hasRole(profile?.role, "admin");
   const [search, setSearch] = useState("");
-  const [sortBy, setSortBy] = useState<SortBy>("prenom");
 
   const { data: membres = [], isLoading } = useQuery({
     queryKey: ["membres", "list"],
@@ -105,18 +95,12 @@ function MembresPage() {
           normalize([m.nom, m.prenom, m.entreprise, m.categorie].filter(Boolean).join(" ")).includes(q),
         );
 
-    const byPrenom = (a: Membre, b: Membre) =>
-      a.prenom.localeCompare(b.prenom, "fr", { sensitivity: "base" }) ||
-      a.nom.localeCompare(b.nom, "fr", { sensitivity: "base" });
-
-    return [...list].sort((a, b) => {
-      if (sortBy === "role") {
-        const diff = ROLE_ORDER[a.role] - ROLE_ORDER[b.role];
-        if (diff !== 0) return diff;
-      }
-      return byPrenom(a, b);
-    });
-  }, [membres, search, sortBy]);
+    return [...list].sort(
+      (a, b) =>
+        a.prenom.localeCompare(b.prenom, "fr", { sensitivity: "base" }) ||
+        a.nom.localeCompare(b.nom, "fr", { sensitivity: "base" }),
+    );
+  }, [membres, search]);
 
   return (
     <div className="space-y-6">
@@ -133,26 +117,14 @@ function MembresPage() {
         </div>
       </header>
 
-      <div className="flex flex-col sm:flex-row gap-3">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Rechercher par nom, entreprise ou catégorie…"
-            className="pl-9"
-          />
-        </div>
-        <Select value={sortBy} onValueChange={(v) => setSortBy(v as SortBy)}>
-          <SelectTrigger className="sm:w-56" aria-label="Trier les membres">
-            <ArrowDownUp className="h-4 w-4 text-muted-foreground" />
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="prenom">Trier par prénom (A→Z)</SelectItem>
-            <SelectItem value="role">Trier par rôle</SelectItem>
-          </SelectContent>
-        </Select>
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <Input
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Rechercher par nom, entreprise ou catégorie…"
+          className="pl-9"
+        />
       </div>
 
       {isLoading ? (
@@ -172,18 +144,30 @@ function MembresPage() {
 
 /** Copie l'URL publique de l'annuaire dans le presse-papier. Visible par tous les membres connectés. */
 function ShareAnnuaireButton() {
+  const [copied, setCopied] = useState(false);
+
   const partager = async () => {
     try {
       const url = `${window.location.origin}/annuaire`;
       await navigator.clipboard.writeText(url);
-      toast.success("Lien de l'annuaire public copié !");
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
     } catch {
       toast.error("Impossible de copier le lien.");
     }
   };
+
   return (
-    <Button variant="outline" onClick={partager}>
-      <Share2 className="h-4 w-4" /> Partager l'annuaire
+    <Button variant="outline" onClick={partager} className="transition-colors">
+      {copied ? (
+        <>
+          <Check className="h-4 w-4 text-green-600" /> Lien copié
+        </>
+      ) : (
+        <>
+          <Share2 className="h-4 w-4" /> Partager l'annuaire
+        </>
+      )}
     </Button>
   );
 }
