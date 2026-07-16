@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as DefinirMotDePasseRouteImport } from './routes/definir-mot-de-passe'
 import { Route as AuthRouteImport } from './routes/auth'
+import { Route as AnnuaireRouteImport } from './routes/annuaire'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as AuthenticatedIndexRouteImport } from './routes/_authenticated/index'
 import { Route as AuthenticatedSondagesRouteImport } from './routes/_authenticated/sondages'
@@ -33,6 +34,11 @@ const DefinirMotDePasseRoute = DefinirMotDePasseRouteImport.update({
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
   path: '/auth',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AnnuaireRoute = AnnuaireRouteImport.update({
+  id: '/annuaire',
+  path: '/annuaire',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
@@ -108,6 +114,7 @@ const AuthenticatedDemandesDemandeIdRoute =
 
 export interface FileRoutesByFullPath {
   '/': typeof AuthenticatedIndexRoute
+  '/annuaire': typeof AnnuaireRoute
   '/auth': typeof AuthRoute
   '/definir-mot-de-passe': typeof DefinirMotDePasseRoute
   '/admin-rappel': typeof AuthenticatedAdminRappelRoute
@@ -123,6 +130,7 @@ export interface FileRoutesByFullPath {
   '/presences/': typeof AuthenticatedPresencesIndexRoute
 }
 export interface FileRoutesByTo {
+  '/annuaire': typeof AnnuaireRoute
   '/auth': typeof AuthRoute
   '/definir-mot-de-passe': typeof DefinirMotDePasseRoute
   '/admin-rappel': typeof AuthenticatedAdminRappelRoute
@@ -141,6 +149,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
+  '/annuaire': typeof AnnuaireRoute
   '/auth': typeof AuthRoute
   '/definir-mot-de-passe': typeof DefinirMotDePasseRoute
   '/_authenticated/admin-rappel': typeof AuthenticatedAdminRappelRoute
@@ -160,6 +169,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/annuaire'
     | '/auth'
     | '/definir-mot-de-passe'
     | '/admin-rappel'
@@ -175,6 +185,7 @@ export interface FileRouteTypes {
     | '/presences/'
   fileRoutesByTo: FileRoutesByTo
   to:
+    | '/annuaire'
     | '/auth'
     | '/definir-mot-de-passe'
     | '/admin-rappel'
@@ -192,6 +203,7 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/_authenticated'
+    | '/annuaire'
     | '/auth'
     | '/definir-mot-de-passe'
     | '/_authenticated/admin-rappel'
@@ -210,6 +222,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
+  AnnuaireRoute: typeof AnnuaireRoute
   AuthRoute: typeof AuthRoute
   DefinirMotDePasseRoute: typeof DefinirMotDePasseRoute
 }
@@ -228,6 +241,13 @@ declare module '@tanstack/react-router' {
       path: '/auth'
       fullPath: '/auth'
       preLoaderRoute: typeof AuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/annuaire': {
+      id: '/annuaire'
+      path: '/annuaire'
+      fullPath: '/annuaire'
+      preLoaderRoute: typeof AnnuaireRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_authenticated': {
@@ -359,6 +379,7 @@ const AuthenticatedRouteRouteWithChildren =
 
 const rootRouteChildren: RootRouteChildren = {
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
+  AnnuaireRoute: AnnuaireRoute,
   AuthRoute: AuthRoute,
   DefinirMotDePasseRoute: DefinirMotDePasseRoute,
 }
