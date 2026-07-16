@@ -827,6 +827,21 @@ export type Database = {
       }
     }
     Views: {
+      v_annuaire_public: {
+        Row: {
+          categorie: string | null
+          email: string | null
+          entreprise: string | null
+          id: string | null
+          nom: string | null
+          photo_url: string | null
+          prenom: string | null
+          role: Database["public"]["Enums"]["role_membre"] | null
+          site_web: string | null
+          telephone: string | null
+        }
+        Relationships: []
+      }
       v_palmares_semaine: {
         Row: {
           ca_valide: number | null

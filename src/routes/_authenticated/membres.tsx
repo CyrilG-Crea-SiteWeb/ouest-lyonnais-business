@@ -22,7 +22,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Mail, Phone, Globe, Plus, Pencil, Trash2, Search, Shield, Building2, Tag, ArrowDownUp } from "lucide-react";
+import { Mail, Phone, Globe, Plus, Pencil, Trash2, Search, Shield, Building2, Tag, ArrowDownUp, Share2 } from "lucide-react";
 import { inviteMembre, updateMembre, updateMembreRoleStatut, deleteMembre, uploadMembreAvatar } from "@/lib/membres.functions";
 
 /** Convertit un ArrayBuffer en base64 par tranches pour éviter de saturer la pile. */
@@ -127,7 +127,10 @@ function MembresPage() {
             {membres.length} membre{membres.length > 1 ? "s" : ""}
           </p>
         </div>
-        {isBureau && <InviteDialog />}
+        <div className="flex flex-wrap items-center gap-2">
+          <ShareAnnuaireButton />
+          {isBureau && <InviteDialog />}
+        </div>
       </header>
 
       <div className="flex flex-col sm:flex-row gap-3">
@@ -164,6 +167,24 @@ function MembresPage() {
         </div>
       )}
     </div>
+  );
+}
+
+/** Copie l'URL publique de l'annuaire dans le presse-papier. Visible par tous les membres connectés. */
+function ShareAnnuaireButton() {
+  const partager = async () => {
+    try {
+      const url = `${window.location.origin}/annuaire`;
+      await navigator.clipboard.writeText(url);
+      toast.success("Lien de l'annuaire public copié !");
+    } catch {
+      toast.error("Impossible de copier le lien.");
+    }
+  };
+  return (
+    <Button variant="outline" onClick={partager}>
+      <Share2 className="h-4 w-4" /> Partager l'annuaire
+    </Button>
   );
 }
 
