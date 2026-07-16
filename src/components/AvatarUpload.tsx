@@ -27,7 +27,13 @@ type AvatarUploadProps = {
 // URL signée valable 1 an (en secondes).
 const DUREE_URL = 60 * 60 * 24 * 365;
 
-export function AvatarUpload({ value, membreId, initiales, onChange, uploadFile }: AvatarUploadProps) {
+export function AvatarUpload({
+  value,
+  membreId,
+  initiales,
+  onChange,
+  uploadFile,
+}: AvatarUploadProps) {
   const [enCours, setEnCours] = useState(false);
   const [erreur, setErreur] = useState<string | null>(null);
 
@@ -102,8 +108,8 @@ export function AvatarUpload({ value, membreId, initiales, onChange, uploadFile 
           disabled={enCours}
         />
         <p className="text-xs text-muted-foreground">
-          Image carrée recommandée (400 × 400 px, jusqu'à 800 × 800 px pour plus
-          de netteté). JPG ou PNG, 5 Mo maximum. La photo est recadrée en cercle.
+          Image carrée recommandée (400 × 400 px, jusqu'à 800 × 800 px pour plus de netteté). JPG ou
+          PNG, 5 Mo maximum. La photo est recadrée en cercle.
         </p>
         {erreur && <p className="text-xs text-destructive">{erreur}</p>}
       </div>

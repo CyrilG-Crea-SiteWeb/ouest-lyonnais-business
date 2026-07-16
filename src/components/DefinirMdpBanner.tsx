@@ -23,8 +23,8 @@ export function DefinirMdpBanner() {
       <div className="flex-1 text-sm">
         <p className="font-semibold text-[#00424A]">Définissez votre mot de passe</p>
         <p className="text-muted-foreground">
-          Pour pouvoir vous reconnecter facilement sur tous vos appareils,
-          choisissez un mot de passe personnel.
+          Pour pouvoir vous reconnecter facilement sur tous vos appareils, choisissez un mot de
+          passe personnel.
         </p>
         <Link
           to="/definir-mot-de-passe"

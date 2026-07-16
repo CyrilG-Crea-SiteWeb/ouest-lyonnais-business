@@ -4,33 +4,18 @@ import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useProfile } from "@/hooks/use-profile";
-import {
-  creerNotificationsSafe,
-  getAdminsIds,
-  getMembresActifsIds,
-} from "@/lib/notifications";
+import { creerNotificationsSafe, getAdminsIds, getMembresActifsIds } from "@/lib/notifications";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  Card,
-  CardHeader,
-  CardTitle,
-  CardContent,
-} from "@/components/ui/card";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { toast } from "sonner";
 
 // Petite case à cocher native stylée — évite de dépendre de
 // @/components/ui/checkbox s'il n'est pas installé dans le projet.
-function CaseACocher({
-  checked,
-  onChange,
-}: {
-  checked: boolean;
-  onChange: (v: boolean) => void;
-}) {
+function CaseACocher({ checked, onChange }: { checked: boolean; onChange: (v: boolean) => void }) {
   return (
     <input
       type="checkbox"
@@ -133,9 +118,7 @@ function NouvelleDemandePage() {
           demande_id: demandeId,
           membre_id,
         }));
-        const { error: cibErr } = await supabase
-          .from("demandes_cibles")
-          .insert(rows);
+        const { error: cibErr } = await supabase.from("demandes_cibles").insert(rows);
         if (cibErr) throw cibErr;
       }
 
@@ -163,9 +146,7 @@ function NouvelleDemandePage() {
       }
       navigate({ to: "/demandes/$demandeId", params: { demandeId: String(demandeId) } });
     } catch (err) {
-      toast.error(
-        err instanceof Error ? err.message : "Erreur lors de la publication",
-      );
+      toast.error(err instanceof Error ? err.message : "Erreur lors de la publication");
     } finally {
       setSaving(false);
     }
@@ -234,9 +215,7 @@ function NouvelleDemandePage() {
                 <p className="text-xs text-muted-foreground">
                   Sélectionnez les membres à notifier :
                 </p>
-                {membresQ.isLoading && (
-                  <p className="text-sm text-muted-foreground">Chargement…</p>
-                )}
+                {membresQ.isLoading && <p className="text-sm text-muted-foreground">Chargement…</p>}
                 <div className="grid gap-1 sm:grid-cols-2 max-h-72 overflow-y-auto">
                   {membres.map((m) => {
                     const checked = ciblesSelection.has(m.id);
@@ -246,15 +225,10 @@ function NouvelleDemandePage() {
                         key={m.id}
                         className="flex items-center gap-2 rounded-md px-2 py-1.5 cursor-pointer hover:bg-muted"
                       >
-                        <CaseACocher
-                          checked={checked}
-                          onChange={() => toggleCible(m.id)}
-                        />
+                        <CaseACocher checked={checked} onChange={() => toggleCible(m.id)} />
                         <Avatar className="h-6 w-6">
                           {m.photo_url && <AvatarImage src={m.photo_url} />}
-                          <AvatarFallback className="text-[10px]">
-                            {initiales}
-                          </AvatarFallback>
+                          <AvatarFallback className="text-[10px]">{initiales}</AvatarFallback>
                         </Avatar>
                         <span className="text-sm truncate">
                           {m.prenom} {m.nom}

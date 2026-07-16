@@ -9,24 +9,41 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import {
-  Collapsible, CollapsibleContent, CollapsibleTrigger,
-} from "@/components/ui/collapsible";
-import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from "@/components/ui/select";
 import {
-  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
-  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader,
-  AlertDialogTitle, AlertDialogTrigger,
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 import { Comments } from "@/components/Comments";
 import { ExportRecos } from "@/components/ExportRecos";
 import { HelpButton } from "@/components/HelpButton";
 import {
-  Handshake, Users2, UserPlus, Euro, Trash2, Loader2, Check, ClipboardCheck,
-  ChevronRight, Filter, X,
+  Handshake,
+  Users2,
+  UserPlus,
+  Euro,
+  Trash2,
+  Loader2,
+  Check,
+  ClipboardCheck,
+  ChevronRight,
+  Filter,
+  X,
 } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/recommandations")({
@@ -52,17 +69,50 @@ type Reco = {
 type Semaine = { id: number; date_debut: string; libelle: string };
 type MembreLite = { id: string; nom: string; prenom: string; entreprise: string | null };
 
-const TYPE_META: Record<RecoType, { label: string; short: string; icon: typeof Handshake; color: string }> = {
-  tete_a_tete:    { label: "Tête-à-tête",            short: "T-à-T",   icon: Users2,    color: "bg-blue-100 text-blue-800" },
-  reco_interne:   { label: "Reco interne", short: "Interne", icon: Handshake, color: "bg-emerald-100 text-emerald-800" },
-  reco_externe:   { label: "Reco externe", short: "Externe", icon: UserPlus,  color: "bg-amber-100 text-amber-800" },
-  merci_business: { label: "Thx U 4 Pepette", short: "Merci",   icon: Euro,      color: "bg-fuchsia-100 text-fuchsia-800" },
+const TYPE_META: Record<
+  RecoType,
+  { label: string; short: string; icon: typeof Handshake; color: string }
+> = {
+  tete_a_tete: {
+    label: "Tête-à-tête",
+    short: "T-à-T",
+    icon: Users2,
+    color: "bg-blue-100 text-blue-800",
+  },
+  reco_interne: {
+    label: "Reco interne",
+    short: "Interne",
+    icon: Handshake,
+    color: "bg-emerald-100 text-emerald-800",
+  },
+  reco_externe: {
+    label: "Reco externe",
+    short: "Externe",
+    icon: UserPlus,
+    color: "bg-amber-100 text-amber-800",
+  },
+  merci_business: {
+    label: "Thx U 4 Pepette",
+    short: "Merci",
+    icon: Euro,
+    color: "bg-fuchsia-100 text-fuchsia-800",
+  },
 };
 
 // ---- Helpers de regroupement par année / mois ----
 const MOIS_FR = [
-  "Janvier", "Février", "Mars", "Avril", "Mai", "Juin",
-  "Juillet", "Août", "Septembre", "Octobre", "Novembre", "Décembre",
+  "Janvier",
+  "Février",
+  "Mars",
+  "Avril",
+  "Mai",
+  "Juin",
+  "Juillet",
+  "Août",
+  "Septembre",
+  "Octobre",
+  "Novembre",
+  "Décembre",
 ];
 
 // Case à cocher purement visuelle (le <button> parent gère le clic).
@@ -105,7 +155,9 @@ function RecosPage() {
     queryFn: async (): Promise<Reco[]> => {
       const { data, error } = await supabase
         .from("recommandations")
-        .select("id, type, membre_id, membre_cible_id, contact_externe, montant, valide, semaine_id, notes, created_at")
+        .select(
+          "id, type, membre_id, membre_cible_id, contact_externe, montant, valide, semaine_id, notes, created_at",
+        )
         .order("created_at", { ascending: false });
       if (error) throw error;
       return (data ?? []) as Reco[];
@@ -140,14 +192,18 @@ function RecosPage() {
         .in("id", semaineIds);
       if (error) throw error;
       const map: Record<number, Semaine> = {};
-      (data ?? []).forEach((s: any) => { map[s.id] = s as Semaine; });
+      (data ?? []).forEach((s: any) => {
+        map[s.id] = s as Semaine;
+      });
       return map;
     },
   });
 
   const membresMap = useMemo(() => {
     const m: Record<string, MembreLite> = {};
-    membres.forEach((x) => { m[x.id] = x; });
+    membres.forEach((x) => {
+      m[x.id] = x;
+    });
     return m;
   }, [membres]);
 
@@ -168,9 +224,7 @@ function RecosPage() {
       if (fMembre !== "__all__") {
         const parts = participantsMap[r.id] ?? [];
         const concerne =
-          r.membre_id === fMembre ||
-          r.membre_cible_id === fMembre ||
-          parts.includes(fMembre);
+          r.membre_id === fMembre || r.membre_cible_id === fMembre || parts.includes(fMembre);
         if (!concerne) return false;
       }
       return true;
@@ -241,7 +295,10 @@ function RecosPage() {
     return best?.id ?? null;
   }, [semaineIds, semainesMap]);
 
-  const aValider = useMemo(() => recos.filter((r) => r.type === "merci_business" && !r.valide), [recos]);
+  const aValider = useMemo(
+    () => recos.filter((r) => r.type === "merci_business" && !r.valide),
+    [recos],
+  );
 
   return (
     <div className="space-y-6">
@@ -251,14 +308,26 @@ function RecosPage() {
           <HelpButton title="Comment fonctionne cette page" ariaLabel="Aide Recommandations">
             <p>Choisissez le type de saisie selon votre activité :</p>
             <ul className="list-disc space-y-1 pl-5">
-              <li><strong>Tête-à-tête</strong> : vous avez rencontré un ou plusieurs membres. Sélectionnez tous les participants.</li>
-              <li><strong>Reco interne</strong> : vous recommandez un membre du groupe. Cochez « Je me recommande » si c'est vous que vous recommandez auprès de ce membre.</li>
-              <li><strong>Reco externe</strong> : vous transmettez un contact hors groupe à un membre destinataire.</li>
-              <li><strong>Merci pour le business</strong> : un membre vous a apporté du CA (indiquez le montant).</li>
+              <li>
+                <strong>Tête-à-tête</strong> : vous avez rencontré un ou plusieurs membres.
+                Sélectionnez tous les participants.
+              </li>
+              <li>
+                <strong>Reco interne</strong> : vous recommandez un membre du groupe. Cochez « Je me
+                recommande » si c'est vous que vous recommandez auprès de ce membre.
+              </li>
+              <li>
+                <strong>Reco externe</strong> : vous transmettez un contact hors groupe à un membre
+                destinataire.
+              </li>
+              <li>
+                <strong>Merci pour le business</strong> : un membre vous a apporté du CA (indiquez
+                le montant).
+              </li>
             </ul>
             <p>
-              Chaque saisie est automatiquement rattachée à la semaine en cours.
-              Vous voyez l'historique de tous, mais ne modifiez que vos propres entrées.
+              Chaque saisie est automatiquement rattachée à la semaine en cours. Vous voyez
+              l'historique de tous, mais ne modifiez que vos propres entrées.
             </p>
           </HelpButton>
         </div>
@@ -271,8 +340,7 @@ function RecosPage() {
         <Card className="border-amber-300 bg-amber-50/50">
           <CardHeader className="pb-3">
             <CardTitle className="text-base flex items-center gap-2">
-              <ClipboardCheck className="h-4 w-4" />
-              À valider ({aValider.length})
+              <ClipboardCheck className="h-4 w-4" />À valider ({aValider.length})
             </CardTitle>
           </CardHeader>
           <CardContent className="pt-0 divide-y">
@@ -302,7 +370,12 @@ function RecosPage() {
         <div className="flex items-center justify-between gap-2">
           <h2 className="text-lg font-semibold">Historique</h2>
           {filtresActifs && (
-            <Button variant="ghost" size="sm" onClick={resetFiltres} className="h-8 text-muted-foreground">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={resetFiltres}
+              className="h-8 text-muted-foreground"
+            >
               <X className="h-4 w-4 mr-1" /> Réinitialiser
             </Button>
           )}
@@ -315,11 +388,15 @@ function RecosPage() {
                 <Filter className="h-3 w-3" /> Membre
               </Label>
               <Select value={fMembre} onValueChange={setFMembre}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="__all__">Tous les membres</SelectItem>
                   {membres.map((m) => (
-                    <SelectItem key={m.id} value={m.id}>{m.prenom} {m.nom}</SelectItem>
+                    <SelectItem key={m.id} value={m.id}>
+                      {m.prenom} {m.nom}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -328,7 +405,9 @@ function RecosPage() {
             <div className="space-y-1.5">
               <Label className="text-xs">Type</Label>
               <Select value={fType} onValueChange={setFType}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="__all__">Tous les types</SelectItem>
                   <SelectItem value="tete_a_tete">Tête-à-tête</SelectItem>
@@ -344,9 +423,11 @@ function RecosPage() {
         {isLoading ? (
           <p className="text-sm text-muted-foreground">Chargement…</p>
         ) : annees.length === 0 ? (
-          <Card><CardContent className="p-6 text-sm text-muted-foreground">
-            {filtresActifs ? "Aucune recommandation pour ces filtres." : "Aucune recommandation."}
-          </CardContent></Card>
+          <Card>
+            <CardContent className="p-6 text-sm text-muted-foreground">
+              {filtresActifs ? "Aucune recommandation pour ces filtres." : "Aucune recommandation."}
+            </CardContent>
+          </Card>
         ) : (
           annees.map((a) => (
             <AnneeBlock
@@ -372,10 +453,22 @@ function RecosPage() {
 
 // ---- Bloc Année (repliable) ----
 function AnneeBlock({
-  annee, mois, defaultOpen, moisCourant, membresMap, participantsMap, profileId, isBureau, semaineCouranteId,
+  annee,
+  mois,
+  defaultOpen,
+  moisCourant,
+  membresMap,
+  participantsMap,
+  profileId,
+  isBureau,
+  semaineCouranteId,
 }: {
   annee: number;
-  mois: { mois: number; annee: number; semaines: { id: number; semaine?: Semaine; items: Reco[]; debut: string }[] }[];
+  mois: {
+    mois: number;
+    annee: number;
+    semaines: { id: number; semaine?: Semaine; items: Reco[]; debut: string }[];
+  }[];
   defaultOpen: boolean;
   moisCourant: number;
   membresMap: Record<string, MembreLite>;
@@ -385,15 +478,22 @@ function AnneeBlock({
   semaineCouranteId: number | null;
 }) {
   const [open, setOpen] = useState(defaultOpen);
-  const total = mois.reduce((acc, m) => acc + m.semaines.reduce((s, sem) => s + sem.items.length, 0), 0);
+  const total = mois.reduce(
+    (acc, m) => acc + m.semaines.reduce((s, sem) => s + sem.items.length, 0),
+    0,
+  );
 
   return (
     <Collapsible open={open} onOpenChange={setOpen}>
       <CollapsibleTrigger asChild>
         <button className="flex w-full items-center gap-2 rounded-lg border bg-card px-4 py-3 text-left hover:bg-accent transition-colors">
-          <ChevronRight className={"h-5 w-5 shrink-0 transition-transform " + (open ? "rotate-90" : "")} />
+          <ChevronRight
+            className={"h-5 w-5 shrink-0 transition-transform " + (open ? "rotate-90" : "")}
+          />
           <span className="text-lg font-bold">{annee}</span>
-          <Badge variant="outline" className="ml-auto">{total}</Badge>
+          <Badge variant="outline" className="ml-auto">
+            {total}
+          </Badge>
         </button>
       </CollapsibleTrigger>
       <CollapsibleContent className="space-y-3 pl-2 pt-3 md:pl-4">
@@ -417,7 +517,14 @@ function AnneeBlock({
 
 // ---- Bloc Mois (repliable) ----
 function MoisBlock({
-  mois, semaines, defaultOpen, membresMap, participantsMap, profileId, isBureau, semaineCouranteId,
+  mois,
+  semaines,
+  defaultOpen,
+  membresMap,
+  participantsMap,
+  profileId,
+  isBureau,
+  semaineCouranteId,
 }: {
   mois: number;
   semaines: { id: number; semaine?: Semaine; items: Reco[]; debut: string }[];
@@ -435,9 +542,13 @@ function MoisBlock({
     <Collapsible open={open} onOpenChange={setOpen}>
       <CollapsibleTrigger asChild>
         <button className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left hover:bg-accent transition-colors">
-          <ChevronRight className={"h-4 w-4 shrink-0 transition-transform " + (open ? "rotate-90" : "")} />
+          <ChevronRight
+            className={"h-4 w-4 shrink-0 transition-transform " + (open ? "rotate-90" : "")}
+          />
           <span className="font-semibold">{MOIS_FR[mois]}</span>
-          <Badge variant="outline" className="ml-auto text-[10px]">{total}</Badge>
+          <Badge variant="outline" className="ml-auto text-[10px]">
+            {total}
+          </Badge>
         </button>
       </CollapsibleTrigger>
       <CollapsibleContent className="space-y-3 pt-2">
@@ -459,7 +570,12 @@ function MoisBlock({
 
 // ---- Bloc Semaine (repliable ; seule la semaine en cours ouverte par défaut) ----
 function SemaineBlock({
-  group, defaultOpen, membresMap, participantsMap, profileId, isBureau,
+  group,
+  defaultOpen,
+  membresMap,
+  participantsMap,
+  profileId,
+  isBureau,
 }: {
   group: { id: number; semaine?: Semaine; items: Reco[]; debut: string };
   defaultOpen: boolean;
@@ -476,12 +592,14 @@ function SemaineBlock({
       <Collapsible open={open} onOpenChange={setOpen}>
         <CollapsibleTrigger asChild>
           <button className="flex w-full items-center gap-2 px-4 py-3 text-left hover:bg-accent/50 transition-colors rounded-t-lg">
-            <ChevronRight className={"h-4 w-4 shrink-0 transition-transform " + (open ? "rotate-90" : "")} />
+            <ChevronRight
+              className={"h-4 w-4 shrink-0 transition-transform " + (open ? "rotate-90" : "")}
+            />
             <span className="text-sm font-semibold text-primary">{libelle}</span>
-            {defaultOpen && (
-              <Badge className="text-[10px]">En cours</Badge>
-            )}
-            <Badge variant="outline" className="ml-auto text-[10px]">{group.items.length}</Badge>
+            {defaultOpen && <Badge className="text-[10px]">En cours</Badge>}
+            <Badge variant="outline" className="ml-auto text-[10px]">
+              {group.items.length}
+            </Badge>
           </button>
         </CollapsibleTrigger>
         <CollapsibleContent>
@@ -492,7 +610,9 @@ function SemaineBlock({
                 reco={r}
                 emetteur={membresMap[r.membre_id]}
                 cible={r.membre_cible_id ? membresMap[r.membre_cible_id] : undefined}
-                participants={(participantsMap[r.id] ?? []).map((id) => membresMap[id]).filter(Boolean)}
+                participants={(participantsMap[r.id] ?? [])
+                  .map((id) => membresMap[id])
+                  .filter(Boolean)}
                 canEdit={isBureau || r.membre_id === profileId}
               />
             ))}
@@ -504,22 +624,25 @@ function SemaineBlock({
 }
 
 function RecoForm({
-  membres, allMembres, isBureau, onCreated,
+  membres,
+  allMembres,
+  isBureau,
+  onCreated,
 }: {
-  membres: MembreLite[];      // sans soi-même (pour T-à-T, reco interne classique, reco externe, merci)
-  allMembres: MembreLite[];   // avec soi-même : sert à choisir l'auteur en saisie déléguée
+  membres: MembreLite[]; // sans soi-même (pour T-à-T, reco interne classique, reco externe, merci)
+  allMembres: MembreLite[]; // avec soi-même : sert à choisir l'auteur en saisie déléguée
   isBureau: boolean;
   onCreated: () => void;
 }) {
   const { data: profile } = useProfile();
   const [type, setType] = useState<RecoType>("tete_a_tete");
-  const [membreCible, setMembreCible] = useState<string>("");          // reco interne / externe / merci
-  const [participants, setParticipants] = useState<string[]>([]);       // tête-à-tête (multi)
-  const [autoReco, setAutoReco] = useState(false);                      // reco interne : "je me recommande"
+  const [membreCible, setMembreCible] = useState<string>(""); // reco interne / externe / merci
+  const [participants, setParticipants] = useState<string[]>([]); // tête-à-tête (multi)
+  const [autoReco, setAutoReco] = useState(false); // reco interne : "je me recommande"
   const [contactExterne, setContactExterne] = useState("");
   const [montant, setMontant] = useState("");
-  const [pourAutre, setPourAutre] = useState(false);                  // bureau : saisir au nom d'un autre
-  const [auteurId, setAuteurId] = useState<string>("");               // membre au nom duquel on saisit
+  const [pourAutre, setPourAutre] = useState(false); // bureau : saisir au nom d'un autre
+  const [auteurId, setAuteurId] = useState<string>(""); // membre au nom duquel on saisit
 
   const resetFields = () => {
     setMembreCible("");
@@ -532,9 +655,7 @@ function RecoForm({
   };
 
   const toggleParticipant = (id: string) => {
-    setParticipants((prev) =>
-      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
-    );
+    setParticipants((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
   };
 
   // Auteur effectif de la saisie : un autre membre si le bureau délègue, sinon soi-même.
@@ -551,7 +672,7 @@ function RecoForm({
       const { data: semaineId, error: semErr } = await supabase.rpc("get_or_create_semaine");
       if (semErr) throw semErr;
 
-      const auteur = auteurEffectifId!;  // émetteur réel (soi-même ou membre délégué)
+      const auteur = auteurEffectifId!; // émetteur réel (soi-même ou membre délégué)
 
       const payload: any = {
         type,
@@ -642,9 +763,13 @@ function RecoForm({
 
   const needsMontant = type === "merci_business";
   const membreLabel =
-    type === "reco_interne" ? (autoReco ? "Membre auprès de qui vous vous recommandez" : "Membre destinataire") :
-    type === "reco_externe" ? "Membre destinataire" :
-    "Membre émetteur";
+    type === "reco_interne"
+      ? autoReco
+        ? "Membre auprès de qui vous vous recommandez"
+        : "Membre destinataire"
+      : type === "reco_externe"
+        ? "Membre destinataire"
+        : "Membre émetteur";
 
   return (
     <Card>
@@ -653,7 +778,10 @@ function RecoForm({
       </CardHeader>
       <CardContent>
         <form
-          onSubmit={(e) => { e.preventDefault(); mutation.mutate(); }}
+          onSubmit={(e) => {
+            e.preventDefault();
+            mutation.mutate();
+          }}
           className="space-y-4"
         >
           <div className="grid grid-cols-2 gap-2">
@@ -665,7 +793,9 @@ function RecoForm({
                 <button
                   key={t}
                   type="button"
-                  onClick={() => { setType(t); }}
+                  onClick={() => {
+                    setType(t);
+                  }}
                   className={
                     "flex items-center gap-2 rounded-lg border p-3 text-left text-sm transition-colors " +
                     (active
@@ -686,7 +816,12 @@ function RecoForm({
             <div className="space-y-2 rounded-lg border border-amber-300 bg-amber-50/50 p-3">
               <button
                 type="button"
-                onClick={() => { setPourAutre((v) => !v); setAuteurId(""); setMembreCible(""); setParticipants([]); }}
+                onClick={() => {
+                  setPourAutre((v) => !v);
+                  setAuteurId("");
+                  setMembreCible("");
+                  setParticipants([]);
+                }}
                 className="flex w-full items-center gap-3 text-left text-sm"
               >
                 <FauxCheck checked={pourAutre} />
@@ -695,12 +830,22 @@ function RecoForm({
               {pourAutre && (
                 <div className="space-y-1.5">
                   <Label>Membre au nom duquel saisir</Label>
-                  <Select value={auteurId} onValueChange={(v) => { setAuteurId(v); setMembreCible(""); setParticipants([]); }}>
-                    <SelectTrigger><SelectValue placeholder="Choisir le membre…" /></SelectTrigger>
+                  <Select
+                    value={auteurId}
+                    onValueChange={(v) => {
+                      setAuteurId(v);
+                      setMembreCible("");
+                      setParticipants([]);
+                    }}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Choisir le membre…" />
+                    </SelectTrigger>
                     <SelectContent>
                       {allMembres.map((m) => (
                         <SelectItem key={m.id} value={m.id}>
-                          {m.prenom} {m.nom}{m.entreprise ? ` — ${m.entreprise}` : ""}
+                          {m.prenom} {m.nom}
+                          {m.entreprise ? ` — ${m.entreprise}` : ""}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -712,11 +857,14 @@ function RecoForm({
               )}
             </div>
           )}
-          
+
           {/* TÊTE-À-TÊTE : sélection multiple de participants */}
           {type === "tete_a_tete" && (
             <div className="space-y-2">
-              <Label>Membres rencontrés ({participants.length} sélectionné{participants.length > 1 ? "s" : ""})</Label>
+              <Label>
+                Membres rencontrés ({participants.length} sélectionné
+                {participants.length > 1 ? "s" : ""})
+              </Label>
               <div className="max-h-56 overflow-y-auto rounded-lg border divide-y">
                 {membresCibles.map((m) => {
                   const checked = participants.includes(m.id);
@@ -729,7 +877,8 @@ function RecoForm({
                     >
                       <FauxCheck checked={checked} />
                       <span className="truncate">
-                        {m.prenom} {m.nom}{m.entreprise ? ` — ${m.entreprise}` : ""}
+                        {m.prenom} {m.nom}
+                        {m.entreprise ? ` — ${m.entreprise}` : ""}
                       </span>
                     </button>
                   );
@@ -752,11 +901,14 @@ function RecoForm({
               <div className="space-y-1.5">
                 <Label>{membreLabel}</Label>
                 <Select value={membreCible} onValueChange={setMembreCible}>
-                  <SelectTrigger><SelectValue placeholder="Choisir un membre…" /></SelectTrigger>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Choisir un membre…" />
+                  </SelectTrigger>
                   <SelectContent>
                     {membresCibles.map((m) => (
                       <SelectItem key={m.id} value={m.id}>
-                        {m.prenom} {m.nom}{m.entreprise ? ` — ${m.entreprise}` : ""}
+                        {m.prenom} {m.nom}
+                        {m.entreprise ? ` — ${m.entreprise}` : ""}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -770,11 +922,14 @@ function RecoForm({
             <div className="space-y-1.5">
               <Label>{membreLabel}</Label>
               <Select value={membreCible} onValueChange={setMembreCible}>
-                <SelectTrigger><SelectValue placeholder="Choisir un membre…" /></SelectTrigger>
+                <SelectTrigger>
+                  <SelectValue placeholder="Choisir un membre…" />
+                </SelectTrigger>
                 <SelectContent>
                   {membresCibles.map((m) => (
                     <SelectItem key={m.id} value={m.id}>
-                      {m.prenom} {m.nom}{m.entreprise ? ` — ${m.entreprise}` : ""}
+                      {m.prenom} {m.nom}
+                      {m.entreprise ? ` — ${m.entreprise}` : ""}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -798,11 +953,14 @@ function RecoForm({
               <div className="space-y-1.5">
                 <Label>{membreLabel}</Label>
                 <Select value={membreCible} onValueChange={setMembreCible}>
-                  <SelectTrigger><SelectValue placeholder="À qui transmettez-vous ce contact ?" /></SelectTrigger>
+                  <SelectTrigger>
+                    <SelectValue placeholder="À qui transmettez-vous ce contact ?" />
+                  </SelectTrigger>
                   <SelectContent>
                     {membresCibles.map((m) => (
                       <SelectItem key={m.id} value={m.id}>
-                        {m.prenom} {m.nom}{m.entreprise ? ` — ${m.entreprise}` : ""}
+                        {m.prenom} {m.nom}
+                        {m.entreprise ? ` — ${m.entreprise}` : ""}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -834,7 +992,11 @@ function RecoForm({
 }
 
 function RecoRow({
-  reco, emetteur, cible, participants = [], canEdit,
+  reco,
+  emetteur,
+  cible,
+  participants = [],
+  canEdit,
 }: {
   reco: Reco;
   emetteur?: MembreLite;
@@ -846,7 +1008,7 @@ function RecoRow({
   const meta = TYPE_META[reco.type];
   const Icon = meta.icon;
   const emName = emetteur ? `${emetteur.prenom} ${emetteur.nom}` : "—";
-  const cibleName = cible ? `${cible.prenom} ${cible.nom}` : reco.contact_externe ?? "—";
+  const cibleName = cible ? `${cible.prenom} ${cible.nom}` : (reco.contact_externe ?? "—");
   const isAutoReco = reco.type === "reco_interne" && reco.notes === "auto_reco";
 
   // Pour le tête-à-tête : lister les participants (sinon retomber sur membre_cible_id).
@@ -856,11 +1018,15 @@ function RecoRow({
       : cibleName;
 
   const description =
-    reco.type === "tete_a_tete" ? `${emName} ↔ ${participantsName}` :
-    reco.type === "reco_interne"
-      ? (isAutoReco ? `${emName} s'est recommandé auprès de ${cibleName}` : `${emName} → ${cibleName}`) :
-    reco.type === "reco_externe" ? `${emName} → ${cibleName} (externe) → ${reco.contact_externe ?? ""}` :
-    `${cibleName} → ${emName}`; // merci : emetteur du remerciement est membre_id, le membre cible a apporté le business
+    reco.type === "tete_a_tete"
+      ? `${emName} ↔ ${participantsName}`
+      : reco.type === "reco_interne"
+        ? isAutoReco
+          ? `${emName} s'est recommandé auprès de ${cibleName}`
+          : `${emName} → ${cibleName}`
+        : reco.type === "reco_externe"
+          ? `${emName} → ${cibleName} (externe) → ${reco.contact_externe ?? ""}`
+          : `${cibleName} → ${emName}`; // merci : emetteur du remerciement est membre_id, le membre cible a apporté le business
 
   const del = useMutation({
     mutationFn: async () => {
@@ -878,16 +1044,26 @@ function RecoRow({
   return (
     <div className="py-3 border-b last:border-b-0">
       <div className="flex items-start gap-3">
-        <div className={"h-8 w-8 rounded-md flex items-center justify-center shrink-0 " + meta.color}>
+        <div
+          className={"h-8 w-8 rounded-md flex items-center justify-center shrink-0 " + meta.color}
+        >
           <Icon className="h-4 w-4" />
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
-            <Badge variant="outline" className="text-[10px]">{meta.short}</Badge>
-            {isAutoReco && <Badge variant="outline" className="text-[10px]">Auto</Badge>}
+            <Badge variant="outline" className="text-[10px]">
+              {meta.short}
+            </Badge>
+            {isAutoReco && (
+              <Badge variant="outline" className="text-[10px]">
+                Auto
+              </Badge>
+            )}
             {reco.montant != null && (
               <Badge className="text-[10px]">
-                {new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR" }).format(Number(reco.montant))}
+                {new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR" }).format(
+                  Number(reco.montant),
+                )}
               </Badge>
             )}
           </div>
@@ -896,7 +1072,11 @@ function RecoRow({
         {canEdit && (
           <AlertDialog>
             <AlertDialogTrigger asChild>
-              <Button size="icon" variant="ghost" className="h-8 w-8 text-muted-foreground hover:text-destructive">
+              <Button
+                size="icon"
+                variant="ghost"
+                className="h-8 w-8 text-muted-foreground hover:text-destructive"
+              >
                 <Trash2 className="h-4 w-4" />
               </Button>
             </AlertDialogTrigger>
@@ -958,20 +1138,22 @@ function AValiderRow({
       </div>
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-2">
-          <Badge variant="outline" className="text-[10px]">Merci</Badge>
+          <Badge variant="outline" className="text-[10px]">
+            Merci
+          </Badge>
           {reco.montant != null && (
             <Badge className="text-[10px]">
-              {new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR" }).format(Number(reco.montant))}
+              {new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR" }).format(
+                Number(reco.montant),
+              )}
             </Badge>
           )}
         </div>
-        <p className="text-sm mt-0.5 truncate">{cibleName} → {emName}</p>
+        <p className="text-sm mt-0.5 truncate">
+          {cibleName} → {emName}
+        </p>
       </div>
-      <Button
-        size="sm"
-        disabled={validate.isPending}
-        onClick={() => validate.mutate()}
-      >
+      <Button size="sm" disabled={validate.isPending} onClick={() => validate.mutate()}>
         {validate.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Valider"}
       </Button>
     </div>

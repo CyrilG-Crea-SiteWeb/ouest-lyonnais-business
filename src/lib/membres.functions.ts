@@ -88,7 +88,10 @@ const uploadAvatarSchema = z.object({
   // Image encodée en base64 (sans préfixe data:).
   fileBase64: z.string().min(1),
   contentType: z.string().regex(/^image\//, "Le fichier doit être une image."),
-  ext: z.string().regex(/^[a-z0-9]+$/i).max(10),
+  ext: z
+    .string()
+    .regex(/^[a-z0-9]+$/i)
+    .max(10),
 });
 
 // URL signée valable 1 an (en secondes).

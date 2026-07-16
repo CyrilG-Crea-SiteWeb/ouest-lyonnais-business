@@ -240,9 +240,7 @@ function SondageCard({
                   </AlertDialogHeader>
                   <AlertDialogFooter>
                     <AlertDialogCancel>Annuler</AlertDialogCancel>
-                    <AlertDialogAction onClick={() => remove.mutate()}>
-                      Supprimer
-                    </AlertDialogAction>
+                    <AlertDialogAction onClick={() => remove.mutate()}>Supprimer</AlertDialogAction>
                   </AlertDialogFooter>
                 </AlertDialogContent>
               </AlertDialog>
@@ -266,9 +264,7 @@ function SondageCard({
               } ${mine ? "border-primary" : ""}`}
             >
               <div
-                className={`absolute inset-y-0 left-0 ${
-                  mine ? "bg-primary/20" : "bg-muted"
-                }`}
+                className={`absolute inset-y-0 left-0 ${mine ? "bg-primary/20" : "bg-muted"}`}
                 style={{ width: `${pct}%` }}
               />
               <div className="relative flex items-center justify-between gap-3">
@@ -493,7 +489,8 @@ function EditSondageDialog({ sondage }: { sondage: Sondage }) {
             />
           </div>
           <p className="text-xs text-muted-foreground">
-            Les options de réponse ne sont pas modifiables après création afin de préserver les votes déjà exprimés.
+            Les options de réponse ne sont pas modifiables après création afin de préserver les
+            votes déjà exprimés.
           </p>
         </div>
         <DialogFooter>

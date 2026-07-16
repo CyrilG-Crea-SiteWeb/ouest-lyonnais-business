@@ -49,15 +49,15 @@
 :root {
   --radius: 0.75rem;
 
-  --background: oklch(0.985 0.003 210);            /* #F7F9FA-ish */
-  --foreground: oklch(0.305 0.045 200);            /* #00424A */
+  --background: oklch(0.985 0.003 210); /* #F7F9FA-ish */
+  --foreground: oklch(0.305 0.045 200); /* #00424A */
 
   --card: oklch(1 0 0);
   --card-foreground: oklch(0.305 0.045 200);
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.305 0.045 200);
 
-  --primary: oklch(0.475 0.07 205);                /* #006875 */
+  --primary: oklch(0.475 0.07 205); /* #006875 */
   --primary-foreground: oklch(1 0 0);
 
   --secondary: oklch(0.95 0.012 200);
@@ -66,7 +66,7 @@
   --muted: oklch(0.955 0.008 210);
   --muted-foreground: oklch(0.5 0.025 210);
 
-  --accent: oklch(0.78 0.16 70);                   /* #F6A000 */
+  --accent: oklch(0.78 0.16 70); /* #F6A000 */
   --accent-foreground: oklch(0.22 0.04 200);
 
   --destructive: oklch(0.6 0.22 25);
@@ -76,9 +76,9 @@
   --input: oklch(0.915 0.012 210);
   --ring: oklch(0.475 0.07 205);
 
-  --sidebar: oklch(0.305 0.045 200);               /* dark teal */
+  --sidebar: oklch(0.305 0.045 200); /* dark teal */
   --sidebar-foreground: oklch(0.98 0.005 210);
-  --sidebar-primary: oklch(0.78 0.16 70);          /* orange highlight */
+  --sidebar-primary: oklch(0.78 0.16 70); /* orange highlight */
   --sidebar-primary-foreground: oklch(0.22 0.04 200);
   --sidebar-accent: oklch(0.36 0.05 200);
   --sidebar-accent-foreground: oklch(0.98 0.005 210);
@@ -117,7 +117,9 @@
 }
 
 @layer base {
-  * { border-color: var(--color-border); }
+  * {
+    border-color: var(--color-border);
+  }
   body {
     background-color: var(--color-background);
     color: var(--color-foreground);

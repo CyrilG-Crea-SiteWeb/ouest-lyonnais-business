@@ -13,9 +13,6 @@ export function titreConference(dateISO: string, intervenantsNoms: string[]): st
     month: "long",
     year: "numeric",
   });
-  const noms =
-    intervenantsNoms.length > 0
-      ? intervenantsNoms.join(", ")
-      : "intervenant à définir";
+  const noms = intervenantsNoms.length > 0 ? intervenantsNoms.join(", ") : "intervenant à définir";
   return `Conférence du ${date} — ${noms}`;
 }

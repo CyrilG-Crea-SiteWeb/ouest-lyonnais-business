@@ -71,20 +71,19 @@ export function AddToHomeScreenButton() {
           {plateforme === "ios" && (
             <ol className="list-decimal space-y-2 pl-5">
               <li>
-                Ouvrez cette page dans <strong>Safari</strong> (l'installation
-                ne fonctionne pas depuis Chrome sur iPhone).
+                Ouvrez cette page dans <strong>Safari</strong> (l'installation ne fonctionne pas
+                depuis Chrome sur iPhone).
               </li>
               <li>
-                Touchez l'icône <strong>Partager</strong> (le carré avec une
-                flèche vers le haut), en bas de l'écran.
+                Touchez l'icône <strong>Partager</strong> (le carré avec une flèche vers le haut),
+                en bas de l'écran.
               </li>
               <li>
-                Faites défiler puis touchez{" "}
-                <strong>« Sur l'écran d'accueil »</strong>.
+                Faites défiler puis touchez <strong>« Sur l'écran d'accueil »</strong>.
               </li>
               <li>
-                Touchez <strong>« Ajouter »</strong> en haut à droite. L'icône
-                OLB apparaît sur votre écran d'accueil.
+                Touchez <strong>« Ajouter »</strong> en haut à droite. L'icône OLB apparaît sur
+                votre écran d'accueil.
               </li>
             </ol>
           )}
@@ -96,12 +95,12 @@ export function AddToHomeScreenButton() {
                 <strong> ⋮ </strong> en haut à droite.
               </li>
               <li>
-                Touchez <strong>« Ajouter à l'écran d'accueil »</strong> (ou
-                « Installer l'application »).
+                Touchez <strong>« Ajouter à l'écran d'accueil »</strong> (ou « Installer
+                l'application »).
               </li>
               <li>
-                Confirmez avec <strong>« Ajouter »</strong>. L'icône OLB
-                apparaît sur votre écran d'accueil.
+                Confirmez avec <strong>« Ajouter »</strong>. L'icône OLB apparaît sur votre écran
+                d'accueil.
               </li>
             </ol>
           )}
@@ -109,13 +108,13 @@ export function AddToHomeScreenButton() {
           {plateforme === "autre" && (
             <div className="space-y-2">
               <p>
-                Sur ordinateur, dans Chrome ou Edge, cliquez sur l'icône
-                d'installation dans la barre d'adresse (à droite), puis sur
+                Sur ordinateur, dans Chrome ou Edge, cliquez sur l'icône d'installation dans la
+                barre d'adresse (à droite), puis sur
                 <strong> « Installer »</strong>.
               </p>
               <p>
-                Sur téléphone, ouvrez cette page dans le navigateur puis
-                utilisez le menu pour « Ajouter à l'écran d'accueil ».
+                Sur téléphone, ouvrez cette page dans le navigateur puis utilisez le menu pour «
+                Ajouter à l'écran d'accueil ».
               </p>
             </div>
           )}

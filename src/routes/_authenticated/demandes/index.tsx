@@ -4,19 +4,10 @@ import { Plus, LinkIcon, ChevronDown } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { HelpButton } from "@/components/HelpButton";
-import {
-  Card,
-  CardHeader,
-  CardTitle,
-  CardContent,
-} from "@/components/ui/card";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
 export const Route = createFileRoute("/_authenticated/demandes/")({
   head: () => ({ meta: [{ title: "Demandes spécifiques — OLB" }] }),
@@ -67,11 +58,7 @@ function DemandeCard({ d }: { d: DemandeListe }) {
     ? `${auteur.prenom?.[0] ?? ""}${auteur.nom?.[0] ?? ""}`.toUpperCase()
     : "?";
   return (
-    <Link
-      to="/demandes/$demandeId"
-      params={{ demandeId: String(d.id) }}
-      className="block"
-    >
+    <Link to="/demandes/$demandeId" params={{ demandeId: String(d.id) }} className="block">
       <Card className="h-full transition-shadow hover:shadow-md">
         <CardHeader className="space-y-2">
           <div className="flex items-start justify-between gap-2">
@@ -93,9 +80,7 @@ function DemandeCard({ d }: { d: DemandeListe }) {
             <div className="flex items-center gap-2 min-w-0">
               <Avatar className="h-6 w-6">
                 {auteur?.photo_url && <AvatarImage src={auteur.photo_url} />}
-                <AvatarFallback className="text-[10px]">
-                  {initiales}
-                </AvatarFallback>
+                <AvatarFallback className="text-[10px]">{initiales}</AvatarFallback>
               </Avatar>
               <span className="text-xs text-muted-foreground truncate">
                 {auteur ? `${auteur.prenom} ${auteur.nom}` : "Membre"}
@@ -153,16 +138,13 @@ function DemandesPage() {
             <h1 className="text-2xl md:text-3xl font-bold">Demandes spécifiques</h1>
             <HelpButton title="Comment fonctionne cette page" ariaLabel="Aide Demandes">
               <p>
-                Publiez une demande visible par le groupe : un besoin, une
-                recherche de contact, un service. Choisissez de notifier tout le
-                monde ou seulement certains membres.
+                Publiez une demande visible par le groupe : un besoin, une recherche de contact, un
+                service. Choisissez de notifier tout le monde ou seulement certains membres.
               </p>
               <p>
-                Les membres concernés reçoivent une notification (cloche + email).
-                Le statut passe d'<strong>ouverte</strong> à{" "}
-                <strong>clôturée</strong>. Les demandes clôturées sont
-                ou <strong>clôturée</strong>. Les demandes clôturées sont
-                regroupées en bas.
+                Les membres concernés reçoivent une notification (cloche + email). Le statut passe
+                d'<strong>ouverte</strong> à <strong>clôturée</strong>. Les demandes clôturées sont
+                ou <strong>clôturée</strong>. Les demandes clôturées sont regroupées en bas.
               </p>
               <p>Vous pouvez commenter et répondre sous chaque demande.</p>
             </HelpButton>
@@ -179,14 +161,10 @@ function DemandesPage() {
         </Button>
       </header>
 
-      {q.isLoading && (
-        <p className="text-sm text-muted-foreground">Chargement…</p>
-      )}
+      {q.isLoading && <p className="text-sm text-muted-foreground">Chargement…</p>}
 
       {q.isError && (
-        <p className="text-sm text-destructive">
-          Erreur lors du chargement des demandes.
-        </p>
+        <p className="text-sm text-destructive">Erreur lors du chargement des demandes.</p>
       )}
 
       {q.data && actives.length === 0 && cloturees.length === 0 && (
@@ -207,8 +185,7 @@ function DemandesPage() {
 
       {q.data && actives.length === 0 && cloturees.length > 0 && (
         <p className="text-sm text-muted-foreground">
-          Aucune demande en cours. Les demandes clôturées sont listées
-          ci-dessous.
+          Aucune demande en cours. Les demandes clôturées sont listées ci-dessous.
         </p>
       )}
 

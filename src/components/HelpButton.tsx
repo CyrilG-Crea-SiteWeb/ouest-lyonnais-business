@@ -33,9 +33,7 @@ export function HelpButton({ title, children, ariaLabel = "Aide" }: HelpButtonPr
         <DialogHeader>
           <DialogTitle className="text-[#00424A]">{title}</DialogTitle>
         </DialogHeader>
-        <div className="space-y-3 text-sm leading-relaxed text-muted-foreground">
-          {children}
-        </div>
+        <div className="space-y-3 text-sm leading-relaxed text-muted-foreground">{children}</div>
       </DialogContent>
     </Dialog>
   );

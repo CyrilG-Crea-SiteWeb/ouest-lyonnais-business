@@ -35,8 +35,7 @@ function lienVers(typeContenu: string, contenuId: number): string {
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
 Deno.serve(async (req) => {
@@ -104,21 +103,17 @@ Deno.serve(async (req) => {
 
     // Nettoyage des abonnements morts.
     if (aSupprimer.length > 0) {
-      await admin
-        .from("push_subscriptions")
-        .delete()
-        .in("endpoint", aSupprimer);
+      await admin.from("push_subscriptions").delete().in("endpoint", aSupprimer);
     }
 
-    return new Response(
-      JSON.stringify({ ok: true, envoyes, nettoyes: aSupprimer.length }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" } },
-    );
+    return new Response(JSON.stringify({ ok: true, envoyes, nettoyes: aSupprimer.length }), {
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   } catch (e) {
     console.error("[send-push] erreur:", e);
-    return new Response(
-      JSON.stringify({ ok: false, error: String(e) }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-    );
+    return new Response(JSON.stringify({ ok: false, error: String(e) }), {
+      status: 500,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   }
 });
