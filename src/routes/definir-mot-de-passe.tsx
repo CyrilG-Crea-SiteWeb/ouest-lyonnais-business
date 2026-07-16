@@ -102,9 +102,7 @@ function DefinirMotDePassePage() {
         </div>
         <Card className="p-6 space-y-5 shadow-md">
           <div className="space-y-1 text-center">
-            <h1 className="text-xl font-bold text-foreground">
-              Définir votre mot de passe
-            </h1>
+            <h1 className="text-xl font-bold text-foreground">Définir votre mot de passe</h1>
             <p className="text-sm text-muted-foreground">
               Choisissez un mot de passe pour accéder à l'application sur tous vos appareils.
             </p>
@@ -114,12 +112,23 @@ function DefinirMotDePassePage() {
               <div className="space-y-1.5">
                 <Label htmlFor="password">Nouveau mot de passe</Label>
                 <div className="relative">
-                  <Input id="password" type={showPassword ? "text" : "password"} autoComplete="new-password" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={6} className="pr-10" />
+                  <Input
+                    id="password"
+                    type={showPassword ? "text" : "password"}
+                    autoComplete="new-password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                    minLength={6}
+                    className="pr-10"
+                  />
                   <button
                     type="button"
                     onClick={() => setShowPassword((v) => !v)}
                     className="absolute inset-y-0 right-0 flex items-center pr-3 text-muted-foreground hover:text-foreground"
-                    aria-label={showPassword ? "Masquer le mot de passe" : "Afficher le mot de passe"}
+                    aria-label={
+                      showPassword ? "Masquer le mot de passe" : "Afficher le mot de passe"
+                    }
                     tabIndex={-1}
                   >
                     {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -129,12 +138,23 @@ function DefinirMotDePassePage() {
               <div className="space-y-1.5">
                 <Label htmlFor="confirm">Confirmer le mot de passe</Label>
                 <div className="relative">
-                  <Input id="confirm" type={showPassword ? "text" : "password"} autoComplete="new-password" value={confirm} onChange={(e) => setConfirm(e.target.value)} required minLength={6} className="pr-10" />
+                  <Input
+                    id="confirm"
+                    type={showPassword ? "text" : "password"}
+                    autoComplete="new-password"
+                    value={confirm}
+                    onChange={(e) => setConfirm(e.target.value)}
+                    required
+                    minLength={6}
+                    className="pr-10"
+                  />
                   <button
                     type="button"
                     onClick={() => setShowPassword((v) => !v)}
                     className="absolute inset-y-0 right-0 flex items-center pr-3 text-muted-foreground hover:text-foreground"
-                    aria-label={showPassword ? "Masquer le mot de passe" : "Afficher le mot de passe"}
+                    aria-label={
+                      showPassword ? "Masquer le mot de passe" : "Afficher le mot de passe"
+                    }
                     tabIndex={-1}
                   >
                     {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}

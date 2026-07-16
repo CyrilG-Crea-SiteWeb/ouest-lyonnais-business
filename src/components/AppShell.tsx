@@ -65,22 +65,33 @@ export function AppShell({ children }: { children: ReactNode }) {
               {profile.prenom} {profile.nom}
             </p>
             <Badge variant="outline" className="mt-1 border-sidebar-border text-sidebar-foreground">
-              {profile.role === "comite_membres" ? "Comité membres"
-                : profile.role === "comite_fetes" ? "Comité des fêtes"
-                : profile.role === "bureau" ? "Bureau"
-                : profile.role === "admin" ? "Admin"
-                : "Membre"}
+              {profile.role === "comite_membres"
+                ? "Comité membres"
+                : profile.role === "comite_fetes"
+                  ? "Comité des fêtes"
+                  : profile.role === "bureau"
+                    ? "Bureau"
+                    : profile.role === "admin"
+                      ? "Admin"
+                      : "Membre"}
             </Badge>
           </div>
         </div>
       )}
       <nav className="flex-1 overflow-y-auto p-3 space-y-1">
         {NAV.filter((item) => {
-          if ((item as { adminOnly?: boolean }).adminOnly && profile?.role !== "admin") return false;
-          if ((item as { bureauOnly?: boolean }).bureauOnly &&
-              !["bureau", "admin"].includes(profile?.role ?? "")) return false;
-          if ((item as { comiteOnly?: boolean }).comiteOnly &&
-              !["comite_membres", "bureau", "admin"].includes(profile?.role ?? "")) return false;
+          if ((item as { adminOnly?: boolean }).adminOnly && profile?.role !== "admin")
+            return false;
+          if (
+            (item as { bureauOnly?: boolean }).bureauOnly &&
+            !["bureau", "admin"].includes(profile?.role ?? "")
+          )
+            return false;
+          if (
+            (item as { comiteOnly?: boolean }).comiteOnly &&
+            !["comite_membres", "bureau", "admin"].includes(profile?.role ?? "")
+          )
+            return false;
           return true;
         }).map((item) => {
           const active = pathname === item.to;
@@ -138,12 +149,11 @@ export function AppShell({ children }: { children: ReactNode }) {
           <AddToHomeScreenButton />
           <HelpButton title="Aide" ariaLabel="Aide générale">
             <p>
-              Bienvenue sur l'application OLB. Utilisez le menu pour naviguer
-              entre les sections.
+              Bienvenue sur l'application OLB. Utilisez le menu pour naviguer entre les sections.
             </p>
             <p>
-              Le bouton « Installer l'app » ajoute un raccourci sur l'écran
-              d'accueil de votre téléphone.
+              Le bouton « Installer l'app » ajoute un raccourci sur l'écran d'accueil de votre
+              téléphone.
             </p>
           </HelpButton>
           <NotificationsBell />
@@ -153,10 +163,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       {/* Mobile drawer */}
       {mobileOpen && (
         <div className="md:hidden fixed inset-0 z-40">
-          <div
-            className="absolute inset-0 bg-black/50"
-            onClick={() => setMobileOpen(false)}
-          />
+          <div className="absolute inset-0 bg-black/50" onClick={() => setMobileOpen(false)} />
           <aside className="absolute inset-y-0 left-0 w-72 flex flex-col bg-sidebar text-sidebar-foreground shadow-xl">
             <button
               onClick={() => setMobileOpen(false)}
@@ -177,12 +184,12 @@ export function AppShell({ children }: { children: ReactNode }) {
           <AddToHomeScreenButton />
           <HelpButton title="Aide" ariaLabel="Aide générale">
             <p>
-              Bienvenue sur l'application OLB. Utilisez le menu de gauche pour
-              naviguer entre les sections.
+              Bienvenue sur l'application OLB. Utilisez le menu de gauche pour naviguer entre les
+              sections.
             </p>
             <p>
-              Le bouton « Installer l'app » ajoute un raccourci sur l'écran
-              d'accueil de votre téléphone, pour un accès en un clic.
+              Le bouton « Installer l'app » ajoute un raccourci sur l'écran d'accueil de votre
+              téléphone, pour un accès en un clic.
             </p>
           </HelpButton>
         </header>

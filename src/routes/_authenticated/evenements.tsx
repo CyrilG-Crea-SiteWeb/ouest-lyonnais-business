@@ -10,11 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { creerNotificationsSafe, getAdminsIds, getMembresActifsIds } from "@/lib/notifications";
 import { titreConference } from "@/lib/conferences";
 import {
@@ -79,9 +75,7 @@ function toDatetimeLocal(iso: string) {
 
 // Tri alphabétique des membres sur le prénom (insensible à la casse/accents).
 function trierParPrenom(list: MembreLite[]) {
-  return [...list].sort((a, b) =>
-    a.prenom.localeCompare(b.prenom, "fr", { sensitivity: "base" }),
-  );
+  return [...list].sort((a, b) => a.prenom.localeCompare(b.prenom, "fr", { sensitivity: "base" }));
 }
 
 // Case à cocher carrée purement visuelle (le <button> parent gère le clic),
@@ -158,15 +152,11 @@ function EvenementsPage() {
       // (ordre chronologique croissant, hérité de la requête).
       conferencesAVenir: list.filter((e) => e.est_conference && aVenir(e)),
       // Conférences passées : bloc dédié, la plus récente en premier.
-      conferencesPassees: [...list]
-        .filter((e) => e.est_conference && !aVenir(e))
-        .reverse(),
+      conferencesPassees: [...list].filter((e) => e.est_conference && !aVenir(e)).reverse(),
       // Événements classiques à venir (les conférences en sont exclues).
       upcoming: list.filter((e) => !e.est_conference && aVenir(e)),
       // Événements classiques passés (les conférences en sont exclues).
-      past: [...list]
-        .filter((e) => !e.est_conference && !aVenir(e))
-        .reverse(),
+      past: [...list].filter((e) => !e.est_conference && !aVenir(e)).reverse(),
     };
   }, [evQ.data]);
 
@@ -261,9 +251,7 @@ function Section({
       <h2 className="text-lg font-semibold">{title}</h2>
       {events.length === 0 ? (
         <Card>
-          <CardContent className="p-6 text-sm text-muted-foreground">
-            Aucun événement.
-          </CardContent>
+          <CardContent className="p-6 text-sm text-muted-foreground">Aucun événement.</CardContent>
         </Card>
       ) : (
         events.map((e) => (
@@ -302,7 +290,9 @@ function ConferencesSection({
   return (
     <Collapsible className="border-t pt-4">
       <CollapsibleTrigger className="group flex w-full items-center justify-between gap-2 rounded-md py-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground">
-        <span>{title} ({conferences.length})</span>
+        <span>
+          {title} ({conferences.length})
+        </span>
         <ChevronDown className="h-4 w-4 transition-transform group-data-[state=open]:rotate-180" />
       </CollapsibleTrigger>
       <CollapsibleContent className="space-y-3 pt-4">
@@ -371,15 +361,12 @@ function ConferenceCard({
                 <AlertDialogHeader>
                   <AlertDialogTitle>Supprimer cette conférence ?</AlertDialogTitle>
                   <AlertDialogDescription>
-                    Cette action est irréversible et supprimera également les
-                    intervenants associés.
+                    Cette action est irréversible et supprimera également les intervenants associés.
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
                   <AlertDialogCancel>Annuler</AlertDialogCancel>
-                  <AlertDialogAction onClick={() => remove.mutate()}>
-                    Supprimer
-                  </AlertDialogAction>
+                  <AlertDialogAction onClick={() => remove.mutate()}>Supprimer</AlertDialogAction>
                 </AlertDialogFooter>
               </AlertDialogContent>
             </AlertDialog>
@@ -421,10 +408,7 @@ function EvenementCard({
     mutationFn: async (statut: Statut) => {
       if (!myId) throw new Error("Non connecté");
       if (mine) {
-        const { error } = await supabase
-          .from("inscriptions")
-          .update({ statut })
-          .eq("id", mine.id);
+        const { error } = await supabase.from("inscriptions").update({ statut }).eq("id", mine.id);
         if (error) throw error;
       } else {
         const { error } = await supabase
@@ -475,8 +459,7 @@ function EvenementCard({
                   month: "long",
                   year: "numeric",
                 })}{" "}
-                à{" "}
-                {date.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}
+                à {date.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}
               </p>
               {ev.lieu && (
                 <p className="flex items-center gap-1.5">
@@ -519,9 +502,7 @@ function EvenementCard({
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
-        {ev.description && (
-          <p className="text-sm whitespace-pre-wrap">{ev.description}</p>
-        )}
+        {ev.description && <p className="text-sm whitespace-pre-wrap">{ev.description}</p>}
 
         {!past && (
           <div className="space-y-2">
@@ -529,9 +510,7 @@ function EvenementCard({
             <div className="grid grid-cols-3 gap-2">
               {(["present", "peut_etre", "absent"] as Statut[]).map((s) => {
                 const active = mine?.statut === s;
-                const disable =
-                  setStatut.isPending ||
-                  (s === "present" && full && !active);
+                const disable = setStatut.isPending || (s === "present" && full && !active);
                 return (
                   <Button
                     key={s}
@@ -630,9 +609,7 @@ function CreateEvenementDialog() {
   });
 
   function toggleIntervenant(id: string) {
-    setIntervenants((prev) =>
-      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
-    );
+    setIntervenants((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
   }
 
   function reset() {
@@ -702,14 +679,16 @@ function CreateEvenementDialog() {
 
       // ── Mode événement classique (inchangé) ─────────────────────────────
       if (!titre.trim() || !dateEvent) throw new Error("Titre et date requis");
-      const { data: ev, error } = await supabase.from("evenements").insert({
-        titre: titre.trim(),
-        date_event: new Date(dateEvent).toISOString(),
-        lieu: lieu.trim() || null,
-        description: description.trim() || null,
-        capacite: capacite ? Number(capacite) : null,
-        createur_id: profile.id,
-      })
+      const { data: ev, error } = await supabase
+        .from("evenements")
+        .insert({
+          titre: titre.trim(),
+          date_event: new Date(dateEvent).toISOString(),
+          lieu: lieu.trim() || null,
+          description: description.trim() || null,
+          capacite: capacite ? Number(capacite) : null,
+          createur_id: profile.id,
+        })
         .select("id")
         .single();
       if (error) throw error;
@@ -757,9 +736,7 @@ function CreateEvenementDialog() {
       </DialogTrigger>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>
-            {estConference ? "Créer une conférence" : "Créer un événement"}
-          </DialogTitle>
+          <DialogTitle>{estConference ? "Créer une conférence" : "Créer un événement"}</DialogTitle>
         </DialogHeader>
         <div className="space-y-3">
           <button
@@ -846,10 +823,7 @@ function CreateEvenementDialog() {
           )}
         </div>
         <DialogFooter>
-          <Button
-            disabled={create.isPending || !canSubmit}
-            onClick={() => create.mutate()}
-          >
+          <Button disabled={create.isPending || !canSubmit} onClick={() => create.mutate()}>
             Créer
           </Button>
         </DialogFooter>
@@ -879,9 +853,7 @@ function EditConferenceDialog({
   }
 
   function toggleIntervenant(id: string) {
-    setIntervenants((prev) =>
-      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
-    );
+    setIntervenants((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
   }
 
   const update = useMutation({
@@ -1044,7 +1016,11 @@ function EditEvenementDialog({ ev }: { ev: Evenement }) {
         <div className="space-y-3">
           <div className="space-y-1.5">
             <Label htmlFor={`edit-titre-${ev.id}`}>Titre</Label>
-            <Input id={`edit-titre-${ev.id}`} value={titre} onChange={(e) => setTitre(e.target.value)} />
+            <Input
+              id={`edit-titre-${ev.id}`}
+              value={titre}
+              onChange={(e) => setTitre(e.target.value)}
+            />
           </div>
           <div className="space-y-1.5">
             <Label htmlFor={`edit-date-${ev.id}`}>Date et heure</Label>
@@ -1057,7 +1033,11 @@ function EditEvenementDialog({ ev }: { ev: Evenement }) {
           </div>
           <div className="space-y-1.5">
             <Label htmlFor={`edit-lieu-${ev.id}`}>Lieu</Label>
-            <Input id={`edit-lieu-${ev.id}`} value={lieu} onChange={(e) => setLieu(e.target.value)} />
+            <Input
+              id={`edit-lieu-${ev.id}`}
+              value={lieu}
+              onChange={(e) => setLieu(e.target.value)}
+            />
           </div>
           <div className="space-y-1.5">
             <Label htmlFor={`edit-desc-${ev.id}`}>Description</Label>

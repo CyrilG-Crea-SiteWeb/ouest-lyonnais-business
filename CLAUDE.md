@@ -28,6 +28,7 @@ This is a **TanStack Start** (React + Vite + SSR) app for managing the OLB (Oues
 **Routing** — TanStack Router file-based routing. The generated `src/routeTree.gen.ts` is auto-updated by the router plugin; never edit it manually. All authenticated pages live under `src/routes/_authenticated/`. The layout route `_authenticated/route.tsx` enforces auth via `beforeLoad` and wraps content in `AppShell`.
 
 **Auth flow**:
+
 1. `_authenticated/route.tsx` reads the local Supabase session (no network) and redirects to `/auth` if missing.
 2. It also checks `membres.mdp_defini`; if `false`, redirects to `/definir-mot-de-passe`.
 3. On the client, `useProfile()` (`src/hooks/use-profile.ts`) fetches the current member's row from the `membres` table via React Query, with a retry on "auth-not-ready".
@@ -38,7 +39,7 @@ Server functions use `supabaseAdmin` (service role key, server-only) for admin o
 
 **Supabase client** — `src/integrations/supabase/client.ts` exports a lazy singleton `supabase` (Proxy pattern) usable in both browser and SSR. Import it as `import { supabase } from "@/integrations/supabase/client"`.
 
-**Role system** — `membres.role` enum: `"admin" | "bureau" | "membre" | "comite_membres"`. Navigation items with `adminOnly: true` are hidden unless `role === "admin"`; items with `comiteOnly: true` are shown to `comite_membres`, `bureau`, and `admin`. Use `hasRole()` from `use-profile.ts` for ordered comparisons (membre < bureau < admin; comite_membres is not in the ordering).
+**Role system** — `membres.role` enum: `"admin" | "bureau" | "membre" | "comite_membres" | "comite_fetes"`. Navigation items with `adminOnly: true` are hidden unless `role === "admin"`; items with `bureauOnly: true` are shown to `bureau` and `admin`; items with `comiteOnly: true` are shown to `comite_membres`, `bureau`, and `admin`. Use `hasRole()` from `use-profile.ts` for ordered comparisons (membre < bureau < admin; `comite_membres` and `comite_fetes` are NOT in the ordering, so `hasRole()` returns `false` for them). Event/poll management rights are granted via `peutGererEvenementsSondages()` to `comite_fetes`, `bureau`, and `admin`.
 
 **Notifications** — `src/lib/notifications.ts` provides `creerNotifications` (throws on error) and `creerNotificationsSafe` (best-effort, never throws). Push notifications are sent via a Supabase Edge Function `send-push` triggered after in-app notification insertion.
 
@@ -53,12 +54,14 @@ Server functions use `supabaseAdmin` (service role key, server-only) for admin o
 ### Environment variables
 
 Required in `.env` (client + server use both prefixes):
+
 ```
 VITE_SUPABASE_URL=
 VITE_SUPABASE_PUBLISHABLE_KEY=
 SUPABASE_URL=
 SUPABASE_PUBLISHABLE_KEY=
 ```
+
 `SUPABASE_SERVICE_ROLE_KEY` is required server-side only (used in `client.server.ts`); it is not committed and must be set in Lovable Cloud secrets.
 
 ### UI components

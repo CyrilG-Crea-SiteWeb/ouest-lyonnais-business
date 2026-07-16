@@ -21,9 +21,7 @@ export async function creerNotifications(opts: {
 }) {
   const { typeContenu, contenuId, titre, membreIds, exclureId } = opts;
 
-  const destinataires = Array.from(new Set(membreIds)).filter(
-    (id) => id && id !== exclureId,
-  );
+  const destinataires = Array.from(new Set(membreIds)).filter((id) => id && id !== exclureId);
   if (destinataires.length === 0) return;
 
   const rows = destinataires.map((membre_id) => ({
@@ -70,10 +68,7 @@ export async function creerNotificationsSafe(
  * Renvoie les ids des membres ACTIFS (pour le ciblage "Tous").
  */
 export async function getMembresActifsIds(): Promise<string[]> {
-  const { data, error } = await supabase
-    .from("membres")
-    .select("id")
-    .eq("statut", "actif");
+  const { data, error } = await supabase.from("membres").select("id").eq("statut", "actif");
   if (error) throw error;
   return (data ?? []).map((m) => m.id);
 }

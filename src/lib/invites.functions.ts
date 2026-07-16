@@ -10,11 +10,7 @@ async function getCallerRole(ctx: { supabase: any; userId: string }) {
     .eq("id", ctx.userId)
     .maybeSingle();
   if (error) throw new Error(error.message);
-  return (data?.role ?? "membre") as
-    | "membre"
-    | "bureau"
-    | "admin"
-    | "comite_membres";
+  return (data?.role ?? "membre") as "membre" | "bureau" | "admin" | "comite_membres";
 }
 
 function assertComite(role: string) {
@@ -43,9 +39,7 @@ export const convertirInvite = createServerFn({ method: "POST" })
     const role = await getCallerRole(context);
     assertComite(role);
 
-    const { supabaseAdmin } = await import(
-      "@/integrations/supabase/client.server"
-    );
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
     // 1) Récupère la fiche invité
     const { data: invite, error: invErr } = await supabaseAdmin
@@ -60,11 +54,13 @@ export const convertirInvite = createServerFn({ method: "POST" })
     }
 
     // 2) Envoie l'invitation (mail de mot de passe)
-    const { data: invited, error: inviteErr } =
-      await supabaseAdmin.auth.admin.inviteUserByEmail(invite.email, {
+    const { data: invited, error: inviteErr } = await supabaseAdmin.auth.admin.inviteUserByEmail(
+      invite.email,
+      {
         data: { prenom: invite.prenom, nom: invite.nom },
         redirectTo: "https://ouest-lyonnais-business.lovable.app/definir-mot-de-passe",
-      });
+      },
+    );
     if (inviteErr) throw new Error(inviteErr.message);
     const userId = invited.user?.id;
     if (!userId) throw new Error("Invitation envoyée mais identifiant manquant.");

@@ -141,9 +141,7 @@ function CommentsThread({
 
   return (
     <div className="mt-3 space-y-4 border-t pt-3">
-      {roots.length === 0 && (
-        <p className="text-xs text-muted-foreground">Aucun commentaire.</p>
-      )}
+      {roots.length === 0 && <p className="text-xs text-muted-foreground">Aucun commentaire.</p>}
       {roots.map((c) => (
         <CommentItem
           key={c.id}
@@ -283,9 +281,7 @@ function CommentRow({
   });
 
   const name = author ? `${author.prenom} ${author.nom}` : "Membre";
-  const initials = author
-    ? `${author.prenom[0] ?? ""}${author.nom[0] ?? ""}`.toUpperCase()
-    : "?";
+  const initials = author ? `${author.prenom[0] ?? ""}${author.nom[0] ?? ""}`.toUpperCase() : "?";
 
   return (
     <div className="flex gap-3">
@@ -305,12 +301,7 @@ function CommentRow({
         </div>
         {editing ? (
           <div className="space-y-2">
-            <Textarea
-              value={draft}
-              onChange={(e) => setDraft(e.target.value)}
-              rows={2}
-              autoFocus
-            />
+            <Textarea value={draft} onChange={(e) => setDraft(e.target.value)} rows={2} autoFocus />
             <div className="flex gap-2">
               <Button size="sm" onClick={() => save.mutate()} disabled={save.isPending}>
                 <Check className="h-4 w-4" />
@@ -370,15 +361,11 @@ function CommentRow({
                 <AlertDialogContent>
                   <AlertDialogHeader>
                     <AlertDialogTitle>Supprimer ce commentaire ?</AlertDialogTitle>
-                    <AlertDialogDescription>
-                      Cette action est irréversible.
-                    </AlertDialogDescription>
+                    <AlertDialogDescription>Cette action est irréversible.</AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
                     <AlertDialogCancel>Annuler</AlertDialogCancel>
-                    <AlertDialogAction onClick={() => remove.mutate()}>
-                      Supprimer
-                    </AlertDialogAction>
+                    <AlertDialogAction onClick={() => remove.mutate()}>Supprimer</AlertDialogAction>
                   </AlertDialogFooter>
                 </AlertDialogContent>
               </AlertDialog>
@@ -467,11 +454,7 @@ function CommentForm({
             Annuler
           </Button>
         )}
-        <Button
-          size="sm"
-          onClick={() => send.mutate()}
-          disabled={send.isPending || !texte.trim()}
-        >
+        <Button size="sm" onClick={() => send.mutate()} disabled={send.isPending || !texte.trim()}>
           Publier
         </Button>
       </div>

@@ -5,12 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useProfile, hasRole } from "@/hooks/use-profile";
 import { Comments } from "@/components/Comments";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardHeader,
-  CardTitle,
-  CardContent,
-} from "@/components/ui/card";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
@@ -101,10 +96,7 @@ function DemandeDetailPage() {
 
   const changerStatut = useMutation({
     mutationFn: async (statut: Statut) => {
-      const { error } = await supabase
-        .from("demandes")
-        .update({ statut })
-        .eq("id", id);
+      const { error } = await supabase.from("demandes").update({ statut }).eq("id", id);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -187,8 +179,8 @@ function DemandeDetailPage() {
               <AlertDialogHeader>
                 <AlertDialogTitle>Supprimer cette demande ?</AlertDialogTitle>
                 <AlertDialogDescription>
-                  Cette action est définitive. La demande « {d.titre} » ainsi que
-                  ses commentaires seront supprimés.
+                  Cette action est définitive. La demande « {d.titre} » ainsi que ses commentaires
+                  seront supprimés.
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
@@ -209,9 +201,7 @@ function DemandeDetailPage() {
       <Card>
         <CardHeader className="space-y-3">
           <div className="flex items-start justify-between gap-3">
-            <CardTitle className="text-xl md:text-2xl leading-tight">
-              {d.titre}
-            </CardTitle>
+            <CardTitle className="text-xl md:text-2xl leading-tight">{d.titre}</CardTitle>
             <Badge className={meta.className}>{meta.label}</Badge>
           </div>
           <div className="flex items-center gap-2">
@@ -244,17 +234,13 @@ function DemandeDetailPage() {
 
           {/* Destinataires */}
           <div className="border-t pt-4">
-            <p className="text-xs font-medium text-muted-foreground mb-1">
-              Destinataires
-            </p>
+            <p className="text-xs font-medium text-muted-foreground mb-1">Destinataires</p>
             {d.cible_tous ? (
               <p className="text-sm">Tous les membres</p>
             ) : (
               <p className="text-sm">
                 {(ciblesQ.data ?? [])
-                  .map((c) =>
-                    c.membres ? `${c.membres.prenom} ${c.membres.nom}` : "Membre",
-                  )
+                  .map((c) => (c.membres ? `${c.membres.prenom} ${c.membres.nom}` : "Membre"))
                   .join(", ") || "—"}
               </p>
             )}
@@ -263,9 +249,7 @@ function DemandeDetailPage() {
           {/* Changement de statut */}
           {peutModifierStatut && (
             <div className="border-t pt-4">
-              <p className="text-xs font-medium text-muted-foreground mb-1.5">
-                Modifier le statut
-              </p>
+              <p className="text-xs font-medium text-muted-foreground mb-1.5">Modifier le statut</p>
               <select
                 value={d.statut}
                 onChange={(e) => changerStatut.mutate(e.target.value as Statut)}

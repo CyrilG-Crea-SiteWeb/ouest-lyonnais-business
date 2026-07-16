@@ -10,9 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { AvatarUpload } from "@/components/AvatarUpload";
-import {
-  Collapsible, CollapsibleContent, CollapsibleTrigger,
-} from "@/components/ui/collapsible";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { toast } from "sonner";
 import { Shield, ShieldCheck, Globe, ChevronRight } from "lucide-react";
 
@@ -133,7 +131,10 @@ function ProfilPage() {
             Gérez vos informations personnelles et professionnelles.
           </p>
         </div>
-        <Badge variant={isAdmin ? "default" : isBureau ? "secondary" : "outline"} className="capitalize">
+        <Badge
+          variant={isAdmin ? "default" : isBureau ? "secondary" : "outline"}
+          className="capitalize"
+        >
           {profile.role}
         </Badge>
       </header>
@@ -143,7 +144,12 @@ function ProfilPage() {
           <CollapsibleTrigger asChild>
             <button className="w-full text-left">
               <CardHeader className="flex-row items-start gap-2 space-y-0">
-                <ChevronRight className={"h-5 w-5 shrink-0 mt-0.5 transition-transform " + (identiteOpen ? "rotate-90" : "")} />
+                <ChevronRight
+                  className={
+                    "h-5 w-5 shrink-0 mt-0.5 transition-transform " +
+                    (identiteOpen ? "rotate-90" : "")
+                  }
+                />
                 <div className="space-y-1">
                   <CardTitle className="text-base">Identité</CardTitle>
                   <CardDescription>Ces informations ne sont pas modifiables</CardDescription>
@@ -154,11 +160,16 @@ function ProfilPage() {
           <CollapsibleContent>
             <CardContent className="flex items-center gap-4">
               <Avatar className="h-16 w-16">
-                <AvatarImage src={photo_url || undefined} alt={`${profile.prenom} ${profile.nom}`} />
+                <AvatarImage
+                  src={photo_url || undefined}
+                  alt={`${profile.prenom} ${profile.nom}`}
+                />
                 <AvatarFallback>{initiales || "?"}</AvatarFallback>
               </Avatar>
               <div className="space-y-0.5 text-sm">
-                <p className="font-semibold text-foreground">{profile.prenom} {profile.nom}</p>
+                <p className="font-semibold text-foreground">
+                  {profile.prenom} {profile.nom}
+                </p>
                 <p className="text-muted-foreground">{profile.email}</p>
               </div>
             </CardContent>
@@ -183,15 +194,29 @@ function ProfilPage() {
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="entreprise">Entreprise</Label>
-              <Input id="entreprise" value={entreprise} onChange={(e) => setEntreprise(e.target.value)} />
+              <Input
+                id="entreprise"
+                value={entreprise}
+                onChange={(e) => setEntreprise(e.target.value)}
+              />
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="categorie">Catégorie professionnelle</Label>
-              <Input id="categorie" value={categorie} onChange={(e) => setCategorie(e.target.value)} placeholder="Ex. Avocat, Plombier…" />
+              <Input
+                id="categorie"
+                value={categorie}
+                onChange={(e) => setCategorie(e.target.value)}
+                placeholder="Ex. Avocat, Plombier…"
+              />
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="telephone">Téléphone</Label>
-              <Input id="telephone" type="tel" value={telephone} onChange={(e) => setTelephone(e.target.value)} />
+              <Input
+                id="telephone"
+                type="tel"
+                value={telephone}
+                onChange={(e) => setTelephone(e.target.value)}
+              />
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="site_web" className="flex items-center gap-1.5">
@@ -217,7 +242,12 @@ function ProfilPage() {
           <CollapsibleTrigger asChild>
             <button className="w-full text-left">
               <CardHeader className="flex-row items-start gap-2 space-y-0">
-                <ChevronRight className={"h-5 w-5 shrink-0 mt-0.5 transition-transform " + (securiteOpen ? "rotate-90" : "")} />
+                <ChevronRight
+                  className={
+                    "h-5 w-5 shrink-0 mt-0.5 transition-transform " +
+                    (securiteOpen ? "rotate-90" : "")
+                  }
+                />
                 <div className="space-y-1">
                   <CardTitle className="text-base">Sécurité — mot de passe</CardTitle>
                   <CardDescription>
@@ -232,11 +262,25 @@ function ProfilPage() {
               <form onSubmit={handleChangePassword} className="space-y-4">
                 <div className="space-y-1.5">
                   <Label htmlFor="new-password">Nouveau mot de passe</Label>
-                  <Input id="new-password" type="password" autoComplete="new-password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} minLength={6} />
+                  <Input
+                    id="new-password"
+                    type="password"
+                    autoComplete="new-password"
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    minLength={6}
+                  />
                 </div>
                 <div className="space-y-1.5">
                   <Label htmlFor="confirm-password">Confirmer le mot de passe</Label>
-                  <Input id="confirm-password" type="password" autoComplete="new-password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} minLength={6} />
+                  <Input
+                    id="confirm-password"
+                    type="password"
+                    autoComplete="new-password"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    minLength={6}
+                  />
                 </div>
                 <Button type="submit" disabled={changingPwd || !newPassword}>
                   {changingPwd ? "Modification…" : "Changer mon mot de passe"}
@@ -247,7 +291,12 @@ function ProfilPage() {
                 <p className="text-sm text-muted-foreground mb-3">
                   Vous préférez confirmer par email ? Recevez un lien sécurisé sur {profile.email}.
                 </p>
-                <Button type="button" variant="outline" onClick={handleSendResetLink} disabled={sendingLink}>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handleSendResetLink}
+                  disabled={sendingLink}
+                >
                   {sendingLink ? "Envoi…" : "Recevoir un lien par email"}
                 </Button>
               </div>

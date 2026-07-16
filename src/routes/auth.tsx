@@ -29,7 +29,10 @@ function messageErreur(brut: string): string {
   if (m.includes("password should be at least")) {
     return "Le mot de passe doit faire au moins 6 caractères.";
   }
-  if (m.includes("password") && (m.includes("weak") || m.includes("characters") || m.includes("requirement"))) {
+  if (
+    m.includes("password") &&
+    (m.includes("weak") || m.includes("characters") || m.includes("requirement"))
+  ) {
     return "Mot de passe trop faible : il doit contenir des lettres et des chiffres (6 caractères minimum).";
   }
   if (m.includes("rate limit") || m.includes("too many")) {
@@ -144,9 +147,8 @@ function AuthPage() {
                 </p>
               </div>
               <div className="rounded-md bg-muted/50 p-3 text-left text-sm text-muted-foreground">
-                Cliquez sur le lien dans cet email pour activer votre compte,
-                puis revenez vous connecter. Pensez à vérifier vos spams ; le
-                lien expire après environ une heure.
+                Cliquez sur le lien dans cet email pour activer votre compte, puis revenez vous
+                connecter. Pensez à vérifier vos spams ; le lien expire après environ une heure.
               </div>
               <Button type="button" className="w-full" onClick={() => changerMode("signin")}>
                 Retour à la connexion
@@ -162,13 +164,14 @@ function AuthPage() {
               <div className="space-y-1">
                 <h1 className="text-xl font-bold text-foreground">Email envoyé</h1>
                 <p className="text-sm text-muted-foreground">
-                  Si un compte est associé à <span className="font-medium text-foreground">{email}</span>,
-                  un lien de réinitialisation vient de vous être envoyé.
+                  Si un compte est associé à{" "}
+                  <span className="font-medium text-foreground">{email}</span>, un lien de
+                  réinitialisation vient de vous être envoyé.
                 </p>
               </div>
               <div className="rounded-md bg-muted/50 p-3 text-left text-sm text-muted-foreground">
-                Pensez à vérifier vos spams. Le lien expire après environ une heure :
-                cliquez dessus rapidement.
+                Pensez à vérifier vos spams. Le lien expire après environ une heure : cliquez dessus
+                rapidement.
               </div>
               <Button type="button" className="w-full" onClick={() => changerMode("signin")}>
                 Retour à la connexion
@@ -189,31 +192,63 @@ function AuthPage() {
                   <div className="grid grid-cols-2 gap-3">
                     <div className="space-y-1.5">
                       <Label htmlFor="prenom">Prénom</Label>
-                      <Input id="prenom" value={prenom} onChange={(e) => setPrenom(e.target.value)} required />
+                      <Input
+                        id="prenom"
+                        value={prenom}
+                        onChange={(e) => setPrenom(e.target.value)}
+                        required
+                      />
                     </div>
                     <div className="space-y-1.5">
                       <Label htmlFor="nom">Nom</Label>
-                      <Input id="nom" value={nom} onChange={(e) => setNom(e.target.value)} required />
+                      <Input
+                        id="nom"
+                        value={nom}
+                        onChange={(e) => setNom(e.target.value)}
+                        required
+                      />
                     </div>
                   </div>
                 )}
                 <div className="space-y-1.5">
                   <Label htmlFor="email">Email</Label>
-                  <Input id="email" type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+                  <Input
+                    id="email"
+                    type="email"
+                    autoComplete="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    required
+                  />
                 </div>
                 {mode !== "reset" && (
                   <div className="space-y-1.5">
                     <Label htmlFor="password">Mot de passe</Label>
                     <div className="relative">
-                      <Input id="password" type={showPassword ? "text" : "password"} autoComplete={mode === "signin" ? "current-password" : "new-password"} value={password} onChange={(e) => setPassword(e.target.value)} required minLength={6} className="pr-10" />
+                      <Input
+                        id="password"
+                        type={showPassword ? "text" : "password"}
+                        autoComplete={mode === "signin" ? "current-password" : "new-password"}
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        required
+                        minLength={6}
+                        className="pr-10"
+                      />
                       <button
                         type="button"
                         onClick={() => setShowPassword((v) => !v)}
                         className="absolute inset-y-0 right-0 flex items-center pr-3 text-muted-foreground hover:text-foreground"
-                        aria-label={showPassword ? "Masquer le mot de passe" : "Afficher le mot de passe"}
+                        aria-label={
+                          showPassword ? "Masquer le mot de passe" : "Afficher le mot de passe"
+                        }
                         tabIndex={-1}
                       >
-                        {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                        {showPassword ? (
+                          <EyeOff className="h-4 w-4" />
+                        ) : (
+                          <Eye className="h-4 w-4" />
+                        )}
                       </button>
                     </div>
                     {mode === "signup" && (
@@ -258,10 +293,10 @@ function AuthPage() {
                   {loading
                     ? "Veuillez patienter…"
                     : mode === "signin"
-                    ? "Se connecter"
-                    : mode === "signup"
-                    ? "Créer mon compte"
-                    : "Envoyer le lien"}
+                      ? "Se connecter"
+                      : mode === "signup"
+                        ? "Créer mon compte"
+                        : "Envoyer le lien"}
                 </Button>
               </form>
               {mode === "reset" && (

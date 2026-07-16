@@ -51,10 +51,7 @@ function AdminRappel() {
 
   const enregistrer = useMutation({
     mutationFn: async (cfg: RappelConfig) => {
-      const { error } = await supabase
-        .from("rappel_config")
-        .update(cfg)
-        .eq("id", 1);
+      const { error } = await supabase.from("rappel_config").update(cfg).eq("id", 1);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -71,9 +68,7 @@ function AdminRappel() {
 
   return (
     <div className="max-w-xl mx-auto p-6 space-y-6">
-      <h1 className="text-2xl font-bold text-[#00424A]">
-        Rappel hebdomadaire des contributions
-      </h1>
+      <h1 className="text-2xl font-bold text-[#00424A]">Rappel hebdomadaire des contributions</h1>
 
       <div className="rounded-2xl shadow p-5 space-y-5 bg-white">
         <label className="flex items-center gap-3">
@@ -91,9 +86,7 @@ function AdminRappel() {
             <select
               className="w-full border rounded-lg p-2"
               value={form.jour_semaine}
-              onChange={(e) =>
-                setForm({ ...form, jour_semaine: Number(e.target.value) })
-              }
+              onChange={(e) => setForm({ ...form, jour_semaine: Number(e.target.value) })}
             >
               {JOURS.map((j) => (
                 <option key={j.v} value={j.v}>
@@ -108,9 +101,7 @@ function AdminRappel() {
             <select
               className="w-full border rounded-lg p-2"
               value={form.heure}
-              onChange={(e) =>
-                setForm({ ...form, heure: Number(e.target.value) })
-              }
+              onChange={(e) => setForm({ ...form, heure: Number(e.target.value) })}
             >
               {Array.from({ length: 24 }, (_, h) => (
                 <option key={h} value={h}>
@@ -134,9 +125,7 @@ function AdminRappel() {
           <input
             type="checkbox"
             checked={form.cibler_sans_saisie}
-            onChange={(e) =>
-              setForm({ ...form, cibler_sans_saisie: e.target.checked })
-            }
+            onChange={(e) => setForm({ ...form, cibler_sans_saisie: e.target.checked })}
           />
           <span>
             N'envoyer qu'aux membres sans saisie cette semaine
@@ -157,9 +146,8 @@ function AdminRappel() {
       </div>
 
       <p className="text-xs text-gray-500">
-        Le rappel part automatiquement le jour et à l'heure choisis (fuseau
-        Europe/Paris). Au clic, le membre est redirigé vers la page
-        Recommandations.
+        Le rappel part automatiquement le jour et à l'heure choisis (fuseau Europe/Paris). Au clic,
+        le membre est redirigé vers la page Recommandations.
       </p>
     </div>
   );

@@ -4,7 +4,13 @@ import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Users, HandshakeIcon, Euro, Trophy, Coffee, Download, Mic } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -32,7 +38,11 @@ const TEAL = "#006875";
 const ORANGE = "#F6A000";
 
 const euros = (n: number) =>
-  new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR", maximumFractionDigits: 0 }).format(n);
+  new Intl.NumberFormat("fr-FR", {
+    style: "currency",
+    currency: "EUR",
+    maximumFractionDigits: 0,
+  }).format(n);
 
 export const Route = createFileRoute("/_authenticated/")({
   head: () => ({ meta: [{ title: "Tableau de bord — OLB" }] }),
@@ -96,7 +106,10 @@ function Dashboard() {
     queryKey: ["semaine", "info", semaineId],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("semaines").select("libelle").eq("id", semaineId!).single();
+        .from("semaines")
+        .select("libelle")
+        .eq("id", semaineId!)
+        .single();
       if (error) throw error;
       return data;
     },
@@ -118,7 +131,8 @@ function Dashboard() {
 
   const nbTeteATete = recosSemaine?.filter((r: any) => r.type === "tete_a_tete").length ?? 0;
   const nbRecos =
-    recosSemaine?.filter((r: any) => r.type === "reco_interne" || r.type === "reco_externe").length ?? 0;
+    recosSemaine?.filter((r: any) => r.type === "reco_interne" || r.type === "reco_externe")
+      .length ?? 0;
   const caValide =
     recosSemaine
       ?.filter((r: any) => r.type === "merci_business" && r.valide)
@@ -146,7 +160,20 @@ function Dashboard() {
 
       // 12 mois de juin à mai (libellés FR courts)
       const moisOrdre = [5, 6, 7, 8, 9, 10, 11, 0, 1, 2, 3, 4];
-      const moisLabels = ["Juin", "Juil", "Août", "Sept", "Oct", "Nov", "Déc", "Janv", "Févr", "Mars", "Avr", "Mai"];
+      const moisLabels = [
+        "Juin",
+        "Juil",
+        "Août",
+        "Sept",
+        "Oct",
+        "Nov",
+        "Déc",
+        "Janv",
+        "Févr",
+        "Mars",
+        "Avr",
+        "Mai",
+      ];
       const buckets = moisOrdre.map((m, i) => ({
         mois: moisLabels[i],
         moisNum: m,
@@ -239,11 +266,13 @@ function Dashboard() {
       ).length;
       const recosRecues = recues.filter((r: any) => r.type === "reco_interne").length;
       const teteATete = donnees.filter((r: any) => r.type === "tete_a_tete").length;
-      // CA apporté AUX autres = "merci_business" validés où le membre est l'émetteur (membre_id).
+      // CA apporté AUX autres = "merci_business" validés où le membre a apporté
+      // le business, c.-à-d. où il est la cible du remerciement (membre_cible_id → recues).
       const caApporte = recues
         .filter((r: any) => r.type === "merci_business" && r.valide)
         .reduce((s: number, r: any) => s + Number(r.montant ?? 0), 0);
-      // CA perçu PAR le membre = "merci_business" validés où il est le bénéficiaire (membre_cible_id).
+      // CA perçu PAR le membre = "merci_business" validés où il est l'auteur du
+      // remerciement, c.-à-d. celui qui a reçu le business (membre_id → donnees).
       const caPercu = donnees
         .filter((r: any) => r.type === "merci_business" && r.valide)
         .reduce((s: number, r: any) => s + Number(r.montant ?? 0), 0);
@@ -270,12 +299,13 @@ function Dashboard() {
     { label: "Recos (semaine)", value: nbRecos, icon: HandshakeIcon },
     { label: "CA (semaine)", value: euros(caValide), icon: Euro },
   ];
-  
+
   const palmaresTrie = (palmares ?? [])
     .slice()
     .sort((a: any, b: any) => {
       if (triPalmares === "recos") return Number(b.nb_recos ?? 0) - Number(a.nb_recos ?? 0);
-      if (triPalmares === "tete") return Number(b.nb_tete_a_tete ?? 0) - Number(a.nb_tete_a_tete ?? 0);
+      if (triPalmares === "tete")
+        return Number(b.nb_tete_a_tete ?? 0) - Number(a.nb_tete_a_tete ?? 0);
       return Number(b.ca_valide ?? 0) - Number(a.ca_valide ?? 0);
     })
     .slice(0, 3)
@@ -397,7 +427,12 @@ function Dashboard() {
               Palmarès de la semaine
             </CardTitle>
             <CardDescription>
-              Classement par {triPalmares === "ca" ? "CA" : triPalmares === "recos" ? "recommandations" : "tête-à-tête"}
+              Classement par{" "}
+              {triPalmares === "ca"
+                ? "CA"
+                : triPalmares === "recos"
+                  ? "recommandations"
+                  : "tête-à-tête"}
             </CardDescription>
             <Select value={triPalmares} onValueChange={(v) => setTriPalmares(v as any)}>
               <SelectTrigger className="w-full md:w-56">
@@ -433,7 +468,9 @@ function Dashboard() {
         </CardHeader>
         <CardContent className="p-0">
           {!palmares?.length ? (
-            <p className="px-6 pb-6 text-sm text-muted-foreground">Aucune donnée pour cette semaine.</p>
+            <p className="px-6 pb-6 text-sm text-muted-foreground">
+              Aucune donnée pour cette semaine.
+            </p>
           ) : (
             <ul className="divide-y">
               {palmaresTrie.map((row: any) => (
@@ -510,16 +547,22 @@ function Dashboard() {
             </div>
           )}
 
-          {membreId && (
-            <MembreHeader membreId={membreId} membres={membres ?? []} />
-          )}
+          {membreId && <MembreHeader membreId={membreId} membres={membres ?? []} />}
         </CardContent>
       </Card>
     </div>
   );
 }
 
-function MiniStat({ label, value, color }: { label: string; value: string | number; color: string }) {
+function MiniStat({
+  label,
+  value,
+  color,
+}: {
+  label: string;
+  value: string | number;
+  color: string;
+}) {
   return (
     <div className="rounded-lg border p-3">
       <p className="text-xs text-muted-foreground">{label}</p>
