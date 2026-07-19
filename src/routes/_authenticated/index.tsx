@@ -37,6 +37,26 @@ import { useProfile } from "@/hooks/use-profile";
 const TEAL = "#006875";
 const ORANGE = "#F6A000";
 
+/**
+ * Compte les tête-à-tête en pondérant par le nombre de participants :
+ * un T-à-T déclaré avec 3 membres compte pour 3.
+ * Les anciennes saisies sans participant enregistré comptent pour 1.
+ */
+async function compterTeteATete(recos: { id: number; type: string }[]) {
+  const ids = recos.filter((r) => r.type === "tete_a_tete").map((r) => r.id);
+  if (ids.length === 0) return 0;
+  const { data, error } = await supabase
+    .from("reco_participants")
+    .select("recommandation_id")
+    .in("recommandation_id", ids);
+  if (error) throw error;
+  const comptes = new Map<number, number>();
+  (data ?? []).forEach((row: any) => {
+    comptes.set(row.recommandation_id, (comptes.get(row.recommandation_id) ?? 0) + 1);
+  });
+  return ids.reduce((somme, id) => somme + Math.max(1, comptes.get(id) ?? 0), 0);
+}
+
 const euros = (n: number) =>
   new Intl.NumberFormat("fr-FR", {
     style: "currency",
@@ -122,20 +142,21 @@ function Dashboard() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("recommandations")
-        .select("type, montant, valide")
+        .select("id, type, montant, valide")
         .eq("semaine_id", semaineId!);
       if (error) throw error;
-      return data ?? [];
+      const rows = data ?? [];
+      return { rows, nbTeteATete: await compterTeteATete(rows) };
     },
   });
 
-  const nbTeteATete = recosSemaine?.filter((r: any) => r.type === "tete_a_tete").length ?? 0;
+  const nbTeteATete = recosSemaine?.nbTeteATete ?? 0;
   const nbRecos =
-    recosSemaine?.filter((r: any) => r.type === "reco_interne" || r.type === "reco_externe")
+    recosSemaine?.rows.filter((r: any) => r.type === "reco_interne" || r.type === "reco_externe")
       .length ?? 0;
   const caValide =
-    recosSemaine
-      ?.filter((r: any) => r.type === "merci_business" && r.valide)
+    recosSemaine?.rows
+      .filter((r: any) => r.type === "merci_business" && r.valide)
       .reduce((s: number, r: any) => s + Number(r.montant ?? 0), 0) ?? 0;
 
   // Evolution par année OLB (juin -> juin), regroupée par mois
@@ -252,7 +273,7 @@ function Dashboard() {
       // Recos données
       const { data: donnees, error: e1 } = await supabase
         .from("recommandations")
-        .select("type, montant, valide")
+        .select("id, type, montant, valide")
         .eq("membre_id", membreId!);
       if (e1) throw e1;
       // Recos reçues (en tant que cible)
@@ -265,7 +286,7 @@ function Dashboard() {
         (r: any) => r.type === "reco_interne" || r.type === "reco_externe",
       ).length;
       const recosRecues = recues.filter((r: any) => r.type === "reco_interne").length;
-      const teteATete = donnees.filter((r: any) => r.type === "tete_a_tete").length;
+      const teteATete = await compterTeteATete(donnees as any);
       // CA apporté AUX autres = "merci_business" validés où le membre a apporté
       // le business, c.-à-d. où il est la cible du remerciement (membre_cible_id → recues).
       const caApporte = recues
