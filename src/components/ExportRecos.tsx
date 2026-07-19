@@ -152,6 +152,24 @@ export function ExportRecos() {
         return;
       }
 
+      // Tête-à-tête : récupérer les participants pour émettre une ligne par
+      // participant dans l'export.
+      const teteIds = (data as any[])
+        .filter((r) => r.type === "tete_a_tete")
+        .map((r) => r.id as number);
+      let participants: Record<number, string[]> | undefined;
+      if (teteIds.length > 0) {
+        const { data: rp, error: rpErr } = await supabase
+          .from("reco_participants")
+          .select("recommandation_id, membre_id")
+          .in("recommandation_id", teteIds);
+        if (rpErr) throw rpErr;
+        participants = {};
+        (rp ?? []).forEach((row: any) => {
+          (participants![row.recommandation_id] ??= []).push(row.membre_id);
+        });
+      }
+
       // Suffixe de nom de fichier selon la portée.
       let suffixe = new Date().toISOString().slice(0, 10);
       if (granularite === "semaine" && semaineId !== ALL) {
@@ -164,13 +182,14 @@ export function ExportRecos() {
         suffixe = anneeKey;
       }
 
-      exportRecommandationsXlsx({
+      const nbLignes = exportRecommandationsXlsx({
         recos: data as any,
         membres: membresMap,
         semaines: semainesMap,
         filename: `recommandations-${suffixe}.xlsx`,
+        participants,
       });
-      toast.success(`${data.length} ligne(s) exportée(s).`);
+      toast.success(`${nbLignes} ligne(s) exportée(s).`);
     } catch (e: any) {
       toast.error(e.message ?? "Erreur d'export");
     }

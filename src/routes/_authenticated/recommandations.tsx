@@ -715,7 +715,7 @@ function RecoForm({
 
       if (type === "tete_a_tete") {
         if (participants.length === 0) throw new Error("Sélectionnez au moins un membre");
-        // 1 seule ligne (compte pour 1 dans les stats), participants en liaison.
+        // 1 ligne + N participants ; les stats pondèrent par le nombre de participants.
       } else if (type === "reco_externe") {
         if (!contactExterne.trim()) throw new Error("Nom du contact externe requis");
         if (!membreCible) throw new Error("Sélectionnez le membre destinataire");

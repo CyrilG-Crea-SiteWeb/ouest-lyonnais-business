@@ -35,19 +35,37 @@ export function exportRecommandationsXlsx(opts: {
   membres: MembreLookup;
   semaines: SemaineLookup;
   filename?: string;
+  /**
+   * id de recommandation -> liste d'ids de membres participants.
+   * Pour un tête-à-tête ayant des participants, une ligne Excel est émise par
+   * participant (colonne Destinataire = nom du participant).
+   */
+  participants?: Record<number, string[]>;
 }) {
-  const rows = opts.recos.map((r) => ({
-    Date: new Date(r.created_at).toLocaleDateString("fr-FR"),
-    Semaine: opts.semaines[r.semaine_id]?.libelle ?? `#${r.semaine_id}`,
-    Type: TYPE_LABEL[r.type] ?? r.type,
-    Émetteur: fullName(opts.membres[r.membre_id]),
-    "Entreprise émetteur": opts.membres[r.membre_id]?.entreprise ?? "",
-    Destinataire: r.membre_cible_id
-      ? fullName(opts.membres[r.membre_cible_id])
-      : (r.contact_externe ?? ""),
-    "Montant (€)": r.montant ?? "",
-    Validé: r.type === "merci_business" ? (r.valide ? "Oui" : "Non") : "",
-  }));
+  const rows = opts.recos.flatMap((r) => {
+    const base = {
+      Date: new Date(r.created_at).toLocaleDateString("fr-FR"),
+      Semaine: opts.semaines[r.semaine_id]?.libelle ?? `#${r.semaine_id}`,
+      Type: TYPE_LABEL[r.type] ?? r.type,
+      Émetteur: fullName(opts.membres[r.membre_id]),
+      "Entreprise émetteur": opts.membres[r.membre_id]?.entreprise ?? "",
+      Destinataire: r.membre_cible_id
+        ? fullName(opts.membres[r.membre_cible_id])
+        : (r.contact_externe ?? ""),
+      "Montant (€)": r.montant ?? "",
+      Validé: r.type === "merci_business" ? (r.valide ? "Oui" : "Non") : "",
+    };
+    const participantsIds = opts.participants?.[r.id];
+    // Tête-à-tête avec participants : une ligne par participant, toutes les
+    // autres colonnes répétées à l'identique.
+    if (r.type === "tete_a_tete" && participantsIds && participantsIds.length > 0) {
+      return participantsIds.map((pid) => ({
+        ...base,
+        Destinataire: fullName(opts.membres[pid]),
+      }));
+    }
+    return [base];
+  });
   const ws = XLSX.utils.json_to_sheet(rows);
   ws["!cols"] = [
     { wch: 12 },
@@ -65,6 +83,7 @@ export function exportRecommandationsXlsx(opts: {
     wb,
     opts.filename ?? `recommandations-${new Date().toISOString().slice(0, 10)}.xlsx`,
   );
+  return rows.length;
 }
 
 // Lettre affichée dans la grille de détail selon le statut pointé.
