@@ -134,6 +134,7 @@ function FauxCheck({ checked }: { checked: boolean }) {
 function RecosPage() {
   const { data: profile } = useProfile();
   const isBureau = hasRole(profile?.role, "bureau");
+  const isAdmin = hasRole(profile?.role, "admin");
   const qc = useQueryClient();
 
   const { data: membres = [] } = useQuery({
@@ -360,6 +361,7 @@ function RecosPage() {
         membres={membres.filter((m) => m.id !== profile?.id)}
         allMembres={membres}
         isBureau={isBureau}
+        isAdmin={isAdmin}
         onCreated={() => {
           qc.invalidateQueries({ queryKey: ["recos", "list"] });
           qc.invalidateQueries({ queryKey: ["reco_participants", "all"] });
@@ -627,11 +629,13 @@ function RecoForm({
   membres,
   allMembres,
   isBureau,
+  isAdmin,
   onCreated,
 }: {
   membres: MembreLite[]; // sans soi-même (pour T-à-T, reco interne classique, reco externe, merci)
   allMembres: MembreLite[]; // avec soi-même : sert à choisir l'auteur en saisie déléguée
   isBureau: boolean;
+  isAdmin: boolean;
   onCreated: () => void;
 }) {
   const { data: profile } = useProfile();
@@ -643,6 +647,22 @@ function RecoForm({
   const [montant, setMontant] = useState("");
   const [pourAutre, setPourAutre] = useState(false); // bureau : saisir au nom d'un autre
   const [auteurId, setAuteurId] = useState<string>(""); // membre au nom duquel on saisit
+  const [pourSemaineAnterieure, setPourSemaineAnterieure] = useState(false); // admin : rattacher à une autre semaine
+  const [semaineChoisieId, setSemaineChoisieId] = useState<string>(""); // semaine antérieure sélectionnée
+
+  // Liste des semaines existantes (pour la saisie antérieure, réservée aux admins).
+  const { data: semaines = [] } = useQuery({
+    queryKey: ["semaines", "all"],
+    enabled: isAdmin,
+    queryFn: async (): Promise<Semaine[]> => {
+      const { data, error } = await supabase
+        .from("semaines")
+        .select("id, date_debut, libelle")
+        .order("date_debut", { ascending: false });
+      if (error) throw error;
+      return (data ?? []) as Semaine[];
+    },
+  });
 
   const resetFields = () => {
     setMembreCible("");
@@ -652,6 +672,8 @@ function RecoForm({
     setMontant("");
     setPourAutre(false);
     setAuteurId("");
+    setPourSemaineAnterieure(false);
+    setSemaineChoisieId("");
   };
 
   const toggleParticipant = (id: string) => {
@@ -669,8 +691,19 @@ function RecoForm({
     mutationFn: async () => {
       if (!profile) throw new Error("Profil non chargé");
       if (delegue && !auteurId) throw new Error("Sélectionnez le membre au nom duquel saisir");
-      const { data: semaineId, error: semErr } = await supabase.rpc("get_or_create_semaine");
-      if (semErr) throw semErr;
+
+      // Semaine de rattachement : par défaut la semaine en cours ; un admin peut
+      // choisir une semaine antérieure déjà existante.
+      const semaineAnterieure = isAdmin && pourSemaineAnterieure;
+      let semaineId: number;
+      if (semaineAnterieure) {
+        if (!semaineChoisieId) throw new Error("Sélectionnez une semaine");
+        semaineId = Number(semaineChoisieId);
+      } else {
+        const { data, error: semErr } = await supabase.rpc("get_or_create_semaine");
+        if (semErr) throw semErr;
+        semaineId = data as number;
+      }
 
       const auteur = auteurEffectifId!; // émetteur réel (soi-même ou membre délégué)
 
@@ -731,6 +764,10 @@ function RecoForm({
       // En saisie déléguée, ne pas notifier l'auteur choisi NI la personne du bureau qui saisit.
       const exclureIds = Array.from(new Set([auteur, profile.id]));
       const filtrer = (ids: string[]) => ids.filter((id) => !exclureIds.includes(id));
+
+      // Saisie rétroactive (semaine antérieure) : ne pas notifier, c'est une
+      // régularisation d'historique.
+      if (semaineAnterieure) return;
 
       if (type === "reco_interne") {
         const titre = autoReco
@@ -852,6 +889,44 @@ function RecoForm({
                   </Select>
                   <p className="text-xs text-muted-foreground">
                     La recommandation sera enregistrée comme si elle venait de ce membre.
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* SAISIE ANTÉRIEURE (admin) : rattacher à une semaine passée */}
+          {isAdmin && (
+            <div className="space-y-2 rounded-lg border border-amber-300 bg-amber-50/50 p-3">
+              <button
+                type="button"
+                onClick={() => {
+                  setPourSemaineAnterieure((v) => !v);
+                  setSemaineChoisieId("");
+                }}
+                className="flex w-full items-center gap-3 text-left text-sm"
+              >
+                <FauxCheck checked={pourSemaineAnterieure} />
+                <span className="font-medium">Rattacher à une semaine antérieure</span>
+              </button>
+              {pourSemaineAnterieure && (
+                <div className="space-y-1.5">
+                  <Label>Semaine</Label>
+                  <Select value={semaineChoisieId} onValueChange={setSemaineChoisieId}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Choisir la semaine…" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {semaines.map((s) => (
+                        <SelectItem key={s.id} value={String(s.id)}>
+                          {s.libelle}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">
+                    La recommandation sera comptabilisée sur cette semaine. Aucune notification
+                    n'est envoyée pour une saisie rétroactive.
                   </p>
                 </div>
               )}
