@@ -30,6 +30,20 @@ export type SemaineLookup = Record<number, { libelle: string; date_debut: string
 
 const fullName = (m?: { prenom: string; nom: string }) => (m ? `${m.prenom} ${m.nom}` : "");
 
+// Libellé de semaine toujours en français, dérivé de date_debut (AAAA-MM-JJ) :
+// le libellé stocké en base peut contenir des mois en anglais.
+const libelleSemaine = (s?: { libelle?: string; date_debut?: string }, fallbackId?: number) => {
+  if (s?.date_debut) {
+    const [y, m, d] = s.date_debut.split("-").map(Number);
+    return `Semaine du ${new Date(y, (m ?? 1) - 1, d ?? 1).toLocaleDateString("fr-FR", {
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+    })}`;
+  }
+  return s?.libelle ?? (fallbackId != null ? `#${fallbackId}` : "");
+};
+
 export function exportRecommandationsXlsx(opts: {
   recos: RecoExportRow[];
   membres: MembreLookup;
@@ -45,7 +59,7 @@ export function exportRecommandationsXlsx(opts: {
   const rows = opts.recos.flatMap((r) => {
     const base = {
       Date: new Date(r.created_at).toLocaleDateString("fr-FR"),
-      Semaine: opts.semaines[r.semaine_id]?.libelle ?? `#${r.semaine_id}`,
+      Semaine: libelleSemaine(opts.semaines[r.semaine_id], r.semaine_id),
       Type: TYPE_LABEL[r.type] ?? r.type,
       Émetteur: fullName(opts.membres[r.membre_id]),
       "Entreprise émetteur": opts.membres[r.membre_id]?.entreprise ?? "",

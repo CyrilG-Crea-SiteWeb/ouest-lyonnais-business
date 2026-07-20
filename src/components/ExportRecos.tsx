@@ -32,6 +32,19 @@ const MOIS_FR = [
   "Décembre",
 ];
 
+// Libellé de semaine toujours en français, dérivé de date_debut (AAAA-MM-JJ).
+// Le libellé stocké en base peut contenir des mois en anglais.
+function formatSemaine(s: { date_debut?: string | null; libelle?: string | null }): string {
+  const debut = s.date_debut;
+  if (debut) {
+    const annee = Number(debut.slice(0, 4));
+    const mois = Number(debut.slice(5, 7)) - 1;
+    const jour = Number(debut.slice(8, 10));
+    return `Semaine du ${jour} ${MOIS_FR[mois]?.toLowerCase() ?? ""} ${annee}`;
+  }
+  return s.libelle ?? "Semaine";
+}
+
 type Granularite = "toutes" | "semaine" | "mois" | "annee";
 
 export function ExportRecos() {
@@ -242,7 +255,7 @@ export function ExportRecos() {
                   <SelectItem value={ALL}>Toutes les semaines</SelectItem>
                   {semaines.map((s: any) => (
                     <SelectItem key={s.id} value={String(s.id)}>
-                      {s.libelle}
+                      {formatSemaine(s)}
                     </SelectItem>
                   ))}
                 </SelectContent>

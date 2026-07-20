@@ -115,6 +115,27 @@ const MOIS_FR = [
   "Décembre",
 ];
 
+// Libellé de semaine toujours en français, dérivé de date_debut (AAAA-MM-JJ) et
+// construit en heure locale pour éviter tout décalage de fuseau. Le libellé
+// stocké en base peut contenir des mois en anglais : on ne l'utilise donc qu'en
+// dernier recours (absence de date).
+function formatSemaine(
+  s?: { date_debut?: string | null; libelle?: string | null },
+  fallbackId?: number,
+): string {
+  const debut = s?.date_debut;
+  if (debut) {
+    const [y, m, d] = debut.split("-").map(Number);
+    const date = new Date(y, (m ?? 1) - 1, d ?? 1);
+    return `Semaine du ${date.toLocaleDateString("fr-FR", {
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+    })}`;
+  }
+  return s?.libelle ?? (fallbackId != null ? `Semaine #${fallbackId}` : "Semaine");
+}
+
 // Case à cocher purement visuelle (le <button> parent gère le clic).
 // Évite d'imbriquer un <button> Radix dans un <button> (React #185).
 function FauxCheck({ checked }: { checked: boolean }) {
@@ -134,7 +155,6 @@ function FauxCheck({ checked }: { checked: boolean }) {
 function RecosPage() {
   const { data: profile } = useProfile();
   const isBureau = hasRole(profile?.role, "bureau");
-  const isAdmin = hasRole(profile?.role, "admin");
   const qc = useQueryClient();
 
   const { data: membres = [] } = useQuery({
@@ -361,7 +381,6 @@ function RecosPage() {
         membres={membres.filter((m) => m.id !== profile?.id)}
         allMembres={membres}
         isBureau={isBureau}
-        isAdmin={isAdmin}
         onCreated={() => {
           qc.invalidateQueries({ queryKey: ["recos", "list"] });
           qc.invalidateQueries({ queryKey: ["reco_participants", "all"] });
@@ -587,7 +606,7 @@ function SemaineBlock({
   isBureau: boolean;
 }) {
   const [open, setOpen] = useState(defaultOpen);
-  const libelle = group.semaine?.libelle ?? `Semaine #${group.id}`;
+  const libelle = formatSemaine(group.semaine, group.id);
 
   return (
     <Card>
@@ -629,13 +648,11 @@ function RecoForm({
   membres,
   allMembres,
   isBureau,
-  isAdmin,
   onCreated,
 }: {
   membres: MembreLite[]; // sans soi-même (pour T-à-T, reco interne classique, reco externe, merci)
   allMembres: MembreLite[]; // avec soi-même : sert à choisir l'auteur en saisie déléguée
   isBureau: boolean;
-  isAdmin: boolean;
   onCreated: () => void;
 }) {
   const { data: profile } = useProfile();
@@ -650,10 +667,10 @@ function RecoForm({
   const [pourSemaineAnterieure, setPourSemaineAnterieure] = useState(false); // admin : rattacher à une autre semaine
   const [semaineChoisieId, setSemaineChoisieId] = useState<string>(""); // semaine antérieure sélectionnée
 
-  // Liste des semaines existantes (pour la saisie antérieure, réservée aux admins).
+  // Liste des semaines existantes (pour la saisie antérieure, réservée au bureau/admin).
   const { data: semaines = [] } = useQuery({
     queryKey: ["semaines", "all"],
-    enabled: isAdmin,
+    enabled: isBureau,
     queryFn: async (): Promise<Semaine[]> => {
       const { data, error } = await supabase
         .from("semaines")
@@ -692,9 +709,9 @@ function RecoForm({
       if (!profile) throw new Error("Profil non chargé");
       if (delegue && !auteurId) throw new Error("Sélectionnez le membre au nom duquel saisir");
 
-      // Semaine de rattachement : par défaut la semaine en cours ; un admin peut
-      // choisir une semaine antérieure déjà existante.
-      const semaineAnterieure = isAdmin && pourSemaineAnterieure;
+      // Semaine de rattachement : par défaut la semaine en cours ; le bureau
+      // (et les admins) peuvent choisir une semaine antérieure déjà existante.
+      const semaineAnterieure = isBureau && pourSemaineAnterieure;
       let semaineId: number;
       if (semaineAnterieure) {
         if (!semaineChoisieId) throw new Error("Sélectionnez une semaine");
@@ -895,8 +912,8 @@ function RecoForm({
             </div>
           )}
 
-          {/* SAISIE ANTÉRIEURE (admin) : rattacher à une semaine passée */}
-          {isAdmin && (
+          {/* SAISIE ANTÉRIEURE (bureau/admin) : rattacher à une semaine passée */}
+          {isBureau && (
             <div className="space-y-2 rounded-lg border border-amber-300 bg-amber-50/50 p-3">
               <button
                 type="button"
@@ -919,7 +936,7 @@ function RecoForm({
                     <SelectContent>
                       {semaines.map((s) => (
                         <SelectItem key={s.id} value={String(s.id)}>
-                          {s.libelle}
+                          {formatSemaine(s, s.id)}
                         </SelectItem>
                       ))}
                     </SelectContent>
