@@ -68,6 +68,7 @@ const updateSchema = z.object({
   telephone: z.string().trim().max(40).nullable().optional(),
   photo_url: z.string().trim().max(500).nullable().optional(),
   site_web: z.string().trim().max(500).nullable().optional(),
+  autres_informations: z.string().trim().max(5000).nullable().optional(),
 });
 
 export const updateMembre = createServerFn({ method: "POST" })

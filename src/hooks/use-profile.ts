@@ -11,6 +11,7 @@ export type Membre = {
   categorie: string | null;
   telephone: string | null;
   site_web: string | null;
+  autres_informations: string | null;
   role: "admin" | "bureau" | "membre" | "comite_membres" | "comite_fetes";
   statut: string;
   date_entree: string;

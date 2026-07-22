@@ -7,6 +7,7 @@ import { useProfile, hasRole } from "@/hooks/use-profile";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -52,6 +53,7 @@ import {
   Tag,
   Share2,
   Check,
+  Info,
 } from "lucide-react";
 import {
   inviteMembre,
@@ -87,6 +89,7 @@ type Membre = {
   categorie: string | null;
   telephone: string | null;
   site_web: string | null;
+  autres_informations: string | null;
   role: "admin" | "bureau" | "membre" | "comite_membres" | "comite_fetes";
   statut: "actif" | "inactif";
 };
@@ -112,7 +115,7 @@ function MembresPage() {
       const { data, error } = await supabase
         .from("membres")
         .select(
-          "id, nom, prenom, email, photo_url, entreprise, categorie, telephone, site_web, role, statut",
+          "id, nom, prenom, email, photo_url, entreprise, categorie, telephone, site_web, autres_informations, role, statut",
         )
         .order("nom", { ascending: true });
       if (error) throw error;
@@ -131,7 +134,9 @@ function MembresPage() {
       ? membres
       : membres.filter((m) =>
           normalize(
-            [m.nom, m.prenom, m.entreprise, m.categorie].filter(Boolean).join(" "),
+            [m.nom, m.prenom, m.entreprise, m.categorie, m.autres_informations]
+              .filter(Boolean)
+              .join(" "),
           ).includes(q),
         );
 
@@ -399,6 +404,13 @@ function MembreDetailDialog({
                 }
               />
             )}
+            {membre.autres_informations && (
+              <InfoRow
+                icon={<Info className="h-4 w-4" />}
+                label="Autres informations"
+                value={<span className="whitespace-pre-line">{membre.autres_informations}</span>}
+              />
+            )}
           </div>
         </div>
 
@@ -564,6 +576,7 @@ function EditDialog({
     telephone: membre.telephone ?? "",
     photo_url: membre.photo_url ?? "",
     site_web: membre.site_web ?? "",
+    autres_informations: membre.autres_informations ?? "",
   });
   const [role, setRole] = useState<Membre["role"]>(membre.role);
   const [statut, setStatut] = useState<Membre["statut"]>(membre.statut);
@@ -578,6 +591,7 @@ function EditDialog({
         telephone: membre.telephone ?? "",
         photo_url: membre.photo_url ?? "",
         site_web: membre.site_web ?? "",
+        autres_informations: membre.autres_informations ?? "",
       });
       setRole(membre.role);
       setStatut(membre.statut);
@@ -613,6 +627,7 @@ function EditDialog({
           telephone: form.telephone || null,
           site_web: form.site_web || null,
           photo_url: form.photo_url || null,
+          autres_informations: form.autres_informations.trim() || null,
         },
       });
       if (canAdmin && (role !== membre.role || statut !== membre.statut)) {
@@ -683,6 +698,15 @@ function EditDialog({
             value={form.site_web}
             onChange={(v) => setForm({ ...form, site_web: v })}
           />
+          <div className="space-y-1.5">
+            <Label>Autres informations</Label>
+            <Textarea
+              value={form.autres_informations}
+              onChange={(e) => setForm({ ...form, autres_informations: e.target.value })}
+              rows={4}
+              placeholder="Présentation, spécialités, recherches de contacts…"
+            />
+          </div>
 
           {canAdmin && (
             <div className="grid grid-cols-2 gap-3 pt-2 border-t">
