@@ -308,6 +308,7 @@ function InviteCard({
   nomsMembres: Map<string, string>;
 }) {
   const { data: profil } = useProfile();
+  const [open, setOpen] = useState(false);
   const nb = presences.length;
   const complet = nb >= 2;
   const converti = invite.statut_conversion === "converti";
@@ -318,91 +319,98 @@ function InviteCard({
 
   return (
     <Card className="rounded-2xl shadow-sm">
-      <CardContent className="p-4 space-y-3">
-        <div className="flex items-start justify-between gap-2">
-          <div className="min-w-0">
-            <p className="font-semibold truncate">
-              {invite.prenom} {invite.nom}
-            </p>
+      <Collapsible open={open} onOpenChange={setOpen}>
+        <CardContent className="p-4 space-y-3">
+          <CollapsibleTrigger className="flex w-full items-start justify-between gap-2 text-left">
+            <div className="min-w-0">
+              <p className="font-semibold truncate">
+                {invite.prenom} {invite.nom}
+              </p>
+              <p className="text-xs text-muted-foreground flex items-center gap-1 truncate">
+                <User className="h-3.5 w-3.5 shrink-0" /> Ajouté par : {ajoutePar}
+              </p>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              {accepte ? (
+                <Badge className="bg-green-600 text-white">Invitation acceptée</Badge>
+              ) : converti ? (
+                <Badge className="bg-[#F6A000] text-white">Invitation envoyée</Badge>
+              ) : (
+                <Badge className={complet ? "bg-red-600 text-white" : "bg-[#006875] text-white"}>
+                  {nb}/2 réunion{nb > 1 ? "s" : ""}
+                </Badge>
+              )}
+              <ChevronDown
+                className={`h-4 w-4 shrink-0 text-muted-foreground transition-transform ${open ? "rotate-180" : ""}`}
+              />
+            </div>
+          </CollapsibleTrigger>
+
+          <CollapsibleContent className="space-y-3">
             {invite.entreprise && (
               <p className="text-sm text-muted-foreground flex items-center gap-1 truncate">
                 <Building2 className="h-3.5 w-3.5 shrink-0" /> {invite.entreprise}
               </p>
             )}
-          </div>
-          {accepte ? (
-            <Badge className="bg-green-600 text-white shrink-0">Invitation acceptée</Badge>
-          ) : converti ? (
-            <Badge className="bg-[#F6A000] text-white shrink-0">Invitation envoyée</Badge>
-          ) : (
-            <Badge
-              className={
-                complet ? "bg-red-600 text-white shrink-0" : "bg-[#006875] text-white shrink-0"
-              }
-            >
-              {nb}/2 réunion{nb > 1 ? "s" : ""}
-            </Badge>
-          )}
-        </div>
 
-        {invite.categorie && (
-          <p className="text-sm flex items-center gap-1 text-muted-foreground">
-            <Tag className="h-3.5 w-3.5 shrink-0" /> {invite.categorie}
-          </p>
-        )}
-        <div className="text-sm space-y-1">
-          <a
-            href={`mailto:${invite.email}`}
-            className="flex items-center gap-1 text-[#006875] hover:underline truncate"
-          >
-            <Mail className="h-3.5 w-3.5 shrink-0" /> {invite.email}
-          </a>
-          {invite.telephone && (
-            <a
-              href={`tel:${invite.telephone}`}
-              className="flex items-center gap-1 text-[#006875] hover:underline"
-            >
-              <Phone className="h-3.5 w-3.5 shrink-0" /> {invite.telephone}
-            </a>
-          )}
-        </div>
-
-        {invite.notes && (
-          <p className="text-sm text-muted-foreground whitespace-pre-wrap">
-            Infos : {invite.notes}
-          </p>
-        )}
-
-        <p className="text-xs text-muted-foreground flex items-center gap-1">
-          <User className="h-3.5 w-3.5 shrink-0" /> Ajouté par : {ajoutePar}
-        </p>
-
-        {presences.length > 0 && (
-          <div className="text-xs text-muted-foreground">
-            Présences :{" "}
-            {presences.map((p) => new Date(p.date_reunion).toLocaleDateString("fr-FR")).join(", ")}
-          </div>
-        )}
-
-        {(gestionnaire || auteur) && (
-          <div className="flex flex-wrap gap-2 pt-1">
-            {gestionnaire && !converti && !accepte && (
-              <>
-                <PresenceDialog invite={invite} nb={nb} />
-                <ConvertDialog invite={invite} />
-              </>
+            {invite.categorie && (
+              <p className="text-sm flex items-center gap-1 text-muted-foreground">
+                <Tag className="h-3.5 w-3.5 shrink-0" /> {invite.categorie}
+              </p>
             )}
-            <EditInviteDialog invite={invite} />
-            {gestionnaire && <DeleteInvite invite={invite} />}
-          </div>
-        )}
+            <div className="text-sm space-y-1">
+              <a
+                href={`mailto:${invite.email}`}
+                className="flex items-center gap-1 text-[#006875] hover:underline truncate"
+              >
+                <Mail className="h-3.5 w-3.5 shrink-0" /> {invite.email}
+              </a>
+              {invite.telephone && (
+                <a
+                  href={`tel:${invite.telephone}`}
+                  className="flex items-center gap-1 text-[#006875] hover:underline"
+                >
+                  <Phone className="h-3.5 w-3.5 shrink-0" /> {invite.telephone}
+                </a>
+              )}
+            </div>
 
-        {converti && (
-          <p className="text-xs text-muted-foreground">
-            En attente d'activation du compte par l'invité.
-          </p>
-        )}
-      </CardContent>
+            {invite.notes && (
+              <p className="text-sm text-muted-foreground whitespace-pre-wrap">
+                Infos : {invite.notes}
+              </p>
+            )}
+
+            {presences.length > 0 && (
+              <div className="text-xs text-muted-foreground">
+                Présences :{" "}
+                {presences
+                  .map((p) => new Date(p.date_reunion).toLocaleDateString("fr-FR"))
+                  .join(", ")}
+              </div>
+            )}
+
+            {(gestionnaire || auteur) && (
+              <div className="flex flex-wrap gap-2 pt-1">
+                {gestionnaire && !converti && !accepte && (
+                  <>
+                    <PresenceDialog invite={invite} nb={nb} />
+                    <ConvertDialog invite={invite} />
+                  </>
+                )}
+                <EditInviteDialog invite={invite} />
+                {gestionnaire && <DeleteInvite invite={invite} />}
+              </div>
+            )}
+
+            {converti && (
+              <p className="text-xs text-muted-foreground">
+                En attente d'activation du compte par l'invité.
+              </p>
+            )}
+          </CollapsibleContent>
+        </CardContent>
+      </Collapsible>
     </Card>
   );
 }
