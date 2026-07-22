@@ -344,6 +344,7 @@ export type Database = {
       };
       membres: {
         Row: {
+          autres_informations: string | null;
           categorie: string | null;
           created_at: string;
           date_entree: string;
@@ -360,6 +361,7 @@ export type Database = {
           telephone: string | null;
         };
         Insert: {
+          autres_informations?: string | null;
           categorie?: string | null;
           created_at?: string;
           date_entree?: string;
@@ -376,6 +378,7 @@ export type Database = {
           telephone?: string | null;
         };
         Update: {
+          autres_informations?: string | null;
           categorie?: string | null;
           created_at?: string;
           date_entree?: string;

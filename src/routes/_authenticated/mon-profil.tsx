@@ -6,6 +6,7 @@ import { useProfile, hasRole } from "@/hooks/use-profile";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -33,6 +34,7 @@ function ProfilPage() {
   const [categorie, setCategorie] = useState("");
   const [telephone, setTelephone] = useState("");
   const [siteInternet, setSiteInternet] = useState("");
+  const [autresInformations, setAutresInformations] = useState("");
   const [saving, setSaving] = useState(false);
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -48,6 +50,7 @@ function ProfilPage() {
     setCategorie(profile.categorie ?? "");
     setTelephone(profile.telephone ?? "");
     setSiteInternet(profile.site_web ?? "");
+    setAutresInformations(profile.autres_informations ?? "");
   }, [profile]);
 
   if (isLoading || isError) return <p className="text-sm text-muted-foreground">Chargement…</p>;
@@ -66,6 +69,7 @@ function ProfilPage() {
           categorie: categorie || null,
           telephone: telephone || null,
           site_web: normaliseUrl(siteInternet),
+          autres_informations: autresInformations.trim() || null,
         })
         .eq("id", profile.id);
       if (error) throw error;
@@ -230,6 +234,19 @@ function ProfilPage() {
                 onChange={(e) => setSiteInternet(e.target.value)}
                 placeholder="https://mon-entreprise.fr"
               />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="autres_informations">Autres informations</Label>
+              <Textarea
+                id="autres_informations"
+                value={autresInformations}
+                onChange={(e) => setAutresInformations(e.target.value)}
+                rows={4}
+                placeholder="Présentez votre activité, vos spécialités, vos recherches de contacts…"
+              />
+              <p className="text-xs text-muted-foreground">
+                Ce texte est affiché sur votre fiche et pris en compte dans la recherche.
+              </p>
             </div>
             <Button type="submit" disabled={saving}>
               {saving ? "Enregistrement…" : "Enregistrer"}
