@@ -11,8 +11,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Users, HandshakeIcon, Euro, Trophy, Coffee, Download, Mic } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Users, HandshakeIcon, Euro, Coffee, Mic } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import {
   Carousel,
   CarouselContent,
@@ -20,7 +20,7 @@ import {
   CarouselNext,
   CarouselPrevious,
 } from "@/components/ui/carousel";
-import { exportPalmaresPdf } from "@/lib/exports";
+import { Comments } from "@/components/Comments";
 import { titreConference } from "@/lib/conferences";
 import {
   ResponsiveContainer,
@@ -150,6 +150,51 @@ function Dashboard() {
     },
   });
 
+  // Semaine en cours + semaine précédente (2 lignes les plus récentes déjà passées).
+  const { data: deuxSemaines } = useQuery({
+    queryKey: ["dashboard", "deux-dernieres-semaines"],
+    queryFn: async () => {
+      const aujourdHui = new Date().toISOString().slice(0, 10);
+      const { data, error } = await supabase
+        .from("semaines")
+        .select("id, date_debut, libelle")
+        .lte("date_debut", aujourdHui)
+        .order("date_debut", { ascending: false })
+        .limit(2);
+      if (error) throw error;
+      return data ?? [];
+    },
+    staleTime: 60_000,
+  });
+
+  // Recos reçues par le membre connecté : il est la cible de la recommandation.
+  const semainesIds = (deuxSemaines ?? []).map((s) => s.id);
+
+  const { data: mesRecosRecues, isLoading: recosRecuesLoading } = useQuery({
+    enabled: !!profile?.id && semainesIds.length > 0,
+    queryKey: ["dashboard", "recos-recues", profile?.id, semainesIds],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("recommandations")
+        .select(
+          `id, type, membre_id, contact_externe, notes, montant, semaine_id, created_at,
+           emetteur:membres!recommandations_membre_id_fkey (prenom, nom, photo_url, entreprise),
+           semaines ( libelle )`,
+        )
+        .eq("membre_cible_id", profile!.id)
+        .in("type", ["reco_interne", "reco_externe", "merci_business"])
+        .in("semaine_id", semainesIds)
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      // Exclusion des auto-recos : notes === "auto_reco" signifie que l'émetteur
+      // s'est recommandé LUI-MÊME auprès du membre connecté — ce n'est donc pas
+      // une reco reçue.
+      return (data ?? []).filter(
+        (r: any) => !(r.type === "reco_interne" && r.notes === "auto_reco"),
+      );
+    },
+  });
+
   const nbTeteATete = recosSemaine?.nbTeteATete ?? 0;
   const nbRecos =
     recosSemaine?.rows.filter((r: any) => r.type === "reco_interne" || r.type === "reco_externe")
@@ -231,22 +276,6 @@ function Dashboard() {
     },
   });
 
-  // Palmarès de la semaine
-  const { data: palmares } = useQuery({
-    enabled: !!semaineId,
-    queryKey: ["dashboard", "palmares", semaineId],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("v_palmares_semaine")
-        .select("*")
-        .eq("semaine_id", semaineId!)
-        .order("rang", { ascending: true })
-        .limit(10);
-      if (error) throw error;
-      return data ?? [];
-    },
-  });
-
   // Liste membres pour vue individuelle
   const { data: membres } = useQuery({
     queryKey: ["dashboard", "membres-lite"],
@@ -263,7 +292,6 @@ function Dashboard() {
   });
 
   const [selectedMembre, setSelectedMembre] = useState<string | undefined>();
-  const [triPalmares, setTriPalmares] = useState<"ca" | "recos" | "tete">("ca");
   const membreId = selectedMembre ?? profile?.id;
 
   const { data: statsIndiv } = useQuery({
@@ -321,23 +349,12 @@ function Dashboard() {
     { label: "CA (semaine)", value: euros(caValide), icon: Euro },
   ];
 
-  const palmaresTrie = (palmares ?? [])
-    .slice()
-    .sort((a: any, b: any) => {
-      if (triPalmares === "recos") return Number(b.nb_recos ?? 0) - Number(a.nb_recos ?? 0);
-      if (triPalmares === "tete")
-        return Number(b.nb_tete_a_tete ?? 0) - Number(a.nb_tete_a_tete ?? 0);
-      return Number(b.ca_valide ?? 0) - Number(a.ca_valide ?? 0);
-    })
-    .slice(0, 3)
-    .map((row: any, i: number) => ({ ...row, rangAffiche: i + 1 }));
-
   return (
     <div className="space-y-6">
       <header>
         <h1 className="text-2xl md:text-3xl font-bold text-foreground">Tableau de bord</h1>
         <p className="text-sm text-muted-foreground mt-1">
-          Indicateurs de la semaine OLB en cours et évolution du groupe.
+          {semaineCourante?.libelle ?? "Semaine OLB en cours"} — indicateurs du groupe.
         </p>
       </header>
 
@@ -389,135 +406,29 @@ function Dashboard() {
         ))}
       </div>
 
-      {/* Évolution */}
+      {/* Recos reçues */}
       <Card>
         <CardHeader>
-          <CardTitle>Évolution sur l'année OLB</CardTitle>
-          <CardDescription>De juin à mai — recommandations et CA par mois</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="h-60 w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={evolution ?? []} margin={{ top: 10, right: 16, left: 0, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                <XAxis dataKey="mois" tick={{ fontSize: 11 }} />
-                <YAxis yAxisId="left" tick={{ fontSize: 11 }} stroke={TEAL} />
-                <YAxis
-                  yAxisId="right"
-                  orientation="right"
-                  tick={{ fontSize: 11 }}
-                  stroke={ORANGE}
-                  tickFormatter={(v) => (v >= 1000 ? `${Math.round(v / 1000)}k` : String(v))}
-                />
-                <Tooltip
-                  formatter={(value: any, name: string) =>
-                    name === "CA (€)" ? euros(Number(value)) : value
-                  }
-                />
-                <Legend wrapperStyle={{ fontSize: 12 }} />
-                <Line
-                  yAxisId="left"
-                  type="monotone"
-                  dataKey="recommandations"
-                  name="Recommandations"
-                  stroke={TEAL}
-                  strokeWidth={2}
-                  dot={{ r: 3 }}
-                />
-                <Line
-                  yAxisId="right"
-                  type="monotone"
-                  dataKey="ca"
-                  name="CA (€)"
-                  stroke={ORANGE}
-                  strokeWidth={2}
-                  dot={{ r: 3 }}
-                />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Palmarès */}
-      <Card>
-        <CardHeader className="flex flex-row items-start justify-between gap-3">
-          <div className="space-y-2">
-            <CardTitle className="flex items-center gap-2">
-              <Trophy className="h-5 w-5" style={{ color: ORANGE }} />
-              Palmarès de la semaine
-            </CardTitle>
-            <CardDescription>
-              Classement par{" "}
-              {triPalmares === "ca"
-                ? "CA"
-                : triPalmares === "recos"
-                  ? "recommandations"
-                  : "tête-à-tête"}
-            </CardDescription>
-            <Select value={triPalmares} onValueChange={(v) => setTriPalmares(v as any)}>
-              <SelectTrigger className="w-full md:w-56">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="ca">Chiffre d'affaires</SelectItem>
-                <SelectItem value="recos">Recommandations</SelectItem>
-                <SelectItem value="tete">Tête-à-tête</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={!palmares?.length}
-            onClick={() => {
-              if (!palmares?.length) return;
-              exportPalmaresPdf({
-                semaineLibelle: semaineCourante?.libelle ?? `Semaine #${semaineId}`,
-                rows: palmares.map((r: any) => ({
-                  rang: r.rang,
-                  membre: r.membre,
-                  nb_recos: Number(r.nb_recos ?? 0),
-                  nb_tete_a_tete: Number(r.nb_tete_a_tete ?? 0),
-                  ca_valide: Number(r.ca_valide ?? 0),
-                })),
-              });
-            }}
-          >
-            <Download className="h-4 w-4 mr-2" /> PDF
-          </Button>
+          <CardTitle className="flex items-center gap-2">
+            <HandshakeIcon className="h-5 w-5" style={{ color: TEAL }} />
+            Recos
+          </CardTitle>
+          <CardDescription>
+            Ce que vous avez reçu sur les deux dernières semaines OLB
+          </CardDescription>
         </CardHeader>
         <CardContent className="p-0">
-          {!palmares?.length ? (
+          {recosRecuesLoading ? (
+            <p className="px-6 pb-6 text-sm text-muted-foreground">Chargement…</p>
+          ) : !mesRecosRecues?.length ? (
             <p className="px-6 pb-6 text-sm text-muted-foreground">
-              Aucune donnée pour cette semaine.
+              Aucune reco reçue sur les deux dernières semaines.
             </p>
           ) : (
             <ul className="divide-y">
-              {palmaresTrie.map((row: any) => (
-                <li key={row.membre_id} className="flex items-center gap-3 px-4 py-3">
-                  <span
-                    className="inline-flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold text-white"
-                    style={{ background: row.rangAffiche <= 3 ? ORANGE : TEAL }}
-                  >
-                    {row.rangAffiche}
-                  </span>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium truncate">{row.membre}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {row.nb_recos} reco{row.nb_recos > 1 ? "s" : ""} · {row.nb_tete_a_tete} T-à-T
-                    </p>
-                  </div>
-                  <span
-                    className="text-sm font-semibold whitespace-nowrap"
-                    style={{ color: ORANGE }}
-                  >
-                    {triPalmares === "recos"
-                      ? `${Number(row.nb_recos ?? 0)} reco${Number(row.nb_recos ?? 0) > 1 ? "s" : ""}`
-                      : triPalmares === "tete"
-                        ? `${Number(row.nb_tete_a_tete ?? 0)} T-à-T`
-                        : euros(Number(row.ca_valide ?? 0))}
-                  </span>
+              {mesRecosRecues.map((r: any) => (
+                <li key={r.id} className="px-4 py-3">
+                  <RecoRecueRow reco={r} />
                 </li>
               ))}
             </ul>
@@ -571,6 +482,56 @@ function Dashboard() {
           {membreId && <MembreHeader membreId={membreId} membres={membres ?? []} />}
         </CardContent>
       </Card>
+
+      {/* Évolution */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Évolution sur l'année OLB</CardTitle>
+          <CardDescription>De juin à mai — recommandations et CA par mois</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="h-60 w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={evolution ?? []} margin={{ top: 10, right: 16, left: 0, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                <XAxis dataKey="mois" tick={{ fontSize: 11 }} />
+                <YAxis yAxisId="left" tick={{ fontSize: 11 }} stroke={TEAL} />
+                <YAxis
+                  yAxisId="right"
+                  orientation="right"
+                  tick={{ fontSize: 11 }}
+                  stroke={ORANGE}
+                  tickFormatter={(v) => (v >= 1000 ? `${Math.round(v / 1000)}k` : String(v))}
+                />
+                <Tooltip
+                  formatter={(value: any, name: string) =>
+                    name === "CA (€)" ? euros(Number(value)) : value
+                  }
+                />
+                <Legend wrapperStyle={{ fontSize: 12 }} />
+                <Line
+                  yAxisId="left"
+                  type="monotone"
+                  dataKey="recommandations"
+                  name="Recommandations"
+                  stroke={TEAL}
+                  strokeWidth={2}
+                  dot={{ r: 3 }}
+                />
+                <Line
+                  yAxisId="right"
+                  type="monotone"
+                  dataKey="ca"
+                  name="CA (€)"
+                  stroke={ORANGE}
+                  strokeWidth={2}
+                  dot={{ r: 3 }}
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }
@@ -610,6 +571,63 @@ function MembreHeader({ membreId, membres }: { membreId: string; membres: any[] 
         </p>
         {m.entreprise && <p className="text-xs text-muted-foreground truncate">{m.entreprise}</p>}
       </div>
+    </div>
+  );
+}
+
+function RecoRecueRow({ reco }: { reco: any }) {
+  const e = reco.emetteur;
+  const nomComplet = e ? `${e.prenom ?? ""} ${e.nom ?? ""}`.trim() : "Membre";
+  const initials = `${(e?.prenom?.[0] ?? "").toUpperCase()}${(e?.nom?.[0] ?? "").toUpperCase()}`;
+  const typeLabel =
+    reco.type === "reco_interne"
+      ? "Interne"
+      : reco.type === "reco_externe"
+        ? "Externe"
+        : "Merci";
+  const dateAffichee = new Intl.DateTimeFormat("fr-FR").format(new Date(reco.created_at));
+
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center gap-3">
+        <Avatar className="h-10 w-10">
+          {e?.photo_url ? <AvatarImage src={e.photo_url} alt="" /> : null}
+          <AvatarFallback>{initials}</AvatarFallback>
+        </Avatar>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2">
+            <p className="text-sm font-medium truncate">{nomComplet}</p>
+            <Badge variant="outline" className="text-[10px]">
+              {typeLabel}
+            </Badge>
+          </div>
+          {e?.entreprise && (
+            <p className="text-xs text-muted-foreground truncate">{e.entreprise}</p>
+          )}
+        </div>
+        {reco.type === "merci_business" && (
+          <Badge className="whitespace-nowrap">{euros(Number(reco.montant ?? 0))}</Badge>
+        )}
+      </div>
+
+      {reco.type === "reco_externe" && reco.contact_externe && (
+        <p className="text-sm">Contact : {reco.contact_externe}</p>
+      )}
+
+      {reco.type === "merci_business" && (
+        <p className="text-sm">{nomComplet} vous remercie pour le business apporté</p>
+      )}
+
+      {reco.notes && reco.notes !== "auto_reco" && (
+        <p className="text-sm text-foreground">{reco.notes}</p>
+      )}
+
+      <p className="text-xs text-muted-foreground">
+        {reco.semaines?.libelle ? `${reco.semaines.libelle} · ` : ""}
+        {dateAffichee}
+      </p>
+
+      <Comments typeContenu="recommandation" contenuId={reco.id} />
     </div>
   );
 }
