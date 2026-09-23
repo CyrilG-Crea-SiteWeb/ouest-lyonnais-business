@@ -95,9 +95,6 @@ const uploadAvatarSchema = z.object({
     .max(10),
 });
 
-// URL signée valable 1 an (en secondes).
-const DUREE_URL_AVATAR = 60 * 60 * 24 * 365;
-
 export const uploadMembreAvatar = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((data: unknown) => uploadAvatarSchema.parse(data))
@@ -115,12 +112,10 @@ export const uploadMembreAvatar = createServerFn({ method: "POST" })
       .upload(chemin, buffer, { upsert: true, contentType: data.contentType });
     if (upErr) throw new Error(upErr.message);
 
-    const { data: signed, error: signErr } = await supabaseAdmin.storage
-      .from("avatars")
-      .createSignedUrl(chemin, DUREE_URL_AVATAR);
-    if (signErr) throw new Error(signErr.message);
-
-    return { url: signed.signedUrl };
+    // Bucket public en lecture -> URL permanente (cf. sql/avatars_publics.sql).
+    // Le paramètre v force le rafraîchissement du cache (chemin réutilisé).
+    const { data: pub } = supabaseAdmin.storage.from("avatars").getPublicUrl(chemin);
+    return { url: `${pub.publicUrl}?v=${Date.now()}` };
   });
 
 const roleStatutSchema = z.object({
