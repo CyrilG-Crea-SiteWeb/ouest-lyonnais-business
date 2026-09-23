@@ -14,10 +14,11 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { OlbLogo } from "@/components/OlbLogo";
+import { slugsAnnuaire } from "@/lib/annuaire";
 import { Mail, Phone, Globe, Search, Shield, Building2, Tag } from "lucide-react";
 
 type AnnuaireSearch = {
-  /** Id du membre dont la fiche doit s'ouvrir directement (lien "Partager ce contact"). */
+  /** Slug (ou id, pour les anciens liens) du membre dont la fiche doit s'ouvrir directement. */
   membre?: string;
 };
 
@@ -97,10 +98,13 @@ function AnnuairePage() {
     );
   }, [membres, search]);
 
-  // La fiche ouverte est pilotée par l'URL (?membre=<id>) pour pouvoir être partagée.
-  const membreOuvert = membreId ? membres.find((m) => m.id === membreId) : undefined;
-  const ouvrirFiche = (id: string | undefined) =>
-    navigate({ search: { membre: id }, replace: true, resetScroll: false });
+  // La fiche ouverte est pilotée par l'URL (?membre=jean-dupont) pour pouvoir être partagée.
+  const slugs = useMemo(() => slugsAnnuaire(membres), [membres]);
+  const membreOuvert = membreId
+    ? membres.find((m) => slugs.get(m.id) === membreId || m.id === membreId)
+    : undefined;
+  const ouvrirFiche = (slug: string | undefined) =>
+    navigate({ search: { membre: slug }, replace: true, resetScroll: false });
 
   return (
     <div className="min-h-screen w-full bg-background">
@@ -146,7 +150,7 @@ function AnnuairePage() {
         ) : (
           <div className="grid gap-3 grid-cols-2 sm:grid-cols-3 md:grid-cols-4">
             {filtered.map((m) => (
-              <MembreCard key={m.id} membre={m} onOpen={() => ouvrirFiche(m.id)} />
+              <MembreCard key={m.id} membre={m} onOpen={() => ouvrirFiche(slugs.get(m.id))} />
             ))}
           </div>
         )}
