@@ -12,8 +12,10 @@ import {
   DialogHeader,
   DialogTitle,
   DialogDescription,
+  DialogFooter,
 } from "@/components/ui/dialog";
 import { OlbLogo } from "@/components/OlbLogo";
+import { AddToContactsButton } from "@/components/AddToContactsButton";
 import { slugsAnnuaire } from "@/lib/annuaire";
 import { Mail, Phone, Globe, Search, Shield, Building2, Tag } from "lucide-react";
 
@@ -26,14 +28,73 @@ export const Route = createFileRoute("/annuaire")({
   validateSearch: (search: Record<string, unknown>): AnnuaireSearch => ({
     membre: typeof search.membre === "string" && search.membre ? search.membre : undefined,
   }),
-  head: () => ({
-    meta: [
-      { title: "Annuaire des membres — OLB" },
+  loaderDeps: ({ search }) => ({ membre: search.membre }),
+  loader: ({ deps }) => chargerApercu(deps.membre),
+  head: ({ loaderData }) => {
+    const apercu = loaderData?.apercu;
+    if (!apercu) {
+      return {
+        meta: [
+          { title: "Annuaire des membres — OLB" },
+          { name: "robots", content: "noindex, nofollow" },
+        ],
+      };
+    }
+    // Balises Open Graph : aperçu du contact quand le lien est collé dans WhatsApp, LinkedIn…
+    const meta = [
+      { title: `${apercu.titre} — Annuaire OLB` },
       { name: "robots", content: "noindex, nofollow" },
-    ],
-  }),
+      { name: "description", content: apercu.description },
+      { property: "og:title", content: apercu.titre },
+      { property: "og:description", content: apercu.description },
+      { property: "og:type", content: "profile" },
+      { name: "twitter:title", content: apercu.titre },
+      { name: "twitter:description", content: apercu.description },
+    ];
+    if (apercu.image) {
+      meta.push(
+        { property: "og:image", content: apercu.image },
+        { name: "twitter:image", content: apercu.image },
+      );
+    }
+    return { meta };
+  },
   component: AnnuairePage,
 });
+
+/**
+ * Données d'aperçu du lien partagé. Uniquement utile au rendu serveur (les robots de
+ * WhatsApp/LinkedIn n'exécutent pas le JavaScript) : côté navigateur, rien à charger.
+ */
+async function chargerApercu(membre: string | undefined): Promise<{
+  apercu: { titre: string; description: string; image: string | null } | null;
+}> {
+  if (!membre || typeof window !== "undefined") return { apercu: null };
+  try {
+    // La liste complète est nécessaire pour résoudre les slugs d'homonymes.
+    const { data, error } = await supabase
+      .from("v_annuaire_public")
+      .select("id, nom, prenom, photo_url, entreprise, categorie");
+    if (error || !data) return { apercu: null };
+    const membres = data as Pick<
+      MembrePublic,
+      "id" | "nom" | "prenom" | "photo_url" | "entreprise" | "categorie"
+    >[];
+    const slugs = slugsAnnuaire(membres);
+    const m = membres.find((x) => slugs.get(x.id) === membre || x.id === membre);
+    if (!m) return { apercu: null };
+    const details = [m.entreprise, m.categorie].filter(Boolean).join(" · ");
+    return {
+      apercu: {
+        titre: `${m.prenom} ${m.nom}`,
+        description: `${details ? `${details} — ` : ""}Membre du réseau Ouest Lyonnais Business.`,
+        image: m.photo_url,
+      },
+    };
+  } catch {
+    return { apercu: null };
+  }
+}
 
 type MembrePublic = {
   id: string;
@@ -308,6 +369,10 @@ function MembreDetailDialog({
             )}
           </div>
         </div>
+
+        <DialogFooter className="shrink-0 flex-row flex-wrap gap-2 border-t px-6 py-4 sm:justify-end">
+          <AddToContactsButton contact={membre} />
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );
