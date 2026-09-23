@@ -63,6 +63,8 @@ import {
   uploadMembreAvatar,
 } from "@/lib/membres.functions";
 import { slugsAnnuaire } from "@/lib/annuaire";
+import { AddToContactsButton } from "@/components/AddToContactsButton";
+import { ShareContactButton } from "@/components/ShareContactButton";
 
 /** Convertit un ArrayBuffer en base64 par tranches pour éviter de saturer la pile. */
 function arrayBufferToBase64(buf: ArrayBuffer): string {
@@ -228,36 +230,6 @@ function ShareAnnuaireButton() {
       ) : (
         <>
           <Share2 className="h-4 w-4" /> Partager l'annuaire
-        </>
-      )}
-    </Button>
-  );
-}
-
-/** Copie le lien public de l'annuaire qui ouvre directement la fiche de ce membre. */
-function ShareContactButton({ slug }: { slug: string }) {
-  const [copied, setCopied] = useState(false);
-
-  const partager = async () => {
-    try {
-      const url = `${window.location.origin}/annuaire?membre=${encodeURIComponent(slug)}`;
-      await navigator.clipboard.writeText(url);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    } catch {
-      toast.error("Impossible de copier le lien.");
-    }
-  };
-
-  return (
-    <Button size="sm" variant="outline" onClick={partager} className="transition-colors">
-      {copied ? (
-        <>
-          <Check className="h-4 w-4 text-green-600" /> Lien copié
-        </>
-      ) : (
-        <>
-          <Share2 className="h-4 w-4" /> Partager ce contact
         </>
       )}
     </Button>
@@ -462,18 +434,17 @@ function MembreDetailDialog({
           </div>
         </div>
 
-        {/* L'annuaire public n'expose que les membres actifs : pas de partage pour un inactif. */}
-        {(slugPartage || canEdit || canAdmin) && (
-          <DialogFooter className="shrink-0 flex-row flex-wrap gap-2 border-t px-6 py-4 sm:justify-end">
-            {slugPartage && <ShareContactButton slug={slugPartage} />}
-            {canEdit && onEdit && (
-              <Button size="sm" variant="outline" onClick={onEdit}>
-                <Pencil className="h-4 w-4" /> Modifier
-              </Button>
-            )}
-            {canAdmin && <DeleteButton membre={membre} onDeleted={() => onOpenChange(false)} />}
-          </DialogFooter>
-        )}
+        <DialogFooter className="shrink-0 flex-row flex-wrap gap-2 border-t px-6 py-4 sm:justify-end">
+          <AddToContactsButton contact={membre} />
+          {/* L'annuaire public n'expose que les membres actifs : pas de partage pour un inactif. */}
+          {slugPartage && <ShareContactButton slug={slugPartage} contact={membre} />}
+          {canEdit && onEdit && (
+            <Button size="sm" variant="outline" onClick={onEdit}>
+              <Pencil className="h-4 w-4" /> Modifier
+            </Button>
+          )}
+          {canAdmin && <DeleteButton membre={membre} onDeleted={() => onOpenChange(false)} />}
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );
