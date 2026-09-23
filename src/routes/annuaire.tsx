@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -16,7 +16,15 @@ import {
 import { OlbLogo } from "@/components/OlbLogo";
 import { Mail, Phone, Globe, Search, Shield, Building2, Tag } from "lucide-react";
 
+type AnnuaireSearch = {
+  /** Id du membre dont la fiche doit s'ouvrir directement (lien "Partager ce contact"). */
+  membre?: string;
+};
+
 export const Route = createFileRoute("/annuaire")({
+  validateSearch: (search: Record<string, unknown>): AnnuaireSearch => ({
+    membre: typeof search.membre === "string" && search.membre ? search.membre : undefined,
+  }),
   head: () => ({
     meta: [
       { title: "Annuaire des membres — OLB" },
@@ -50,6 +58,8 @@ const ROLE_LABELS: Record<MembrePublic["role"], string> = {
 
 function AnnuairePage() {
   const [search, setSearch] = useState("");
+  const { membre: membreId } = Route.useSearch();
+  const navigate = useNavigate({ from: "/annuaire" });
 
   const { data: membres = [], isLoading } = useQuery({
     queryKey: ["annuaire-public", "list"],
@@ -87,6 +97,11 @@ function AnnuairePage() {
     );
   }, [membres, search]);
 
+  // La fiche ouverte est pilotée par l'URL (?membre=<id>) pour pouvoir être partagée.
+  const membreOuvert = membreId ? membres.find((m) => m.id === membreId) : undefined;
+  const ouvrirFiche = (id: string | undefined) =>
+    navigate({ search: { membre: id }, replace: true, resetScroll: false });
+
   return (
     <div className="min-h-screen w-full bg-background">
       <div className="mx-auto w-full max-w-5xl px-4 py-8 space-y-6">
@@ -112,6 +127,14 @@ function AnnuairePage() {
           />
         </div>
 
+        {membreId && !isLoading && !membreOuvert && (
+          <Card>
+            <CardContent className="p-6 text-sm text-muted-foreground">
+              Ce contact n'est plus disponible dans l'annuaire.
+            </CardContent>
+          </Card>
+        )}
+
         {isLoading ? (
           <p className="text-sm text-muted-foreground">Chargement…</p>
         ) : filtered.length === 0 ? (
@@ -123,58 +146,63 @@ function AnnuairePage() {
         ) : (
           <div className="grid gap-3 grid-cols-2 sm:grid-cols-3 md:grid-cols-4">
             {filtered.map((m) => (
-              <MembreCard key={m.id} membre={m} />
+              <MembreCard key={m.id} membre={m} onOpen={() => ouvrirFiche(m.id)} />
             ))}
           </div>
         )}
       </div>
+
+      {membreOuvert && (
+        <MembreDetailDialog
+          membre={membreOuvert}
+          open
+          onOpenChange={(v) => {
+            if (!v) ouvrirFiche(undefined);
+          }}
+        />
+      )}
     </div>
   );
 }
 
-function MembreCard({ membre }: { membre: MembrePublic }) {
-  const [detailOpen, setDetailOpen] = useState(false);
+function MembreCard({ membre, onOpen }: { membre: MembrePublic; onOpen: () => void }) {
   const initiales = `${membre.prenom?.[0] ?? ""}${membre.nom?.[0] ?? ""}`.toUpperCase();
 
   return (
-    <>
-      <Card
-        className="rounded-2xl shadow-sm hover:shadow-md transition-shadow cursor-pointer"
-        onClick={() => setDetailOpen(true)}
-        role="button"
-        tabIndex={0}
-        onKeyDown={(e) => {
-          if (e.key === "Enter" || e.key === " ") {
-            e.preventDefault();
-            setDetailOpen(true);
-          }
-        }}
-      >
-        <CardContent className="p-4 flex flex-col items-center gap-3 text-center">
-          <Avatar className="h-20 w-20 rounded-2xl">
-            <AvatarImage
-              src={membre.photo_url ?? undefined}
-              alt={`${membre.prenom} ${membre.nom}`}
-              className="object-cover"
-            />
-            <AvatarFallback className="rounded-2xl">{initiales || "?"}</AvatarFallback>
-          </Avatar>
-          <p className="font-semibold text-sm leading-tight break-words">
-            {membre.prenom}
-            <br />
-            {membre.nom}
-          </p>
-          {membre.role !== "membre" && (
-            <Badge variant="secondary" className="text-[10px]">
-              <Shield className="h-3 w-3 mr-1" />
-              {ROLE_LABELS[membre.role]}
-            </Badge>
-          )}
-        </CardContent>
-      </Card>
-
-      <MembreDetailDialog membre={membre} open={detailOpen} onOpenChange={setDetailOpen} />
-    </>
+    <Card
+      className="rounded-2xl shadow-sm hover:shadow-md transition-shadow cursor-pointer"
+      onClick={onOpen}
+      role="button"
+      tabIndex={0}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onOpen();
+        }
+      }}
+    >
+      <CardContent className="p-4 flex flex-col items-center gap-3 text-center">
+        <Avatar className="h-20 w-20 rounded-2xl">
+          <AvatarImage
+            src={membre.photo_url ?? undefined}
+            alt={`${membre.prenom} ${membre.nom}`}
+            className="object-cover"
+          />
+          <AvatarFallback className="rounded-2xl">{initiales || "?"}</AvatarFallback>
+        </Avatar>
+        <p className="font-semibold text-sm leading-tight break-words">
+          {membre.prenom}
+          <br />
+          {membre.nom}
+        </p>
+        {membre.role !== "membre" && (
+          <Badge variant="secondary" className="text-[10px]">
+            <Shield className="h-3 w-3 mr-1" />
+            {ROLE_LABELS[membre.role]}
+          </Badge>
+        )}
+      </CardContent>
+    </Card>
   );
 }
 
