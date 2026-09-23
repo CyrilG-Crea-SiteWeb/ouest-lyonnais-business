@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/dialog";
 import { OlbLogo } from "@/components/OlbLogo";
 import { AddToContactsButton } from "@/components/AddToContactsButton";
+import { ShareContactButton } from "@/components/ShareContactButton";
 import { slugsAnnuaire } from "@/lib/annuaire";
 import { Mail, Phone, Globe, Search, Shield, Building2, Tag } from "lucide-react";
 
@@ -220,6 +221,7 @@ function AnnuairePage() {
       {membreOuvert && (
         <MembreDetailDialog
           membre={membreOuvert}
+          slug={slugs.get(membreOuvert.id)}
           open
           onOpenChange={(v) => {
             if (!v) ouvrirFiche(undefined);
@@ -273,10 +275,12 @@ function MembreCard({ membre, onOpen }: { membre: MembrePublic; onOpen: () => vo
 
 function MembreDetailDialog({
   membre,
+  slug,
   open,
   onOpenChange,
 }: {
   membre: MembrePublic;
+  slug?: string;
   open: boolean;
   onOpenChange: (v: boolean) => void;
 }) {
@@ -372,6 +376,7 @@ function MembreDetailDialog({
 
         <DialogFooter className="shrink-0 flex-row flex-wrap gap-2 border-t px-6 py-4 sm:justify-end">
           <AddToContactsButton contact={membre} />
+          {slug && <ShareContactButton slug={slug} contact={membre} />}
         </DialogFooter>
       </DialogContent>
     </Dialog>

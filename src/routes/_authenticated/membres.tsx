@@ -64,6 +64,7 @@ import {
 } from "@/lib/membres.functions";
 import { slugsAnnuaire } from "@/lib/annuaire";
 import { AddToContactsButton } from "@/components/AddToContactsButton";
+import { ShareContactButton } from "@/components/ShareContactButton";
 
 /** Convertit un ArrayBuffer en base64 par tranches pour éviter de saturer la pile. */
 function arrayBufferToBase64(buf: ArrayBuffer): string {
@@ -229,57 +230,6 @@ function ShareAnnuaireButton() {
       ) : (
         <>
           <Share2 className="h-4 w-4" /> Partager l'annuaire
-        </>
-      )}
-    </Button>
-  );
-}
-
-/**
- * Partage le lien public de l'annuaire qui ouvre directement la fiche de ce membre.
- * Sur mobile, ouvre le menu de partage natif (WhatsApp, SMS…) ; sinon copie le lien.
- */
-function ShareContactButton({ slug, membre }: { slug: string; membre: Membre }) {
-  const [copied, setCopied] = useState(false);
-
-  const partager = async () => {
-    const url = `${window.location.origin}/annuaire?membre=${encodeURIComponent(slug)}`;
-    const nomComplet = `${membre.prenom} ${membre.nom}`;
-    const estMobile = window.matchMedia?.("(pointer: coarse)").matches;
-
-    if (estMobile && typeof navigator.share === "function") {
-      try {
-        await navigator.share({
-          title: `${nomComplet} — OLB`,
-          text: `Contact du réseau OLB : ${nomComplet}${membre.entreprise ? ` (${membre.entreprise})` : ""}`,
-          url,
-        });
-        return;
-      } catch (e) {
-        // L'utilisateur a fermé le menu de partage : rien à faire.
-        if (e instanceof DOMException && e.name === "AbortError") return;
-        // Autre échec (partage indisponible…) : on retombe sur la copie du lien.
-      }
-    }
-
-    try {
-      await navigator.clipboard.writeText(url);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    } catch {
-      toast.error("Impossible de copier le lien.");
-    }
-  };
-
-  return (
-    <Button size="sm" variant="outline" onClick={partager} className="transition-colors">
-      {copied ? (
-        <>
-          <Check className="h-4 w-4 text-green-600" /> Lien copié
-        </>
-      ) : (
-        <>
-          <Share2 className="h-4 w-4" /> Partager ce contact
         </>
       )}
     </Button>
@@ -487,7 +437,7 @@ function MembreDetailDialog({
         <DialogFooter className="shrink-0 flex-row flex-wrap gap-2 border-t px-6 py-4 sm:justify-end">
           <AddToContactsButton contact={membre} />
           {/* L'annuaire public n'expose que les membres actifs : pas de partage pour un inactif. */}
-          {slugPartage && <ShareContactButton slug={slugPartage} membre={membre} />}
+          {slugPartage && <ShareContactButton slug={slugPartage} contact={membre} />}
           {canEdit && onEdit && (
             <Button size="sm" variant="outline" onClick={onEdit}>
               <Pencil className="h-4 w-4" /> Modifier
