@@ -13,19 +13,16 @@ type AvatarUploadProps = {
   membreId: string;
   /** initiales pour le fallback de l'avatar */
   initiales?: string;
-  /** remonte la nouvelle URL (upload signé ou lien collé) */
+  /** remonte la nouvelle URL (upload ou lien collé) */
   onChange: (url: string) => void;
   /**
    * Optionnel : remplace l'upload client direct. Utilisé côté admin pour
    * téléverser la photo d'un autre membre via une server function (service role),
-   * l'upload direct étant bloqué par les règles RLS du bucket privé. Doit
-   * renvoyer l'URL (signée) de l'image téléversée.
+   * l'upload direct étant bloqué par les règles RLS du bucket. Doit
+   * renvoyer l'URL publique de l'image téléversée.
    */
   uploadFile?: (file: File) => Promise<string>;
 };
-
-// URL signée valable 1 an (en secondes).
-const DUREE_URL = 60 * 60 * 24 * 365;
 
 export function AvatarUpload({
   value,
@@ -65,13 +62,11 @@ export function AvatarUpload({
           .upload(chemin, file, { upsert: true });
         if (upErr) throw upErr;
 
-        // Bucket privé -> URL signée.
-        const { data, error: signErr } = await supabase.storage
-          .from("avatars")
-          .createSignedUrl(chemin, DUREE_URL);
-        if (signErr) throw signErr;
-
-        onChange(data.signedUrl);
+        // Bucket public en lecture -> URL permanente (cf. sql/avatars_publics.sql).
+        // Le paramètre v force le rafraîchissement du cache : le chemin est
+        // réutilisé à chaque remplacement de photo.
+        const { data } = supabase.storage.from("avatars").getPublicUrl(chemin);
+        onChange(`${data.publicUrl}?v=${Date.now()}`);
       }
     } catch (err) {
       setErreur(err instanceof Error ? err.message : "Échec de l'upload.");
