@@ -62,6 +62,7 @@ import {
   deleteMembre,
   uploadMembreAvatar,
 } from "@/lib/membres.functions";
+import { slugsAnnuaire } from "@/lib/annuaire";
 
 /** Convertit un ArrayBuffer en base64 par tranches pour éviter de saturer la pile. */
 function arrayBufferToBase64(buf: ArrayBuffer): string {
@@ -147,6 +148,12 @@ function MembresPage() {
     );
   }, [membres, search]);
 
+  // Mêmes slugs que l'annuaire public, calculés sur la même population (membres actifs).
+  const slugs = useMemo(
+    () => slugsAnnuaire(membres.filter((m) => m.statut === "actif")),
+    [membres],
+  );
+
   return (
     <div className="space-y-6">
       <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
@@ -183,7 +190,13 @@ function MembresPage() {
       ) : (
         <div className="grid gap-3 grid-cols-3">
           {filtered.map((m) => (
-            <MembreCard key={m.id} membre={m} canEdit={isBureau} canAdmin={isAdmin} />
+            <MembreCard
+              key={m.id}
+              membre={m}
+              slugPartage={slugs.get(m.id)}
+              canEdit={isBureau}
+              canAdmin={isAdmin}
+            />
           ))}
         </div>
       )}
@@ -221,12 +234,44 @@ function ShareAnnuaireButton() {
   );
 }
 
+/** Copie le lien public de l'annuaire qui ouvre directement la fiche de ce membre. */
+function ShareContactButton({ slug }: { slug: string }) {
+  const [copied, setCopied] = useState(false);
+
+  const partager = async () => {
+    try {
+      const url = `${window.location.origin}/annuaire?membre=${encodeURIComponent(slug)}`;
+      await navigator.clipboard.writeText(url);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      toast.error("Impossible de copier le lien.");
+    }
+  };
+
+  return (
+    <Button size="sm" variant="outline" onClick={partager} className="transition-colors">
+      {copied ? (
+        <>
+          <Check className="h-4 w-4 text-green-600" /> Lien copié
+        </>
+      ) : (
+        <>
+          <Share2 className="h-4 w-4" /> Partager ce contact
+        </>
+      )}
+    </Button>
+  );
+}
+
 function MembreCard({
   membre,
+  slugPartage,
   canEdit,
   canAdmin,
 }: {
   membre: Membre;
+  slugPartage?: string;
   canEdit: boolean;
   canAdmin: boolean;
 }) {
@@ -274,6 +319,7 @@ function MembreCard({
 
       <MembreDetailDialog
         membre={membre}
+        slugPartage={slugPartage}
         open={detailOpen}
         onOpenChange={setDetailOpen}
         canEdit={canEdit}
@@ -302,6 +348,7 @@ function MembreCard({
 
 function MembreDetailDialog({
   membre,
+  slugPartage,
   open,
   onOpenChange,
   canEdit,
@@ -309,6 +356,7 @@ function MembreDetailDialog({
   onEdit,
 }: {
   membre: Membre;
+  slugPartage?: string;
   open: boolean;
   onOpenChange: (v: boolean) => void;
   canEdit: boolean;
@@ -414,8 +462,10 @@ function MembreDetailDialog({
           </div>
         </div>
 
-        {(canEdit || canAdmin) && (
+        {/* L'annuaire public n'expose que les membres actifs : pas de partage pour un inactif. */}
+        {(slugPartage || canEdit || canAdmin) && (
           <DialogFooter className="shrink-0 flex-row flex-wrap gap-2 border-t px-6 py-4 sm:justify-end">
+            {slugPartage && <ShareContactButton slug={slugPartage} />}
             {canEdit && onEdit && (
               <Button size="sm" variant="outline" onClick={onEdit}>
                 <Pencil className="h-4 w-4" /> Modifier
