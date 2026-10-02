@@ -11,7 +11,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Users, HandshakeIcon, Euro, Coffee, Mic } from "lucide-react";
+import { Users, HandshakeIcon, Euro, Coffee, Mic, type LucideIcon } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import {
   Carousel,
@@ -99,9 +99,57 @@ async function kpisMois(decalage: number) {
   };
 }
 
-/** Valeur du mois précédent, en petit sous le chiffre du mois en cours. */
-function ValeurMoisPrecedent({ valeur }: { valeur: string }) {
-  return <p className="mt-1 text-xs text-muted-foreground">Mois préc. : {valeur}</p>;
+/**
+ * Bloc KPI du mois : pastille d'icône colorée, chiffre du mois en grand et
+ * valeur du mois précédent en pied de carte. Les cartes d'une même ligne ont
+ * la même hauteur (h-full + pied poussé en bas).
+ */
+function KpiCard({
+  label,
+  valeur,
+  precedent,
+  couleur,
+  icon: Icon,
+}: {
+  label: string;
+  valeur: string | undefined;
+  precedent: string | undefined;
+  couleur: string;
+  icon: LucideIcon;
+}) {
+  return (
+    <Card
+      className="relative h-full overflow-hidden shadow-sm"
+      style={{ backgroundImage: `linear-gradient(160deg, ${couleur}14 0%, transparent 55%)` }}
+    >
+      <div className="absolute inset-x-0 top-0 h-1" style={{ backgroundColor: couleur }} />
+      <CardContent className="flex h-full flex-col px-2.5 pb-3 pt-4 sm:px-3 md:p-5 md:pt-6">
+        <div
+          className="flex h-9 w-9 items-center justify-center rounded-xl md:h-11 md:w-11"
+          style={{ backgroundColor: `${couleur}1F`, color: couleur }}
+        >
+          <Icon className="h-5 w-5 md:h-6 md:w-6" />
+        </div>
+        <p className="mt-3 truncate text-xs font-medium text-muted-foreground md:text-sm">
+          {label}
+        </p>
+        <p
+          className="mt-0.5 whitespace-nowrap text-base font-bold leading-tight tabular-nums sm:text-xl md:text-3xl"
+          style={{ color: couleur }}
+        >
+          {valeur ?? <span className="text-muted-foreground/50">…</span>}
+        </p>
+        <div className="mt-auto pt-3">
+          <div className="border-t pt-2 text-[11px] leading-tight text-muted-foreground md:text-xs">
+            <span className="block md:inline">Mois préc.</span>
+            <span className="font-semibold tabular-nums text-foreground/70 md:ml-1">
+              {precedent ?? "…"}
+            </span>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
 }
 
 const libelleMoisCourant = () => {
@@ -384,24 +432,27 @@ function Dashboard() {
 
   const stats = [
     {
-      label: "Tête-à-tête (mois)",
-      actuel: kpisMoisCourant?.nbTeteATete ?? 0,
+      label: "Tête-à-tête",
+      actuel: kpisMoisCourant?.nbTeteATete,
       precedent: kpisMoisPrecedent?.nbTeteATete,
       format: String,
+      couleur: TEAL,
       icon: Coffee,
     },
     {
-      label: "Recos (mois)",
-      actuel: kpisMoisCourant?.nbRecos ?? 0,
+      label: "Recos",
+      actuel: kpisMoisCourant?.nbRecos,
       precedent: kpisMoisPrecedent?.nbRecos,
       format: String,
+      couleur: TEAL,
       icon: HandshakeIcon,
     },
     {
-      label: "CA (mois)",
-      actuel: kpisMoisCourant?.ca ?? 0,
+      label: "CA",
+      actuel: kpisMoisCourant?.ca,
       precedent: kpisMoisPrecedent?.ca,
       format: euros,
+      couleur: ORANGE,
       icon: Euro,
     },
   ];
@@ -451,17 +502,15 @@ function Dashboard() {
 
       {/* KPIs du mois */}
       <div className="grid grid-cols-3 gap-3 md:gap-4">
-        {stats.map(({ label, actuel, precedent, format, icon: Icon }) => (
-          <Card key={label} className="shadow-sm">
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <span className="text-xs md:text-sm text-muted-foreground">{label}</span>
-                <Icon className="h-4 w-4" style={{ color: TEAL }} />
-              </div>
-              <p className="mt-2 text-2xl font-bold text-foreground">{format(actuel)}</p>
-              {precedent !== undefined && <ValeurMoisPrecedent valeur={format(precedent)} />}
-            </CardContent>
-          </Card>
+        {stats.map(({ label, actuel, precedent, format, couleur, icon }) => (
+          <KpiCard
+            key={label}
+            label={label}
+            valeur={actuel !== undefined ? format(actuel) : undefined}
+            precedent={precedent !== undefined ? format(precedent) : undefined}
+            couleur={couleur}
+            icon={icon}
+          />
         ))}
       </div>
 
