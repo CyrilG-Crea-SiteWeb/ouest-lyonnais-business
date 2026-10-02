@@ -1009,9 +1009,7 @@ function RecoForm({
                   ))}
                 </SelectContent>
               </Select>
-              <p className="text-xs text-muted-foreground">
-                Membre qui vous a apporté ce business
-              </p>
+              <p className="text-xs text-muted-foreground">Membre qui vous a apporté ce business</p>
             </div>
           )}
 
