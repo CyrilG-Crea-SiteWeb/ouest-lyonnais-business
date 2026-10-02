@@ -992,7 +992,7 @@ function RecoForm({
             </>
           )}
 
-          {/* MERCI BUSINESS : sélecteur membre émetteur */}
+          {/* MERCI BUSINESS : sélecteur « Merci à » */}
           {type === "merci_business" && (
             <div className="space-y-1.5">
               <Label>{membreLabel}</Label>
