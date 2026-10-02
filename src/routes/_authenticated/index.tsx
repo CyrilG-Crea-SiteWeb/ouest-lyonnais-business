@@ -57,16 +57,69 @@ async function compterTeteATete(recos: { id: number; type: string }[]) {
   return ids.reduce((somme, id) => somme + Math.max(1, comptes.get(id) ?? 0), 0);
 }
 
-/** Bornes [début, fin[ du mois calendaire courant, au format YYYY-MM-DD (heure locale). */
-function bornesMoisCourant() {
+/**
+ * Bornes [début, fin[ d'un mois calendaire au format YYYY-MM-DD (heure locale).
+ * `decalage` = 0 pour le mois courant, -1 pour le mois précédent.
+ */
+function bornesMois(decalage = 0) {
   const now = new Date();
   const fmt = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-01`;
   return {
-    debut: fmt(new Date(now.getFullYear(), now.getMonth(), 1)),
-    fin: fmt(new Date(now.getFullYear(), now.getMonth() + 1, 1)),
+    debut: fmt(new Date(now.getFullYear(), now.getMonth() + decalage, 1)),
+    fin: fmt(new Date(now.getFullYear(), now.getMonth() + decalage + 1, 1)),
   };
 }
-const moisCourantDebut = () => bornesMoisCourant().debut;
+
+/**
+ * KPIs groupe d'un mois : toutes les semaines OLB dont le début tombe dans le
+ * mois calendaire, comme pour le graphe d'évolution.
+ */
+async function kpisMois(decalage: number) {
+  const { debut, fin } = bornesMois(decalage);
+  const { data: semaines, error: e1 } = await supabase
+    .from("semaines")
+    .select("id")
+    .gte("date_debut", debut)
+    .lt("date_debut", fin);
+  if (e1) throw e1;
+  const ids = (semaines ?? []).map((s) => s.id);
+  if (!ids.length) return { nbTeteATete: 0, nbRecos: 0, ca: 0 };
+  const { data, error } = await supabase
+    .from("recommandations")
+    .select("id, type, montant, valide")
+    .in("semaine_id", ids);
+  if (error) throw error;
+  const rows = data ?? [];
+  return {
+    nbTeteATete: await compterTeteATete(rows),
+    nbRecos: rows.filter((r) => r.type === "reco_interne" || r.type === "reco_externe").length,
+    ca: rows
+      .filter((r) => r.type === "merci_business" && r.valide)
+      .reduce((s, r) => s + Number(r.montant ?? 0), 0),
+  };
+}
+
+/** Écart vs mois précédent, ex. "+3 vs mois préc." — vert si hausse, rouge si baisse. */
+function EcartMoisPrecedent({
+  actuel,
+  precedent,
+  format = String,
+}: {
+  actuel: number;
+  precedent: number | undefined;
+  format?: (n: number) => string;
+}) {
+  if (precedent === undefined) return null;
+  const ecart = actuel - precedent;
+  const couleur =
+    ecart > 0 ? "text-emerald-600" : ecart < 0 ? "text-red-600" : "text-muted-foreground";
+  const texte = ecart === 0 ? "=" : `${ecart > 0 ? "+" : "−"}${format(Math.abs(ecart))}`;
+  return (
+    <p className="mt-1 text-xs text-muted-foreground">
+      <span className={`font-medium ${couleur}`}>{texte}</span> vs mois préc.
+    </p>
+  );
+}
 const libelleMoisCourant = () => {
   const l = new Date().toLocaleDateString("fr-FR", { month: "long", year: "numeric" });
   return l.charAt(0).toUpperCase() + l.slice(1);
@@ -150,28 +203,15 @@ function Dashboard() {
     },
   });
 
-  // Recos du mois en cours (pour KPI groupe) : toutes les semaines OLB dont le
-  // début tombe dans le mois calendaire courant, comme pour le graphe d'évolution.
-  const { data: recosMois } = useQuery({
-    queryKey: ["dashboard", "recos-mois", moisCourantDebut()],
-    queryFn: async () => {
-      const { debut, fin } = bornesMoisCourant();
-      const { data: semaines, error: e1 } = await supabase
-        .from("semaines")
-        .select("id")
-        .gte("date_debut", debut)
-        .lt("date_debut", fin);
-      if (e1) throw e1;
-      const ids = (semaines ?? []).map((s) => s.id);
-      if (!ids.length) return { rows: [], nbTeteATete: 0 };
-      const { data, error } = await supabase
-        .from("recommandations")
-        .select("id, type, montant, valide")
-        .in("semaine_id", ids);
-      if (error) throw error;
-      const rows = data ?? [];
-      return { rows, nbTeteATete: await compterTeteATete(rows) };
-    },
+  // KPIs groupe du mois en cours et du mois précédent (pour la comparaison).
+  const { data: kpisMoisCourant } = useQuery({
+    queryKey: ["dashboard", "kpis-mois", bornesMois(0).debut],
+    queryFn: () => kpisMois(0),
+  });
+  const { data: kpisMoisPrecedent } = useQuery({
+    queryKey: ["dashboard", "kpis-mois", bornesMois(-1).debut],
+    queryFn: () => kpisMois(-1),
+    staleTime: 5 * 60_000,
   });
 
   // Semaine en cours + semaine précédente (2 lignes les plus récentes déjà passées).
@@ -218,15 +258,6 @@ function Dashboard() {
       );
     },
   });
-
-  const nbTeteATete = recosMois?.nbTeteATete ?? 0;
-  const nbRecos =
-    recosMois?.rows.filter((r: any) => r.type === "reco_interne" || r.type === "reco_externe")
-      .length ?? 0;
-  const caValide =
-    recosMois?.rows
-      .filter((r: any) => r.type === "merci_business" && r.valide)
-      .reduce((s: number, r: any) => s + Number(r.montant ?? 0), 0) ?? 0;
 
   // Evolution par année OLB (juin -> juin), regroupée par mois
   const { data: evolution } = useQuery({
@@ -368,9 +399,27 @@ function Dashboard() {
   });
 
   const stats = [
-    { label: "Tête-à-tête (mois)", value: nbTeteATete, icon: Coffee },
-    { label: "Recos (mois)", value: nbRecos, icon: HandshakeIcon },
-    { label: "CA (mois)", value: euros(caValide), icon: Euro },
+    {
+      label: "Tête-à-tête (mois)",
+      actuel: kpisMoisCourant?.nbTeteATete ?? 0,
+      precedent: kpisMoisPrecedent?.nbTeteATete,
+      format: String,
+      icon: Coffee,
+    },
+    {
+      label: "Recos (mois)",
+      actuel: kpisMoisCourant?.nbRecos ?? 0,
+      precedent: kpisMoisPrecedent?.nbRecos,
+      format: String,
+      icon: HandshakeIcon,
+    },
+    {
+      label: "CA (mois)",
+      actuel: kpisMoisCourant?.ca ?? 0,
+      precedent: kpisMoisPrecedent?.ca,
+      format: euros,
+      icon: Euro,
+    },
   ];
 
   return (
@@ -418,14 +467,17 @@ function Dashboard() {
 
       {/* KPIs du mois */}
       <div className="grid grid-cols-3 gap-3 md:gap-4">
-        {stats.map(({ label, value, icon: Icon }) => (
+        {stats.map(({ label, actuel, precedent, format, icon: Icon }) => (
           <Card key={label} className="shadow-sm">
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <span className="text-xs md:text-sm text-muted-foreground">{label}</span>
                 <Icon className="h-4 w-4" style={{ color: TEAL }} />
               </div>
-              <p className="mt-2 text-2xl font-bold text-foreground">{value}</p>
+              <p className="mt-2 text-2xl font-bold text-foreground">{format(actuel)}</p>
+              {kpisMoisCourant && (
+                <EcartMoisPrecedent actuel={actuel} precedent={precedent} format={format} />
+              )}
             </CardContent>
           </Card>
         ))}
