@@ -806,7 +806,7 @@ function RecoForm({
         : "Membre destinataire"
       : type === "reco_externe"
         ? "Membre destinataire"
-        : "Membre émetteur";
+        : "Merci à";
 
   return (
     <Card>
@@ -992,7 +992,7 @@ function RecoForm({
             </>
           )}
 
-          {/* MERCI BUSINESS : sélecteur membre émetteur */}
+          {/* MERCI BUSINESS : sélecteur « Merci à » */}
           {type === "merci_business" && (
             <div className="space-y-1.5">
               <Label>{membreLabel}</Label>
@@ -1009,6 +1009,7 @@ function RecoForm({
                   ))}
                 </SelectContent>
               </Select>
+              <p className="text-xs text-muted-foreground">Membre qui vous a apporté ce business</p>
             </div>
           )}
 
