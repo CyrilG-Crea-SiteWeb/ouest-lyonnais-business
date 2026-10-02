@@ -99,27 +99,11 @@ async function kpisMois(decalage: number) {
   };
 }
 
-/** Écart vs mois précédent, ex. "+3 vs mois préc." — vert si hausse, rouge si baisse. */
-function EcartMoisPrecedent({
-  actuel,
-  precedent,
-  format = String,
-}: {
-  actuel: number;
-  precedent: number | undefined;
-  format?: (n: number) => string;
-}) {
-  if (precedent === undefined) return null;
-  const ecart = actuel - precedent;
-  const couleur =
-    ecart > 0 ? "text-emerald-600" : ecart < 0 ? "text-red-600" : "text-muted-foreground";
-  const texte = ecart === 0 ? "=" : `${ecart > 0 ? "+" : "−"}${format(Math.abs(ecart))}`;
-  return (
-    <p className="mt-1 text-xs text-muted-foreground">
-      <span className={`font-medium ${couleur}`}>{texte}</span> vs mois préc.
-    </p>
-  );
+/** Valeur du mois précédent, en petit sous le chiffre du mois en cours. */
+function ValeurMoisPrecedent({ valeur }: { valeur: string }) {
+  return <p className="mt-1 text-xs text-muted-foreground">Mois préc. : {valeur}</p>;
 }
+
 const libelleMoisCourant = () => {
   const l = new Date().toLocaleDateString("fr-FR", { month: "long", year: "numeric" });
   return l.charAt(0).toUpperCase() + l.slice(1);
@@ -203,7 +187,7 @@ function Dashboard() {
     },
   });
 
-  // KPIs groupe du mois en cours et du mois précédent (pour la comparaison).
+  // KPIs groupe du mois en cours et du mois précédent (affiché en petit).
   const { data: kpisMoisCourant } = useQuery({
     queryKey: ["dashboard", "kpis-mois", bornesMois(0).debut],
     queryFn: () => kpisMois(0),
@@ -475,9 +459,7 @@ function Dashboard() {
                 <Icon className="h-4 w-4" style={{ color: TEAL }} />
               </div>
               <p className="mt-2 text-2xl font-bold text-foreground">{format(actuel)}</p>
-              {kpisMoisCourant && (
-                <EcartMoisPrecedent actuel={actuel} precedent={precedent} format={format} />
-              )}
+              {precedent !== undefined && <ValeurMoisPrecedent valeur={format(precedent)} />}
             </CardContent>
           </Card>
         ))}

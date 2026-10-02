@@ -501,7 +501,9 @@ function TauxPresence() {
   const tauxQ = useQuery({
     queryKey: ["presences", "taux"],
     queryFn: async (): Promise<TauxRow[]> => {
-      const { data, error } = await supabase.from("v_taux_presence_membre").select("*");
+      // RPC SECURITY DEFINER : la vue lue directement ne voit les présences
+      // que pour le bureau (RLS de `presences`), sinon tous les taux valent 0 %.
+      const { data, error } = await supabase.rpc("taux_presence_membres");
       if (error) throw error;
       return (data ?? []) as TauxRow[];
     },
