@@ -57,6 +57,58 @@ async function compterTeteATete(recos: { id: number; type: string }[]) {
   return ids.reduce((somme, id) => somme + Math.max(1, comptes.get(id) ?? 0), 0);
 }
 
+/**
+ * Bornes [début, fin[ d'un mois calendaire au format YYYY-MM-DD (heure locale).
+ * `decalage` = 0 pour le mois courant, -1 pour le mois précédent.
+ */
+function bornesMois(decalage = 0) {
+  const now = new Date();
+  const fmt = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-01`;
+  return {
+    debut: fmt(new Date(now.getFullYear(), now.getMonth() + decalage, 1)),
+    fin: fmt(new Date(now.getFullYear(), now.getMonth() + decalage + 1, 1)),
+  };
+}
+
+/**
+ * KPIs groupe d'un mois : toutes les semaines OLB dont le début tombe dans le
+ * mois calendaire, comme pour le graphe d'évolution.
+ */
+async function kpisMois(decalage: number) {
+  const { debut, fin } = bornesMois(decalage);
+  const { data: semaines, error: e1 } = await supabase
+    .from("semaines")
+    .select("id")
+    .gte("date_debut", debut)
+    .lt("date_debut", fin);
+  if (e1) throw e1;
+  const ids = (semaines ?? []).map((s) => s.id);
+  if (!ids.length) return { nbTeteATete: 0, nbRecos: 0, ca: 0 };
+  const { data, error } = await supabase
+    .from("recommandations")
+    .select("id, type, montant, valide")
+    .in("semaine_id", ids);
+  if (error) throw error;
+  const rows = data ?? [];
+  return {
+    nbTeteATete: await compterTeteATete(rows),
+    nbRecos: rows.filter((r) => r.type === "reco_interne" || r.type === "reco_externe").length,
+    ca: rows
+      .filter((r) => r.type === "merci_business" && r.valide)
+      .reduce((s, r) => s + Number(r.montant ?? 0), 0),
+  };
+}
+
+/** Valeur du mois précédent, en petit sous le chiffre du mois en cours. */
+function ValeurMoisPrecedent({ valeur }: { valeur: string }) {
+  return <p className="mt-1 text-xs text-muted-foreground">Mois préc. : {valeur}</p>;
+}
+
+const libelleMoisCourant = () => {
+  const l = new Date().toLocaleDateString("fr-FR", { month: "long", year: "numeric" });
+  return l.charAt(0).toUpperCase() + l.slice(1);
+};
+
 const euros = (n: number) =>
   new Intl.NumberFormat("fr-FR", {
     style: "currency",
@@ -135,19 +187,15 @@ function Dashboard() {
     },
   });
 
-  // Recos de la semaine courante (pour KPI groupe)
-  const { data: recosSemaine } = useQuery({
-    enabled: !!semaineId,
-    queryKey: ["dashboard", "recos-semaine", semaineId],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("recommandations")
-        .select("id, type, montant, valide")
-        .eq("semaine_id", semaineId!);
-      if (error) throw error;
-      const rows = data ?? [];
-      return { rows, nbTeteATete: await compterTeteATete(rows) };
-    },
+  // KPIs groupe du mois en cours et du mois précédent (affiché en petit).
+  const { data: kpisMoisCourant } = useQuery({
+    queryKey: ["dashboard", "kpis-mois", bornesMois(0).debut],
+    queryFn: () => kpisMois(0),
+  });
+  const { data: kpisMoisPrecedent } = useQuery({
+    queryKey: ["dashboard", "kpis-mois", bornesMois(-1).debut],
+    queryFn: () => kpisMois(-1),
+    staleTime: 5 * 60_000,
   });
 
   // Semaine en cours + semaine précédente (2 lignes les plus récentes déjà passées).
@@ -194,15 +242,6 @@ function Dashboard() {
       );
     },
   });
-
-  const nbTeteATete = recosSemaine?.nbTeteATete ?? 0;
-  const nbRecos =
-    recosSemaine?.rows.filter((r: any) => r.type === "reco_interne" || r.type === "reco_externe")
-      .length ?? 0;
-  const caValide =
-    recosSemaine?.rows
-      .filter((r: any) => r.type === "merci_business" && r.valide)
-      .reduce((s: number, r: any) => s + Number(r.montant ?? 0), 0) ?? 0;
 
   // Evolution par année OLB (juin -> juin), regroupée par mois
   const { data: evolution } = useQuery({
@@ -333,20 +372,38 @@ function Dashboard() {
     enabled: !!membreId,
     queryKey: ["dashboard", "taux-presence", membreId],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("v_taux_presence_membre")
-        .select("taux_presence, nb_present, nb_reunions_dues")
-        .eq("membre_id", membreId!)
-        .maybeSingle();
+      // RPC SECURITY DEFINER : la RLS de `presences` masque les présences aux
+      // membres sans rôle, la vue lue directement renverrait alors 0 %.
+      const { data, error } = await supabase.rpc("taux_presence_membres", {
+        p_membre_id: membreId!,
+      });
       if (error) throw error;
-      return data;
+      return data?.[0] ?? null;
     },
   });
 
   const stats = [
-    { label: "Tête-à-tête (semaine)", value: nbTeteATete, icon: Coffee },
-    { label: "Recos (semaine)", value: nbRecos, icon: HandshakeIcon },
-    { label: "CA (semaine)", value: euros(caValide), icon: Euro },
+    {
+      label: "Tête-à-tête (mois)",
+      actuel: kpisMoisCourant?.nbTeteATete ?? 0,
+      precedent: kpisMoisPrecedent?.nbTeteATete,
+      format: String,
+      icon: Coffee,
+    },
+    {
+      label: "Recos (mois)",
+      actuel: kpisMoisCourant?.nbRecos ?? 0,
+      precedent: kpisMoisPrecedent?.nbRecos,
+      format: String,
+      icon: HandshakeIcon,
+    },
+    {
+      label: "CA (mois)",
+      actuel: kpisMoisCourant?.ca ?? 0,
+      precedent: kpisMoisPrecedent?.ca,
+      format: euros,
+      icon: Euro,
+    },
   ];
 
   return (
@@ -354,7 +411,8 @@ function Dashboard() {
       <header>
         <h1 className="text-2xl md:text-3xl font-bold text-foreground">Tableau de bord</h1>
         <p className="text-sm text-muted-foreground mt-1">
-          {semaineCourante?.libelle ?? "Semaine OLB en cours"} — indicateurs du groupe.
+          {libelleMoisCourant()} — indicateurs du groupe
+          {semaineCourante?.libelle ? ` · ${semaineCourante.libelle}` : ""}
         </p>
       </header>
 
@@ -391,16 +449,17 @@ function Dashboard() {
         </section>
       )}
 
-      {/* KPIs semaine */}
+      {/* KPIs du mois */}
       <div className="grid grid-cols-3 gap-3 md:gap-4">
-        {stats.map(({ label, value, icon: Icon }) => (
+        {stats.map(({ label, actuel, precedent, format, icon: Icon }) => (
           <Card key={label} className="shadow-sm">
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <span className="text-xs md:text-sm text-muted-foreground">{label}</span>
                 <Icon className="h-4 w-4" style={{ color: TEAL }} />
               </div>
-              <p className="mt-2 text-2xl font-bold text-foreground">{value}</p>
+              <p className="mt-2 text-2xl font-bold text-foreground">{format(actuel)}</p>
+              {precedent !== undefined && <ValeurMoisPrecedent valeur={format(precedent)} />}
             </CardContent>
           </Card>
         ))}
@@ -580,11 +639,7 @@ function RecoRecueRow({ reco }: { reco: any }) {
   const nomComplet = e ? `${e.prenom ?? ""} ${e.nom ?? ""}`.trim() : "Membre";
   const initials = `${(e?.prenom?.[0] ?? "").toUpperCase()}${(e?.nom?.[0] ?? "").toUpperCase()}`;
   const typeLabel =
-    reco.type === "reco_interne"
-      ? "Interne"
-      : reco.type === "reco_externe"
-        ? "Externe"
-        : "Merci";
+    reco.type === "reco_interne" ? "Interne" : reco.type === "reco_externe" ? "Externe" : "Merci";
   const dateAffichee = new Intl.DateTimeFormat("fr-FR").format(new Date(reco.created_at));
 
   return (
