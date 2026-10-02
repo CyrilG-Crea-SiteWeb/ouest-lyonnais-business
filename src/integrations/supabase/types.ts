@@ -957,6 +957,18 @@ export type Database = {
           taux_presence: number;
         }[];
       };
+      taux_presence_membres: {
+        Args: { p_membre_id?: string };
+        Returns: {
+          membre_id: string | null;
+          nb_absent: number | null;
+          nb_present: number | null;
+          nb_reunions_dues: number | null;
+          nom: string | null;
+          prenom: string | null;
+          taux_presence: number | null;
+        }[];
+      };
     };
     Enums: {
       role_membre: "admin" | "bureau" | "membre" | "comite_membres" | "comite_fetes";

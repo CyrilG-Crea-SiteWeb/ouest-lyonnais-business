@@ -57,6 +57,21 @@ async function compterTeteATete(recos: { id: number; type: string }[]) {
   return ids.reduce((somme, id) => somme + Math.max(1, comptes.get(id) ?? 0), 0);
 }
 
+/** Bornes [début, fin[ du mois calendaire courant, au format YYYY-MM-DD (heure locale). */
+function bornesMoisCourant() {
+  const now = new Date();
+  const fmt = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-01`;
+  return {
+    debut: fmt(new Date(now.getFullYear(), now.getMonth(), 1)),
+    fin: fmt(new Date(now.getFullYear(), now.getMonth() + 1, 1)),
+  };
+}
+const moisCourantDebut = () => bornesMoisCourant().debut;
+const libelleMoisCourant = () => {
+  const l = new Date().toLocaleDateString("fr-FR", { month: "long", year: "numeric" });
+  return l.charAt(0).toUpperCase() + l.slice(1);
+};
+
 const euros = (n: number) =>
   new Intl.NumberFormat("fr-FR", {
     style: "currency",
@@ -135,15 +150,24 @@ function Dashboard() {
     },
   });
 
-  // Recos de la semaine courante (pour KPI groupe)
-  const { data: recosSemaine } = useQuery({
-    enabled: !!semaineId,
-    queryKey: ["dashboard", "recos-semaine", semaineId],
+  // Recos du mois en cours (pour KPI groupe) : toutes les semaines OLB dont le
+  // début tombe dans le mois calendaire courant, comme pour le graphe d'évolution.
+  const { data: recosMois } = useQuery({
+    queryKey: ["dashboard", "recos-mois", moisCourantDebut()],
     queryFn: async () => {
+      const { debut, fin } = bornesMoisCourant();
+      const { data: semaines, error: e1 } = await supabase
+        .from("semaines")
+        .select("id")
+        .gte("date_debut", debut)
+        .lt("date_debut", fin);
+      if (e1) throw e1;
+      const ids = (semaines ?? []).map((s) => s.id);
+      if (!ids.length) return { rows: [], nbTeteATete: 0 };
       const { data, error } = await supabase
         .from("recommandations")
         .select("id, type, montant, valide")
-        .eq("semaine_id", semaineId!);
+        .in("semaine_id", ids);
       if (error) throw error;
       const rows = data ?? [];
       return { rows, nbTeteATete: await compterTeteATete(rows) };
@@ -195,12 +219,12 @@ function Dashboard() {
     },
   });
 
-  const nbTeteATete = recosSemaine?.nbTeteATete ?? 0;
+  const nbTeteATete = recosMois?.nbTeteATete ?? 0;
   const nbRecos =
-    recosSemaine?.rows.filter((r: any) => r.type === "reco_interne" || r.type === "reco_externe")
+    recosMois?.rows.filter((r: any) => r.type === "reco_interne" || r.type === "reco_externe")
       .length ?? 0;
   const caValide =
-    recosSemaine?.rows
+    recosMois?.rows
       .filter((r: any) => r.type === "merci_business" && r.valide)
       .reduce((s: number, r: any) => s + Number(r.montant ?? 0), 0) ?? 0;
 
@@ -333,20 +357,20 @@ function Dashboard() {
     enabled: !!membreId,
     queryKey: ["dashboard", "taux-presence", membreId],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("v_taux_presence_membre")
-        .select("taux_presence, nb_present, nb_reunions_dues")
-        .eq("membre_id", membreId!)
-        .maybeSingle();
+      // RPC SECURITY DEFINER : la RLS de `presences` masque les présences aux
+      // membres sans rôle, la vue lue directement renverrait alors 0 %.
+      const { data, error } = await supabase.rpc("taux_presence_membres", {
+        p_membre_id: membreId!,
+      });
       if (error) throw error;
-      return data;
+      return data?.[0] ?? null;
     },
   });
 
   const stats = [
-    { label: "Tête-à-tête (semaine)", value: nbTeteATete, icon: Coffee },
-    { label: "Recos (semaine)", value: nbRecos, icon: HandshakeIcon },
-    { label: "CA (semaine)", value: euros(caValide), icon: Euro },
+    { label: "Tête-à-tête (mois)", value: nbTeteATete, icon: Coffee },
+    { label: "Recos (mois)", value: nbRecos, icon: HandshakeIcon },
+    { label: "CA (mois)", value: euros(caValide), icon: Euro },
   ];
 
   return (
@@ -354,7 +378,8 @@ function Dashboard() {
       <header>
         <h1 className="text-2xl md:text-3xl font-bold text-foreground">Tableau de bord</h1>
         <p className="text-sm text-muted-foreground mt-1">
-          {semaineCourante?.libelle ?? "Semaine OLB en cours"} — indicateurs du groupe.
+          {libelleMoisCourant()} — indicateurs du groupe
+          {semaineCourante?.libelle ? ` · ${semaineCourante.libelle}` : ""}
         </p>
       </header>
 
@@ -391,7 +416,7 @@ function Dashboard() {
         </section>
       )}
 
-      {/* KPIs semaine */}
+      {/* KPIs du mois */}
       <div className="grid grid-cols-3 gap-3 md:gap-4">
         {stats.map(({ label, value, icon: Icon }) => (
           <Card key={label} className="shadow-sm">
@@ -580,11 +605,7 @@ function RecoRecueRow({ reco }: { reco: any }) {
   const nomComplet = e ? `${e.prenom ?? ""} ${e.nom ?? ""}`.trim() : "Membre";
   const initials = `${(e?.prenom?.[0] ?? "").toUpperCase()}${(e?.nom?.[0] ?? "").toUpperCase()}`;
   const typeLabel =
-    reco.type === "reco_interne"
-      ? "Interne"
-      : reco.type === "reco_externe"
-        ? "Externe"
-        : "Merci";
+    reco.type === "reco_interne" ? "Interne" : reco.type === "reco_externe" ? "Externe" : "Merci";
   const dateAffichee = new Intl.DateTimeFormat("fr-FR").format(new Date(reco.created_at));
 
   return (
