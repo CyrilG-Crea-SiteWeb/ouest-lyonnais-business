@@ -806,7 +806,7 @@ function RecoForm({
         : "Membre destinataire"
       : type === "reco_externe"
         ? "Membre destinataire"
-        : "Membre émetteur";
+        : "Merci à";
 
   return (
     <Card>
