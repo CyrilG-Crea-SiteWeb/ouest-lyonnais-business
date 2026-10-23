@@ -53,9 +53,9 @@ export function hasRole(role: Membre["role"] | undefined, min: "membre" | "burea
 }
 
 /**
- * Droit de gérer (créer / modifier / supprimer) les événements et les sondages.
+ * Droit de gérer (créer / modifier / supprimer) les événements.
  * Accordé au comité des fêtes, au bureau et aux admins.
  */
-export function peutGererEvenementsSondages(role: Membre["role"] | undefined) {
+export function peutGererEvenements(role: Membre["role"] | undefined) {
   return role === "admin" || role === "bureau" || role === "comite_fetes";
 }

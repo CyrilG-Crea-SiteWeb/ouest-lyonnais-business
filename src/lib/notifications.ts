@@ -4,16 +4,16 @@ import { supabase } from "@/integrations/supabase/client";
  * Crée des notifications in-app pour une liste de membres.
  *
  * Réutilisable pour les demandes, mais aussi (plus tard) pour les
- * événements et sondages : il suffit de passer le bon `typeContenu`.
+ * événements : il suffit de passer le bon `typeContenu`.
  *
- * @param typeContenu  'demande' | 'evenement' | 'sondage' | 'recommandation'
+ * @param typeContenu  'demande' | 'evenement' | 'recommandation'
  * @param contenuId    id de la ligne concernée (ex. demandes.id)
  * @param titre        texte court affiché dans la cloche
  * @param membreIds    destinataires (on s'auto-exclut pour ne pas se notifier soi-même)
  * @param exclureId    id à exclure (généralement l'auteur)
  */
 export async function creerNotifications(opts: {
-  typeContenu: "demande" | "evenement" | "sondage" | "recommandation" | "invite";
+  typeContenu: "demande" | "evenement" | "recommandation" | "invite";
   contenuId: number;
   titre: string;
   membreIds: string[];
@@ -88,7 +88,7 @@ export async function getGestionnairesInvitesIds(): Promise<string[]> {
  * Ids des administrateurs actifs.
  *
  * Sert à garantir que le rôle « admin » est toujours notifié (in-app + push)
- * lors des créations clés — invité, événement, demande, sondage — même quand
+ * lors des créations clés — invité, événement, demande — même quand
  * le ciblage par défaut ne les inclut pas (ex. conférence, demande spécifique).
  * À fusionner dans `membreIds` : `creerNotifications` déduplique et exclut
  * l'auteur, donc l'ajout est sans effet là où les admins figurent déjà.

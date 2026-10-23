@@ -21,7 +21,7 @@ import { toast } from "sonner";
 import { creerNotificationsSafe, getMembresActifsIds } from "@/lib/notifications";
 
 // MODIF OLB : ajout de "demande" pour brancher les commentaires sous les demandes.
-export type TypeContenu = "recommandation" | "sondage" | "evenement" | "demande";
+export type TypeContenu = "recommandation" | "evenement" | "demande";
 
 type Commentaire = {
   id: number;
@@ -466,7 +466,7 @@ function CommentForm({
  *
  * - Commentaire racine (parentId == null) :
  *     • recommandation / demande -> l'AUTEUR du contenu
- *     • evenement / sondage      -> TOUS les membres actifs
+ *     • evenement                -> TOUS les membres actifs
  * - Réponse (parentId != null) :
  *     • l'AUTEUR du commentaire parent
  *
@@ -496,10 +496,10 @@ async function notifierCommentaire(opts: {
   }
 
   // CAS 2 — Commentaire racine.
-  // 2a) Événement ou sondage : tous les membres actifs.
-  if (typeContenu === "evenement" || typeContenu === "sondage") {
+  // 2a) Événement : tous les membres actifs.
+  if (typeContenu === "evenement") {
     const tousActifs = await getMembresActifsIds();
-    const label = typeContenu === "evenement" ? "un événement" : "un sondage";
+    const label = "un événement";
     await creerNotificationsSafe({
       typeContenu,
       contenuId,
