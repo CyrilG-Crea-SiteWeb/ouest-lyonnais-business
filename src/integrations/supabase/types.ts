@@ -634,6 +634,7 @@ export type Database = {
           membre_id: string;
           montant: number | null;
           notes: string | null;
+          saisi_par: string | null;
           semaine_id: number;
           type: Database["public"]["Enums"]["type_recommandation"];
           valide: boolean;
@@ -646,6 +647,7 @@ export type Database = {
           membre_id: string;
           montant?: number | null;
           notes?: string | null;
+          saisi_par?: string | null;
           semaine_id: number;
           type: Database["public"]["Enums"]["type_recommandation"];
           valide?: boolean;
@@ -658,6 +660,7 @@ export type Database = {
           membre_id?: string;
           montant?: number | null;
           notes?: string | null;
+          saisi_par?: string | null;
           semaine_id?: number;
           type?: Database["public"]["Enums"]["type_recommandation"];
           valide?: boolean;

@@ -107,7 +107,8 @@ function EvenementsPage() {
         .select("*")
         .order("date_event", { ascending: true });
       if (error) throw error;
-      return data as Evenement[];
+      // `est_conference` n'est pas encore dans les types générés (à régénérer côté Lovable).
+      return data as unknown as Evenement[];
     },
   });
 

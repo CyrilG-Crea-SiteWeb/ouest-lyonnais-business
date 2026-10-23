@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import type { TablesInsert } from "@/integrations/supabase/types";
 import { useProfile, hasRole } from "@/hooks/use-profile";
 import { creerNotificationsSafe } from "@/lib/notifications";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -64,6 +65,7 @@ type Reco = {
   valide: boolean;
   semaine_id: number;
   notes: string | null;
+  saisi_par?: string | null; // NULL pour les saisies antérieures à la colonne
   created_at: string;
 };
 
@@ -157,9 +159,9 @@ function RecosPage() {
     queryFn: async (): Promise<Reco[]> => {
       const { data, error } = await supabase
         .from("recommandations")
-        .select(
-          "id, type, membre_id, membre_cible_id, contact_externe, montant, valide, semaine_id, notes, created_at",
-        )
+        // `*` plutôt qu'une liste explicite : tant que la migration `saisi_par`
+        // n'est pas appliquée, la colonne est simplement absente (repli sur membre_id).
+        .select("*")
         .order("created_at", { ascending: false });
       if (error) throw error;
       return (data ?? []) as Reco[];
@@ -175,7 +177,7 @@ function RecosPage() {
         .select("recommandation_id, membre_id");
       if (error) throw error;
       const map: Record<number, string[]> = {};
-      (data ?? []).forEach((row: any) => {
+      (data ?? []).forEach((row) => {
         (map[row.recommandation_id] ??= []).push(row.membre_id);
       });
       return map;
@@ -194,8 +196,8 @@ function RecosPage() {
         .in("id", semaineIds);
       if (error) throw error;
       const map: Record<number, Semaine> = {};
-      (data ?? []).forEach((s: any) => {
-        map[s.id] = s as Semaine;
+      (data ?? []).forEach((s) => {
+        map[s.id] = s;
       });
       return map;
     },
@@ -216,6 +218,12 @@ function RecosPage() {
 
   const filtresActifs = fMembre !== "__all__" || fType !== "__all__" || fMesSaisies;
 
+  // « Mes saisies » rend le filtre Membre sans objet : on le remet à zéro et on le désactive.
+  const toggleMesSaisies = (checked: boolean) => {
+    setFMesSaisies(checked);
+    if (checked) setFMembre("__all__");
+  };
+
   const resetFiltres = () => {
     setFMembre("__all__");
     setFType("__all__");
@@ -224,9 +232,10 @@ function RecosPage() {
 
   const recosFiltrees = useMemo(() => {
     return recos.filter((r) => {
-      if (fMesSaisies && r.membre_id !== profile?.id) return false;
+      // Saisisseur réel ; à défaut (lignes anciennes), l'auteur de la reco.
+      if (fMesSaisies && (r.saisi_par ?? r.membre_id) !== profile?.id) return false;
       if (fType !== "__all__" && r.type !== fType) return false;
-      if (fMembre !== "__all__") {
+      if (!fMesSaisies && fMembre !== "__all__") {
         const parts = participantsMap[r.id] ?? [];
         const concerne =
           r.membre_id === fMembre || r.membre_cible_id === fMembre || parts.includes(fMembre);
@@ -392,7 +401,7 @@ function RecosPage() {
               <Label className="text-xs flex items-center gap-1">
                 <Filter className="h-3 w-3" /> Membre
               </Label>
-              <Select value={fMembre} onValueChange={setFMembre}>
+              <Select value={fMembre} onValueChange={setFMembre} disabled={fMesSaisies}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
@@ -427,7 +436,7 @@ function RecosPage() {
               <Checkbox
                 id="f-mes-saisies"
                 checked={fMesSaisies}
-                onCheckedChange={(v) => setFMesSaisies(v === true)}
+                onCheckedChange={(v) => toggleMesSaisies(v === true)}
               />
               <Label htmlFor="f-mes-saisies" className="text-sm font-normal cursor-pointer">
                 Voir mes dernières saisies
@@ -721,7 +730,7 @@ function RecoForm({
 
       const auteur = auteurEffectifId!; // émetteur réel (soi-même ou membre délégué)
 
-      const payload: any = {
+      const payload: TablesInsert<"recommandations"> = {
         type,
         membre_id: auteur,
         semaine_id: semaineId,
