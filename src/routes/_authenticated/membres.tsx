@@ -159,6 +159,11 @@ function MembresPage() {
     () => (isAdmin ? filtered.filter((m) => m.statut === "inactif") : []),
     [filtered, isAdmin],
   );
+  // Section dépliée automatiquement pendant une recherche, repliée quand elle est effacée.
+  const [inactifsOuverts, setInactifsOuverts] = useState(false);
+  useEffect(() => {
+    setInactifsOuverts(search.trim() !== "");
+  }, [search]);
   const nbActifs = useMemo(() => membres.filter((m) => m.statut === "actif").length, [membres]);
 
   // Mêmes slugs que l'annuaire public, calculés sur la même population (membres actifs).
@@ -217,7 +222,11 @@ function MembresPage() {
           )}
 
           {inactifs.length > 0 && (
-            <Collapsible className="border-t pt-4">
+            <Collapsible
+              open={inactifsOuverts}
+              onOpenChange={setInactifsOuverts}
+              className="border-t pt-4"
+            >
               <CollapsibleTrigger className="group flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
                 <ChevronDown className="h-4 w-4 -rotate-90 transition-transform group-data-[state=open]:rotate-0" />
                 Inactifs ({inactifs.length})
