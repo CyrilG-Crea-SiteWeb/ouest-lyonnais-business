@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import type { TablesInsert } from "@/integrations/supabase/types";
@@ -44,6 +44,7 @@ import {
   Check,
   ClipboardCheck,
   ChevronRight,
+  CalendarDays,
   Filter,
   X,
 } from "lucide-react";
@@ -503,6 +504,23 @@ function AnneeBlock({
   semaineCouranteId: number | null;
 }) {
   const [open, setOpen] = useState(defaultOpen);
+  // Mois sélectionné dans la grille (par défaut : mois en cours s'il a des recos)
+  const [moisSelectionne, setMoisSelectionne] = useState<number | null>(
+    mois.some((m) => m.mois === moisCourant) ? moisCourant : null,
+  );
+  const panneauRef = useRef<HTMLDivElement>(null);
+  const moisActif = mois.find((m) => m.mois === moisSelectionne);
+
+  const selectionnerMois = (m: number) => {
+    const nouveau = m === moisSelectionne ? null : m;
+    setMoisSelectionne(nouveau);
+    // Sur mobile, le panneau peut être loin sous la grille : on le ramène à l'écran
+    if (nouveau !== null) {
+      requestAnimationFrame(() =>
+        panneauRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" }),
+      );
+    }
+  };
   const total = mois.reduce(
     (acc, m) => acc + m.semaines.reduce((s, sem) => s + sem.items.length, 0),
     0,
@@ -521,75 +539,119 @@ function AnneeBlock({
           </Badge>
         </button>
       </CollapsibleTrigger>
-      <CollapsibleContent className="space-y-3 pl-2 pt-3 md:pl-4">
-        {mois.map((m) => (
-          <MoisBlock
-            key={m.mois}
-            mois={m.mois}
-            semaines={m.semaines}
-            defaultOpen={m.mois === moisCourant}
-            membresMap={membresMap}
-            participantsMap={participantsMap}
-            profileId={profileId}
-            isBureau={isBureau}
-            semaineCouranteId={semaineCouranteId}
-          />
-        ))}
+      <CollapsibleContent className="space-y-4 pl-2 pt-3 md:pl-4">
+        <p className="text-xs text-muted-foreground">
+          Cliquez sur un mois pour afficher ses semaines.
+        </p>
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+          {mois.map((m) => (
+            <MoisTuile
+              key={m.mois}
+              mois={m.mois}
+              semaines={m.semaines}
+              selected={m.mois === moisSelectionne}
+              enCours={m.mois === moisCourant}
+              onClick={() => selectionnerMois(m.mois)}
+            />
+          ))}
+        </div>
+        {moisActif && (
+          <div
+            ref={panneauRef}
+            id={`semaines-${annee}-${moisActif.mois}`}
+            className="scroll-mt-4 space-y-3 rounded-lg border-2 border-primary/30 bg-primary/5 p-3 md:p-4"
+          >
+            <div className="flex items-center gap-2">
+              <CalendarDays className="h-4 w-4 text-primary" />
+              <h3 className="font-semibold text-primary">
+                Semaines de {MOIS_FR[moisActif.mois].toLowerCase()} {annee}
+              </h3>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="ml-auto h-7 px-2"
+                onClick={() => setMoisSelectionne(null)}
+                aria-label="Fermer les semaines"
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+            {moisActif.semaines.map((g) => (
+              <SemaineBlock
+                key={g.id}
+                group={g}
+                defaultOpen={g.id === semaineCouranteId}
+                membresMap={membresMap}
+                participantsMap={participantsMap}
+                profileId={profileId}
+                isBureau={isBureau}
+              />
+            ))}
+          </div>
+        )}
       </CollapsibleContent>
     </Collapsible>
   );
 }
 
-// ---- Bloc Mois (repliable) ----
-function MoisBlock({
+// ---- Tuile Mois (cliquable : affiche les semaines du mois sous la grille) ----
+function MoisTuile({
   mois,
   semaines,
-  defaultOpen,
-  membresMap,
-  participantsMap,
-  profileId,
-  isBureau,
-  semaineCouranteId,
+  selected,
+  enCours,
+  onClick,
 }: {
   mois: number;
   semaines: { id: number; semaine?: Semaine; items: Reco[]; debut: string }[];
-  defaultOpen: boolean;
-  membresMap: Record<string, MembreLite>;
-  participantsMap: Record<number, string[]>;
-  profileId?: string;
-  isBureau: boolean;
-  semaineCouranteId: number | null;
+  selected: boolean;
+  enCours: boolean;
+  onClick: () => void;
 }) {
-  const [open, setOpen] = useState(defaultOpen);
   const total = semaines.reduce((s, sem) => s + sem.items.length, 0);
 
   return (
-    <Collapsible open={open} onOpenChange={setOpen}>
-      <CollapsibleTrigger asChild>
-        <button className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left hover:bg-accent transition-colors">
-          <ChevronRight
-            className={"h-4 w-4 shrink-0 transition-transform " + (open ? "rotate-90" : "")}
-          />
-          <span className="font-semibold">{MOIS_FR[mois]}</span>
-          <Badge variant="outline" className="ml-auto text-[10px]">
-            {total}
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={selected}
+      className={
+        "group flex flex-col gap-2 rounded-lg border p-3 text-left shadow-sm transition-all hover:-translate-y-0.5 hover:border-primary hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary " +
+        (selected ? "border-primary bg-primary text-primary-foreground" : "bg-card")
+      }
+    >
+      <div className="flex items-start gap-2">
+        <span className="font-semibold leading-tight">{MOIS_FR[mois]}</span>
+        {enCours && (
+          <Badge
+            variant={selected ? "secondary" : "default"}
+            className="ml-auto shrink-0 text-[10px]"
+          >
+            En cours
           </Badge>
-        </button>
-      </CollapsibleTrigger>
-      <CollapsibleContent className="space-y-3 pt-2">
-        {semaines.map((g) => (
-          <SemaineBlock
-            key={g.id}
-            group={g}
-            defaultOpen={g.id === semaineCouranteId}
-            membresMap={membresMap}
-            participantsMap={participantsMap}
-            profileId={profileId}
-            isBureau={isBureau}
-          />
-        ))}
-      </CollapsibleContent>
-    </Collapsible>
+        )}
+      </div>
+      <div
+        className={"text-xs " + (selected ? "text-primary-foreground/80" : "text-muted-foreground")}
+      >
+        <span className="text-base font-bold">{total}</span> reco{total > 1 ? "s" : ""} ·{" "}
+        {semaines.length} semaine{semaines.length > 1 ? "s" : ""}
+      </div>
+      <span
+        className={
+          "mt-auto flex items-center gap-1 text-xs font-medium " +
+          (selected ? "text-primary-foreground" : "text-primary")
+        }
+      >
+        {selected ? "Semaines affichées" : "Voir les semaines"}
+        <ChevronRight
+          className={
+            "h-3.5 w-3.5 transition-transform " +
+            (selected ? "rotate-90" : "group-hover:translate-x-0.5")
+          }
+        />
+      </span>
+    </button>
   );
 }
 
