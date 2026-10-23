@@ -54,7 +54,9 @@ import {
   Share2,
   Check,
   Info,
+  ChevronDown,
 } from "lucide-react";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import {
   inviteMembre,
   updateMembre,
@@ -112,7 +114,7 @@ function MembresPage() {
   const isAdmin = hasRole(profile?.role, "admin");
   const [search, setSearch] = useState("");
 
-  const { data: tousMembres = [], isLoading } = useQuery({
+  const { data: membres = [], isLoading } = useQuery({
     queryKey: ["membres", "list"],
     queryFn: async (): Promise<Membre[]> => {
       const { data, error } = await supabase
@@ -125,12 +127,6 @@ function MembresPage() {
       return (data ?? []) as Membre[];
     },
   });
-
-  // Les comptes inactifs ne sont visibles que des admins (seuls habilités à les réactiver).
-  const membres = useMemo(
-    () => (isAdmin ? tousMembres : tousMembres.filter((m) => m.statut === "actif")),
-    [tousMembres, isAdmin],
-  );
 
   const filtered = useMemo(() => {
     const normalize = (s: string) =>
@@ -156,6 +152,15 @@ function MembresPage() {
     );
   }, [membres, search]);
 
+  // Les comptes inactifs ne sont visibles que des admins (seuls habilités à les réactiver),
+  // regroupés dans une section repliée en bas de page.
+  const actifs = useMemo(() => filtered.filter((m) => m.statut === "actif"), [filtered]);
+  const inactifs = useMemo(
+    () => (isAdmin ? filtered.filter((m) => m.statut === "inactif") : []),
+    [filtered, isAdmin],
+  );
+  const nbActifs = useMemo(() => membres.filter((m) => m.statut === "actif").length, [membres]);
+
   // Mêmes slugs que l'annuaire public, calculés sur la même population (membres actifs).
   const slugs = useMemo(
     () => slugsAnnuaire(membres.filter((m) => m.statut === "actif")),
@@ -168,7 +173,7 @@ function MembresPage() {
         <div>
           <h1 className="text-2xl md:text-3xl font-bold">Membres</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            {membres.length} membre{membres.length > 1 ? "s" : ""}
+            {nbActifs} membre{nbActifs > 1 ? "s" : ""}
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -189,24 +194,44 @@ function MembresPage() {
 
       {isLoading ? (
         <p className="text-sm text-muted-foreground">Chargement…</p>
-      ) : filtered.length === 0 ? (
-        <Card>
-          <CardContent className="p-6 text-sm text-muted-foreground">
-            Aucun membre trouvé.
-          </CardContent>
-        </Card>
       ) : (
-        <div className="grid gap-3 grid-cols-3">
-          {filtered.map((m) => (
-            <MembreCard
-              key={m.id}
-              membre={m}
-              slugPartage={slugs.get(m.id)}
-              canEdit={isBureau}
-              canAdmin={isAdmin}
-            />
-          ))}
-        </div>
+        <>
+          {actifs.length === 0 ? (
+            <Card>
+              <CardContent className="p-6 text-sm text-muted-foreground">
+                Aucun membre trouvé.
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="grid gap-3 grid-cols-3">
+              {actifs.map((m) => (
+                <MembreCard
+                  key={m.id}
+                  membre={m}
+                  slugPartage={slugs.get(m.id)}
+                  canEdit={isBureau}
+                  canAdmin={isAdmin}
+                />
+              ))}
+            </div>
+          )}
+
+          {inactifs.length > 0 && (
+            <Collapsible className="border-t pt-4">
+              <CollapsibleTrigger className="group flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
+                <ChevronDown className="h-4 w-4 -rotate-90 transition-transform group-data-[state=open]:rotate-0" />
+                Inactifs ({inactifs.length})
+              </CollapsibleTrigger>
+              <CollapsibleContent className="pt-3">
+                <div className="grid gap-3 grid-cols-3">
+                  {inactifs.map((m) => (
+                    <MembreCard key={m.id} membre={m} canEdit={isBureau} canAdmin={isAdmin} />
+                  ))}
+                </div>
+              </CollapsibleContent>
+            </Collapsible>
+          )}
+        </>
       )}
     </div>
   );
