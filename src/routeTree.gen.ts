@@ -14,7 +14,6 @@ import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AnnuaireRouteImport } from './routes/annuaire'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as AuthenticatedIndexRouteImport } from './routes/_authenticated/index'
-import { Route as AuthenticatedSondagesRouteImport } from './routes/_authenticated/sondages'
 import { Route as AuthenticatedRecommandationsRouteImport } from './routes/_authenticated/recommandations'
 import { Route as AuthenticatedMonProfilRouteImport } from './routes/_authenticated/mon-profil'
 import { Route as AuthenticatedMembresRouteImport } from './routes/_authenticated/membres'
@@ -48,11 +47,6 @@ const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
 const AuthenticatedIndexRoute = AuthenticatedIndexRouteImport.update({
   id: '/',
   path: '/',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
-const AuthenticatedSondagesRoute = AuthenticatedSondagesRouteImport.update({
-  id: '/sondages',
-  path: '/sondages',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedRecommandationsRoute =
@@ -123,7 +117,6 @@ export interface FileRoutesByFullPath {
   '/membres': typeof AuthenticatedMembresRoute
   '/mon-profil': typeof AuthenticatedMonProfilRoute
   '/recommandations': typeof AuthenticatedRecommandationsRoute
-  '/sondages': typeof AuthenticatedSondagesRoute
   '/demandes/$demandeId': typeof AuthenticatedDemandesDemandeIdRoute
   '/demandes/nouvelle': typeof AuthenticatedDemandesNouvelleRoute
   '/demandes/': typeof AuthenticatedDemandesIndexRoute
@@ -139,7 +132,6 @@ export interface FileRoutesByTo {
   '/membres': typeof AuthenticatedMembresRoute
   '/mon-profil': typeof AuthenticatedMonProfilRoute
   '/recommandations': typeof AuthenticatedRecommandationsRoute
-  '/sondages': typeof AuthenticatedSondagesRoute
   '/': typeof AuthenticatedIndexRoute
   '/demandes/$demandeId': typeof AuthenticatedDemandesDemandeIdRoute
   '/demandes/nouvelle': typeof AuthenticatedDemandesNouvelleRoute
@@ -158,7 +150,6 @@ export interface FileRoutesById {
   '/_authenticated/membres': typeof AuthenticatedMembresRoute
   '/_authenticated/mon-profil': typeof AuthenticatedMonProfilRoute
   '/_authenticated/recommandations': typeof AuthenticatedRecommandationsRoute
-  '/_authenticated/sondages': typeof AuthenticatedSondagesRoute
   '/_authenticated/': typeof AuthenticatedIndexRoute
   '/_authenticated/demandes/$demandeId': typeof AuthenticatedDemandesDemandeIdRoute
   '/_authenticated/demandes/nouvelle': typeof AuthenticatedDemandesNouvelleRoute
@@ -178,7 +169,6 @@ export interface FileRouteTypes {
     | '/membres'
     | '/mon-profil'
     | '/recommandations'
-    | '/sondages'
     | '/demandes/$demandeId'
     | '/demandes/nouvelle'
     | '/demandes/'
@@ -194,7 +184,6 @@ export interface FileRouteTypes {
     | '/membres'
     | '/mon-profil'
     | '/recommandations'
-    | '/sondages'
     | '/'
     | '/demandes/$demandeId'
     | '/demandes/nouvelle'
@@ -212,7 +201,6 @@ export interface FileRouteTypes {
     | '/_authenticated/membres'
     | '/_authenticated/mon-profil'
     | '/_authenticated/recommandations'
-    | '/_authenticated/sondages'
     | '/_authenticated/'
     | '/_authenticated/demandes/$demandeId'
     | '/_authenticated/demandes/nouvelle'
@@ -262,13 +250,6 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof AuthenticatedIndexRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/sondages': {
-      id: '/_authenticated/sondages'
-      path: '/sondages'
-      fullPath: '/sondages'
-      preLoaderRoute: typeof AuthenticatedSondagesRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/recommandations': {
@@ -351,7 +332,6 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedMembresRoute: typeof AuthenticatedMembresRoute
   AuthenticatedMonProfilRoute: typeof AuthenticatedMonProfilRoute
   AuthenticatedRecommandationsRoute: typeof AuthenticatedRecommandationsRoute
-  AuthenticatedSondagesRoute: typeof AuthenticatedSondagesRoute
   AuthenticatedIndexRoute: typeof AuthenticatedIndexRoute
   AuthenticatedDemandesDemandeIdRoute: typeof AuthenticatedDemandesDemandeIdRoute
   AuthenticatedDemandesNouvelleRoute: typeof AuthenticatedDemandesNouvelleRoute
@@ -366,7 +346,6 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedMembresRoute: AuthenticatedMembresRoute,
   AuthenticatedMonProfilRoute: AuthenticatedMonProfilRoute,
   AuthenticatedRecommandationsRoute: AuthenticatedRecommandationsRoute,
-  AuthenticatedSondagesRoute: AuthenticatedSondagesRoute,
   AuthenticatedIndexRoute: AuthenticatedIndexRoute,
   AuthenticatedDemandesDemandeIdRoute: AuthenticatedDemandesDemandeIdRoute,
   AuthenticatedDemandesNouvelleRoute: AuthenticatedDemandesNouvelleRoute,
@@ -386,3 +365,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}

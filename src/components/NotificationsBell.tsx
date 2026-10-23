@@ -9,7 +9,7 @@ import { activerPush, permissionPush, synchroniserPush } from "@/lib/push";
 
 type Notification = {
   id: number;
-  type_contenu: "recommandation" | "sondage" | "evenement" | "demande" | "rappel" | "invite";
+  type_contenu: "recommandation" | "evenement" | "demande" | "rappel" | "invite";
   contenu_id: number;
   titre: string;
   lu: boolean;
@@ -23,8 +23,6 @@ function lienVers(n: Notification): string {
       return `/demandes/${n.contenu_id}`;
     case "evenement":
       return `/evenements`;
-    case "sondage":
-      return `/sondages`;
     case "invite":
       return `/invites`;
     case "rappel":

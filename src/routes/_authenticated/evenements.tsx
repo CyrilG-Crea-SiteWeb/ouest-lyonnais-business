@@ -3,7 +3,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Plus, Pencil, Trash2, MapPin, Calendar, Users, ChevronDown, Check } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { useProfile, peutGererEvenementsSondages } from "@/hooks/use-profile";
+import { useProfile, peutGererEvenements } from "@/hooks/use-profile";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -97,7 +97,7 @@ function FauxCheck({ checked }: { checked: boolean }) {
 
 function EvenementsPage() {
   const { data: profile } = useProfile();
-  const canManage = peutGererEvenementsSondages(profile?.role);
+  const canManage = peutGererEvenements(profile?.role);
 
   const evQ = useQuery({
     queryKey: ["evenements"],
