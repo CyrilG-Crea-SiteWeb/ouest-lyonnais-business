@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { Fragment, useMemo, useRef, useState } from "react";
+import { Fragment, useMemo, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import type { TablesInsert } from "@/integrations/supabase/types";
@@ -508,19 +508,9 @@ function AnneeBlock({
   const [moisSelectionne, setMoisSelectionne] = useState<number | null>(
     mois.some((m) => m.mois === moisCourant) ? moisCourant : null,
   );
-  const panneauRef = useRef<HTMLDivElement>(null);
   const moisActif = mois.find((m) => m.mois === moisSelectionne);
 
-  const selectionnerMois = (m: number) => {
-    const nouveau = m === moisSelectionne ? null : m;
-    setMoisSelectionne(nouveau);
-    // Sur mobile, le panneau peut être loin sous la grille : on le ramène à l'écran
-    if (nouveau !== null) {
-      requestAnimationFrame(() =>
-        panneauRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" }),
-      );
-    }
-  };
+  const selectionnerMois = (m: number) => setMoisSelectionne((actuel) => (actuel === m ? null : m));
   const total = mois.reduce(
     (acc, m) => acc + m.semaines.reduce((s, sem) => s + sem.items.length, 0),
     0,
@@ -556,38 +546,18 @@ function AnneeBlock({
                 onClick={() => selectionnerMois(m.mois)}
               />
               {moisActif?.mois === m.mois && (
-                <div
-                  ref={panneauRef}
-                  id={`semaines-${annee}-${moisActif.mois}`}
-                  className="col-span-full scroll-mt-4 space-y-3 rounded-lg border-2 border-primary/30 bg-primary/5 p-3 md:p-4"
-                >
-                  <div className="flex items-center gap-2">
-                    <CalendarDays className="h-4 w-4 text-primary" />
-                    <h3 className="font-semibold text-primary">
-                      Semaines de {MOIS_FR[moisActif.mois].toLowerCase()} {annee}
-                    </h3>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="ml-auto h-7 px-2"
-                      onClick={() => setMoisSelectionne(null)}
-                      aria-label="Fermer les semaines"
-                    >
-                      <X className="h-4 w-4" />
-                    </Button>
-                  </div>
-                  {moisActif.semaines.map((g) => (
-                    <SemaineBlock
-                      key={g.id}
-                      group={g}
-                      defaultOpen={g.id === semaineCouranteId}
-                      membresMap={membresMap}
-                      participantsMap={participantsMap}
-                      profileId={profileId}
-                      isBureau={isBureau}
-                    />
-                  ))}
-                </div>
+                <SemainesPanneau
+                  key={moisActif.mois}
+                  annee={annee}
+                  mois={moisActif.mois}
+                  semaines={moisActif.semaines}
+                  semaineCouranteId={semaineCouranteId}
+                  onClose={() => setMoisSelectionne(null)}
+                  membresMap={membresMap}
+                  participantsMap={participantsMap}
+                  profileId={profileId}
+                  isBureau={isBureau}
+                />
               )}
             </Fragment>
           ))}
@@ -619,8 +589,11 @@ function MoisTuile({
       onClick={onClick}
       aria-pressed={selected}
       className={
-        "group flex flex-col gap-2 rounded-lg border p-3 text-left shadow-sm transition-all hover:-translate-y-0.5 hover:border-primary hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary " +
-        (selected ? "border-primary bg-primary text-primary-foreground" : "bg-card")
+        "group relative flex flex-col gap-2 rounded-lg border p-3 text-left shadow-sm transition-all hover:border-primary hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary " +
+        (selected
+          ? // Flèche qui pointe vers le panneau des semaines, ouvert juste en dessous
+            "border-primary bg-primary text-primary-foreground after:absolute after:left-1/2 after:top-full after:-translate-x-1/2 after:border-x-[10px] after:border-t-[12px] after:border-x-transparent after:border-t-primary after:content-['']"
+          : "bg-card hover:-translate-y-0.5")
       }
     >
       <div className="flex items-start gap-2">
@@ -658,43 +631,118 @@ function MoisTuile({
   );
 }
 
-// ---- Bloc Semaine (repliable ; seule la semaine en cours ouverte par défaut) ----
-function SemaineBlock({
-  group,
-  defaultOpen,
+// Ex. "6 – 12 oct." ou "29 sept. – 5 oct." à partir de la date de début (lundi)
+function plageSemaine(debut: string): string | null {
+  if (!debut) return null;
+  const d = new Date(debut + "T00:00:00");
+  if (Number.isNaN(d.getTime())) return null;
+  const f = new Date(d);
+  f.setDate(d.getDate() + 6);
+  const fmt = (x: Date, mois: boolean) =>
+    x.toLocaleDateString("fr-FR", mois ? { day: "numeric", month: "short" } : { day: "numeric" });
+  return d.getMonth() === f.getMonth()
+    ? `${fmt(d, false)} – ${fmt(f, true)}`
+    : `${fmt(d, true)} – ${fmt(f, true)}`;
+}
+
+// ---- Panneau des semaines d'un mois : onglets-dates + recos de la semaine choisie ----
+function SemainesPanneau({
+  annee,
+  mois,
+  semaines,
+  semaineCouranteId,
+  onClose,
   membresMap,
   participantsMap,
   profileId,
   isBureau,
 }: {
-  group: { id: number; semaine?: Semaine; items: Reco[]; debut: string };
-  defaultOpen: boolean;
+  annee: number;
+  mois: number;
+  semaines: { id: number; semaine?: Semaine; items: Reco[]; debut: string }[];
+  semaineCouranteId: number | null;
+  onClose: () => void;
   membresMap: Record<string, MembreLite>;
   participantsMap: Record<number, string[]>;
   profileId?: string;
   isBureau: boolean;
 }) {
-  const [open, setOpen] = useState(defaultOpen);
-  const libelle = group.semaine?.libelle ?? `Semaine #${group.id}`;
+  // Onglets dans l'ordre chronologique (les semaines arrivent triées de la plus récente à la plus ancienne)
+  const chrono = useMemo(() => [...semaines].reverse(), [semaines]);
+  // Par défaut : semaine en cours si elle est dans ce mois, sinon la plus récente
+  const [selectionId, setSelectionId] = useState<number>(
+    semaines.some((g) => g.id === semaineCouranteId) ? semaineCouranteId! : semaines[0]?.id,
+  );
+  const active = semaines.find((g) => g.id === selectionId) ?? semaines[0];
 
   return (
-    <Card>
-      <Collapsible open={open} onOpenChange={setOpen}>
-        <CollapsibleTrigger asChild>
-          <button className="flex w-full items-center gap-2 px-4 py-3 text-left hover:bg-accent/50 transition-colors rounded-t-lg">
-            <ChevronRight
-              className={"h-4 w-4 shrink-0 transition-transform " + (open ? "rotate-90" : "")}
-            />
-            <span className="text-sm font-semibold text-primary">{libelle}</span>
-            {defaultOpen && <Badge className="text-[10px]">En cours</Badge>}
-            <Badge variant="outline" className="ml-auto text-[10px]">
-              {group.items.length}
-            </Badge>
-          </button>
-        </CollapsibleTrigger>
-        <CollapsibleContent>
+    <div className="col-span-full space-y-3 rounded-lg border-2 border-primary bg-primary/5 p-3 md:p-4">
+      <div className="flex items-center gap-2">
+        <CalendarDays className="h-4 w-4 text-primary" />
+        <h3 className="font-semibold text-primary">
+          Semaines de {MOIS_FR[mois].toLowerCase()} {annee}
+        </h3>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="ml-auto h-7 px-2"
+          onClick={onClose}
+          aria-label="Fermer les semaines"
+        >
+          <X className="h-4 w-4" />
+        </Button>
+      </div>
+
+      <div role="tablist" className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
+        {chrono.map((g) => {
+          const selected = g.id === active?.id;
+          const enCours = g.id === semaineCouranteId;
+          return (
+            <button
+              key={g.id}
+              type="button"
+              role="tab"
+              aria-selected={selected}
+              onClick={() => setSelectionId(g.id)}
+              className={
+                "flex shrink-0 flex-col items-start rounded-md border px-3 py-2 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary " +
+                (selected
+                  ? "border-primary bg-primary text-primary-foreground"
+                  : "bg-card hover:border-primary hover:bg-primary/10")
+              }
+            >
+              <span className="flex items-center gap-1.5 whitespace-nowrap text-sm font-semibold">
+                {plageSemaine(g.debut) ?? g.semaine?.libelle ?? `Semaine #${g.id}`}
+                {enCours && (
+                  <span
+                    className={"h-2 w-2 rounded-full " + (selected ? "bg-accent" : "bg-primary")}
+                    title="Semaine en cours"
+                  />
+                )}
+              </span>
+              <span
+                className={
+                  "text-xs " + (selected ? "text-primary-foreground/80" : "text-muted-foreground")
+                }
+              >
+                {g.items.length} reco{g.items.length > 1 ? "s" : ""}
+                {enCours ? " · en cours" : ""}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+
+      {active && (
+        <Card role="tabpanel">
+          <CardHeader className="pb-2">
+            <CardTitle className="flex items-center gap-2 text-sm text-primary">
+              {active.semaine?.libelle ?? `Semaine #${active.id}`}
+              {active.id === semaineCouranteId && <Badge className="text-[10px]">En cours</Badge>}
+            </CardTitle>
+          </CardHeader>
           <CardContent className="pt-0 divide-y">
-            {group.items.map((r) => (
+            {active.items.map((r) => (
               <RecoRow
                 key={r.id}
                 reco={r}
@@ -707,9 +755,9 @@ function SemaineBlock({
               />
             ))}
           </CardContent>
-        </CollapsibleContent>
-      </Collapsible>
-    </Card>
+        </Card>
+      )}
+    </div>
   );
 }
 
