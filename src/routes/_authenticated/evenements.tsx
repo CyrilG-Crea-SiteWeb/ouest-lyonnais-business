@@ -58,7 +58,7 @@ type Inscription = {
   statut: Statut;
 };
 type ConferenceIntervenant = { evenement_id: number; membre_id: string };
-type MembreLite = { id: string; prenom: string; nom: string };
+type MembreLite = { id: string; prenom: string; nom: string; statut: "actif" | "inactif" };
 
 // Nom complet d'un membre à partir de la map (ou libellé par défaut).
 function nomComplet(membres: Map<string, MembreLite>, id: string) {
@@ -134,10 +134,11 @@ function EvenementsPage() {
     },
   });
 
+  // Tous les membres (inactifs compris) : sert aussi à afficher le nom des anciens intervenants.
   const membresQ = useQuery({
-    queryKey: ["membres", "lite"],
+    queryKey: ["membres", "lite", "tous"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("membres").select("id, prenom, nom");
+      const { data, error } = await supabase.from("membres").select("id, prenom, nom, statut");
       if (error) throw error;
       return data as MembreLite[];
     },
@@ -598,11 +599,14 @@ function CreateEvenementDialog() {
   const [description, setDescription] = useState("");
   const [capacite, setCapacite] = useState("");
 
-  // Liste des membres pour la sélection des intervenants (mode conférence).
+  // Membres actifs proposés comme intervenants (mode conférence).
   const membresQ = useQuery({
-    queryKey: ["membres", "lite"],
+    queryKey: ["membres", "lite", "actifs"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("membres").select("id, prenom, nom");
+      const { data, error } = await supabase
+        .from("membres")
+        .select("id, prenom, nom, statut")
+        .eq("statut", "actif");
       if (error) throw error;
       return data as MembreLite[];
     },
@@ -924,7 +928,10 @@ function EditConferenceDialog({
           <div className="space-y-1.5">
             <Label>Intervenants</Label>
             <div className="max-h-56 overflow-y-auto rounded-lg border divide-y">
-              {trierParPrenom(membresList).map((m) => {
+              {trierParPrenom(
+                // Inactifs masqués, sauf s'ils sont déjà intervenants (pour pouvoir les retirer).
+                membresList.filter((m) => m.statut === "actif" || intervenantIds.includes(m.id)),
+              ).map((m) => {
                 const checked = intervenants.includes(m.id);
                 return (
                   <button
