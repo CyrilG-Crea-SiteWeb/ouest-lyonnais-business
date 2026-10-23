@@ -2,12 +2,14 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import type { TablesInsert } from "@/integrations/supabase/types";
 import { useProfile, hasRole } from "@/hooks/use-profile";
 import { creerNotificationsSafe } from "@/lib/notifications";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import {
@@ -63,6 +65,7 @@ type Reco = {
   valide: boolean;
   semaine_id: number;
   notes: string | null;
+  saisi_par?: string | null; // NULL pour les saisies antérieures à la colonne
   created_at: string;
 };
 
@@ -156,9 +159,9 @@ function RecosPage() {
     queryFn: async (): Promise<Reco[]> => {
       const { data, error } = await supabase
         .from("recommandations")
-        .select(
-          "id, type, membre_id, membre_cible_id, contact_externe, montant, valide, semaine_id, notes, created_at",
-        )
+        // `*` plutôt qu'une liste explicite : tant que la migration `saisi_par`
+        // n'est pas appliquée, la colonne est simplement absente (repli sur membre_id).
+        .select("*")
         .order("created_at", { ascending: false });
       if (error) throw error;
       return (data ?? []) as Reco[];
@@ -174,7 +177,7 @@ function RecosPage() {
         .select("recommandation_id, membre_id");
       if (error) throw error;
       const map: Record<number, string[]> = {};
-      (data ?? []).forEach((row: any) => {
+      (data ?? []).forEach((row) => {
         (map[row.recommandation_id] ??= []).push(row.membre_id);
       });
       return map;
@@ -193,8 +196,8 @@ function RecosPage() {
         .in("id", semaineIds);
       if (error) throw error;
       const map: Record<number, Semaine> = {};
-      (data ?? []).forEach((s: any) => {
-        map[s.id] = s as Semaine;
+      (data ?? []).forEach((s) => {
+        map[s.id] = s;
       });
       return map;
     },
@@ -211,18 +214,28 @@ function RecosPage() {
   // --- Filtres de l'historique (membre / type / plage de dates) ---
   const [fMembre, setFMembre] = useState<string>("__all__");
   const [fType, setFType] = useState<string>("__all__");
+  const [fMesSaisies, setFMesSaisies] = useState(false);
 
-  const filtresActifs = fMembre !== "__all__" || fType !== "__all__";
+  const filtresActifs = fMembre !== "__all__" || fType !== "__all__" || fMesSaisies;
+
+  // « Mes saisies » rend le filtre Membre sans objet : on le remet à zéro et on le désactive.
+  const toggleMesSaisies = (checked: boolean) => {
+    setFMesSaisies(checked);
+    if (checked) setFMembre("__all__");
+  };
 
   const resetFiltres = () => {
     setFMembre("__all__");
     setFType("__all__");
+    setFMesSaisies(false);
   };
 
   const recosFiltrees = useMemo(() => {
     return recos.filter((r) => {
+      // Saisisseur réel ; à défaut (lignes anciennes), l'auteur de la reco.
+      if (fMesSaisies && (r.saisi_par ?? r.membre_id) !== profile?.id) return false;
       if (fType !== "__all__" && r.type !== fType) return false;
-      if (fMembre !== "__all__") {
+      if (!fMesSaisies && fMembre !== "__all__") {
         const parts = participantsMap[r.id] ?? [];
         const concerne =
           r.membre_id === fMembre || r.membre_cible_id === fMembre || parts.includes(fMembre);
@@ -230,7 +243,7 @@ function RecosPage() {
       }
       return true;
     });
-  }, [recos, fMembre, fType, participantsMap]);
+  }, [recos, fMembre, fType, fMesSaisies, profile?.id, participantsMap]);
 
   // Hiérarchie Année > Mois > Semaine, basée sur la date de début de semaine.
   const annees = useMemo(() => {
@@ -371,16 +384,15 @@ function RecosPage() {
       <section className="space-y-4">
         <div className="flex items-center justify-between gap-2">
           <h2 className="text-lg font-semibold">Historique</h2>
-          {filtresActifs && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={resetFiltres}
-              className="h-8 text-muted-foreground"
-            >
-              <X className="h-4 w-4 mr-1" /> Réinitialiser
-            </Button>
-          )}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={resetFiltres}
+            disabled={!filtresActifs}
+            className="h-8"
+          >
+            <X className="h-4 w-4 mr-1" /> Réinitialiser la recherche
+          </Button>
         </div>
 
         <Card>
@@ -389,7 +401,7 @@ function RecosPage() {
               <Label className="text-xs flex items-center gap-1">
                 <Filter className="h-3 w-3" /> Membre
               </Label>
-              <Select value={fMembre} onValueChange={setFMembre}>
+              <Select value={fMembre} onValueChange={setFMembre} disabled={fMesSaisies}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
@@ -418,6 +430,17 @@ function RecosPage() {
                   <SelectItem value="merci_business">Merci pour le business</SelectItem>
                 </SelectContent>
               </Select>
+            </div>
+
+            <div className="col-span-2 flex items-center gap-2">
+              <Checkbox
+                id="f-mes-saisies"
+                checked={fMesSaisies}
+                onCheckedChange={(v) => toggleMesSaisies(v === true)}
+              />
+              <Label htmlFor="f-mes-saisies" className="text-sm font-normal cursor-pointer">
+                Voir mes dernières saisies
+              </Label>
             </div>
           </CardContent>
         </Card>
@@ -707,7 +730,7 @@ function RecoForm({
 
       const auteur = auteurEffectifId!; // émetteur réel (soi-même ou membre délégué)
 
-      const payload: any = {
+      const payload: TablesInsert<"recommandations"> = {
         type,
         membre_id: auteur,
         semaine_id: semaineId,
