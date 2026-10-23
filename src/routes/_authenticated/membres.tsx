@@ -112,7 +112,7 @@ function MembresPage() {
   const isAdmin = hasRole(profile?.role, "admin");
   const [search, setSearch] = useState("");
 
-  const { data: membres = [], isLoading } = useQuery({
+  const { data: tousMembres = [], isLoading } = useQuery({
     queryKey: ["membres", "list"],
     queryFn: async (): Promise<Membre[]> => {
       const { data, error } = await supabase
@@ -125,6 +125,12 @@ function MembresPage() {
       return (data ?? []) as Membre[];
     },
   });
+
+  // Les comptes inactifs ne sont visibles que des admins (seuls habilités à les réactiver).
+  const membres = useMemo(
+    () => (isAdmin ? tousMembres : tousMembres.filter((m) => m.statut === "actif")),
+    [tousMembres, isAdmin],
+  );
 
   const filtered = useMemo(() => {
     const normalize = (s: string) =>
