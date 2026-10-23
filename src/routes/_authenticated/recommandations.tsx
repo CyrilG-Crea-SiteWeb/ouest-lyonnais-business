@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useRef, useState } from "react";
+import { Fragment, useMemo, useRef, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import type { TablesInsert } from "@/integrations/supabase/types";
@@ -543,52 +543,55 @@ function AnneeBlock({
         <p className="text-xs text-muted-foreground">
           Cliquez sur un mois pour afficher ses semaines.
         </p>
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+        {/* grid-flow-row-dense : le panneau (pleine largeur) se place sous la ligne du mois
+            cliqué, et les tuiles suivantes de cette ligne remontent combler les trous. */}
+        <div className="grid grid-flow-row-dense grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
           {mois.map((m) => (
-            <MoisTuile
-              key={m.mois}
-              mois={m.mois}
-              semaines={m.semaines}
-              selected={m.mois === moisSelectionne}
-              enCours={m.mois === moisCourant}
-              onClick={() => selectionnerMois(m.mois)}
-            />
+            <Fragment key={m.mois}>
+              <MoisTuile
+                mois={m.mois}
+                semaines={m.semaines}
+                selected={m.mois === moisSelectionne}
+                enCours={m.mois === moisCourant}
+                onClick={() => selectionnerMois(m.mois)}
+              />
+              {moisActif?.mois === m.mois && (
+                <div
+                  ref={panneauRef}
+                  id={`semaines-${annee}-${moisActif.mois}`}
+                  className="col-span-full scroll-mt-4 space-y-3 rounded-lg border-2 border-primary/30 bg-primary/5 p-3 md:p-4"
+                >
+                  <div className="flex items-center gap-2">
+                    <CalendarDays className="h-4 w-4 text-primary" />
+                    <h3 className="font-semibold text-primary">
+                      Semaines de {MOIS_FR[moisActif.mois].toLowerCase()} {annee}
+                    </h3>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="ml-auto h-7 px-2"
+                      onClick={() => setMoisSelectionne(null)}
+                      aria-label="Fermer les semaines"
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  {moisActif.semaines.map((g) => (
+                    <SemaineBlock
+                      key={g.id}
+                      group={g}
+                      defaultOpen={g.id === semaineCouranteId}
+                      membresMap={membresMap}
+                      participantsMap={participantsMap}
+                      profileId={profileId}
+                      isBureau={isBureau}
+                    />
+                  ))}
+                </div>
+              )}
+            </Fragment>
           ))}
         </div>
-        {moisActif && (
-          <div
-            ref={panneauRef}
-            id={`semaines-${annee}-${moisActif.mois}`}
-            className="scroll-mt-4 space-y-3 rounded-lg border-2 border-primary/30 bg-primary/5 p-3 md:p-4"
-          >
-            <div className="flex items-center gap-2">
-              <CalendarDays className="h-4 w-4 text-primary" />
-              <h3 className="font-semibold text-primary">
-                Semaines de {MOIS_FR[moisActif.mois].toLowerCase()} {annee}
-              </h3>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="ml-auto h-7 px-2"
-                onClick={() => setMoisSelectionne(null)}
-                aria-label="Fermer les semaines"
-              >
-                <X className="h-4 w-4" />
-              </Button>
-            </div>
-            {moisActif.semaines.map((g) => (
-              <SemaineBlock
-                key={g.id}
-                group={g}
-                defaultOpen={g.id === semaineCouranteId}
-                membresMap={membresMap}
-                participantsMap={participantsMap}
-                profileId={profileId}
-                isBureau={isBureau}
-              />
-            ))}
-          </div>
-        )}
       </CollapsibleContent>
     </Collapsible>
   );
