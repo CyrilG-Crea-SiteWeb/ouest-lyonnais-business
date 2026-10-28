@@ -47,6 +47,9 @@ const COUL = {
   tealFonce: "FF00424A",
   orange: "FFF6A000",
   gris: "FF5F6B6D",
+  /** Membres inactifs : texte des lignes et fond des en-têtes de matrice. */
+  inactif: "FF8C9799",
+  enteteInactif: "FF9AA5A7",
   blanc: "FFFFFFFF",
   ligneAlt: "FFF3F8F9",
   bordure: "FFD0D7D9",
@@ -65,6 +68,7 @@ const COUL_TYPE: Record<TypeReco, string> = {
 const FMT_NB = "0;\\-0;\\-";
 const FMT_EUR = '#,##0" €";\\-#,##0" €";\\-';
 const FMT_EUR_MATRICE = '#,##0;\\-#,##0;""';
+const FMT_PCT = "0%";
 const FMT_DATE = "dd/mm/yyyy";
 const FMT_MOIS = "mmmm yyyy";
 
@@ -427,6 +431,43 @@ function agreger(
   };
 }
 
+// --- Présences ---------------------------------------------------------------
+
+type Presence = { nbPresent: number; nbDues: number; taux: number | null };
+
+/**
+ * Taux de présence par membre sur les semaines de la période (fonction SQL
+ * stats_presence_periode, comme l'export des présences). Bornes larges
+ * [1er date_debut, dernier date_fin] pour couvrir toutes les semaines quelle
+ * que soit la date filtrée côté SQL. Best-effort : en cas d'erreur, la
+ * colonne reste vide plutôt que de bloquer l'export.
+ */
+async function recupererPresences(semaines: SemaineRow[]) {
+  const presences = new Map<string, Presence>();
+  if (!semaines.length) return presences;
+  const debut = semaines.reduce(
+    (m, s) => (s.date_debut < m ? s.date_debut : m),
+    semaines[0].date_debut,
+  );
+  const fin = semaines[semaines.length - 1].date_fin;
+  const { data, error } = await supabase.rpc("stats_presence_periode", {
+    p_debut: debut,
+    p_fin: fin,
+  });
+  if (error) {
+    console.error("Export recos : taux de présence indisponible", error);
+    return presences;
+  }
+  (data ?? []).forEach((p) =>
+    presences.set(p.membre_id, {
+      nbPresent: Number(p.nb_present ?? 0),
+      nbDues: Number(p.nb_reunions_dues ?? 0),
+      taux: p.taux_presence == null ? null : Number(p.taux_presence),
+    }),
+  );
+  return presences;
+}
+
 // --- 4. Écriture exceljs -----------------------------------------------------
 
 export async function exportRecommandationsClasseur(opts: ExportRecosOptions): Promise<number> {
@@ -437,6 +478,14 @@ export async function exportRecommandationsClasseur(opts: ExportRecosOptions): P
   const lignes = construireLignes(donnees, opts, nom);
   if (!lignes.length) return 0;
   const agg = agreger(lignes, donnees, opts);
+  const presences = await recupererPresences(agg.semaines);
+  const inactif = (id: string | null) => {
+    const m = id ? membreParId.get(id) : undefined;
+    return !!m && m.statut !== "actif";
+  };
+  // Anciens membres : texte grisé en italique.
+  const styleMembre = (id: string | null): Style =>
+    inactif(id) ? { italic: true, color: COUL.inactif } : {};
 
   const ExcelJS = (await import("exceljs")).default;
   const wb = new ExcelJS.Workbook();
@@ -502,8 +551,8 @@ export async function exportRecommandationsClasseur(opts: ExportRecosOptions): P
       { numFmt: FMT_MOIS },
     );
     ecrire(wsDetail, `C${r}`, TYPE_RECO_LABEL[l.type], { fill: COUL_TYPE[l.type] });
-    ecrire(wsDetail, `D${r}`, nom(l.declarantId));
-    ecrire(wsDetail, `E${r}`, nom(l.concerneId));
+    ecrire(wsDetail, `D${r}`, nom(l.declarantId), styleMembre(l.declarantId));
+    ecrire(wsDetail, `E${r}`, nom(l.concerneId), styleMembre(l.concerneId));
     ecrire(wsDetail, `F${r}`, l.contact);
     ecrire(wsDetail, `G${r}`, l.montant, { numFmt: FMT_EUR });
     ecrire(wsDetail, `H${r}`, l.notes);
@@ -525,7 +574,9 @@ export async function exportRecommandationsClasseur(opts: ExportRecosOptions): P
     `Période : ${opts.periodeLibelle}${bornes} · Filtres : ${opts.filtresLibelle} · ` +
       `Généré le ${format(new Date(), "dd/MM/yyyy")} depuis l'appli OLB`,
   );
-  [26, 12, 11, 12, 11, 12, 16, 12, 16, 13].forEach((w, i) => (wsSynth.getColumn(i + 1).width = w));
+  [26, 12, 11, 12, 11, 12, 16, 12, 16, 13, 13].forEach(
+    (w, i) => (wsSynth.getColumn(i + 1).width = w),
+  );
 
   const kpis: [string, string, Cell["value"], string?][] = [
     ["A", "Recos données", f(`COUNTIFS(${D("C")},"Reco*")`, agg.total.recos)],
@@ -534,6 +585,16 @@ export async function exportRecommandationsClasseur(opts: ExportRecosOptions): P
     ["G", "CA généré (€)", f(`SUMIFS(${D("G")},${D("C")},"Merci*")`, agg.total.ca), COUL.orange],
     ["I", "Réunions", f(`COUNTIFS(${R("I")},"")`, agg.nbReunions)],
   ];
+  // Taux de présence du groupe = total des présences / total des réunions dues
+  // (membres de la Synthèse uniquement).
+  const presGroupe = agg.membres.reduce(
+    (acc, id) => {
+      const p = presences.get(id);
+      return p ? { present: acc.present + p.nbPresent, dues: acc.dues + p.nbDues } : acc;
+    },
+    { present: 0, dues: 0 },
+  );
+  const tauxGroupe = presGroupe.dues ? presGroupe.present / presGroupe.dues : null;
   kpis.forEach(([c, label, valeur, couleur]) => {
     ecrire(wsSynth, `${c}4`, label, { size: 9, bold: true, color: COUL.gris });
     ecrire(wsSynth, `${c}5`, valeur, {
@@ -543,6 +604,14 @@ export async function exportRecommandationsClasseur(opts: ExportRecosOptions): P
       numFmt: c === "G" ? FMT_EUR : FMT_NB,
       align: "left",
     });
+  });
+  ecrire(wsSynth, "K4", "Taux de présence", { size: 9, bold: true, color: COUL.gris });
+  ecrire(wsSynth, "K5", tauxGroupe, {
+    size: 18,
+    bold: true,
+    color: COUL.tealFonce,
+    numFmt: FMT_PCT,
+    align: "left",
   });
   wsSynth.getRow(5).height = 22.05;
   ecrire(wsSynth, "G7", "Ce que le membre a fait gagner", {
@@ -567,6 +636,7 @@ export async function exportRecommandationsClasseur(opts: ExportRecosOptions): P
     "Mercis donnés\n(nb)",
     "CA reçu du groupe (€)",
     "Total déclarations",
+    "Taux de présence",
   ].forEach((h, i) => ecrire(wsSynth, `${col(wsSynth, i + 1)}8`, h, STYLE_ENTETE));
   wsSynth.getRow(8).height = 42;
 
@@ -576,9 +646,10 @@ export async function exportRecommandationsClasseur(opts: ExportRecosOptions): P
     const r = premSynth + i;
     const s = agg.stats.get(id)!;
     const fond = i % 2 === 1 ? COUL.ligneAlt : undefined;
-    const nb: Style = { numFmt: FMT_NB, align: "center", fill: fond, bordure: true };
+    const sm = styleMembre(id);
+    const nb: Style = { ...sm, numFmt: FMT_NB, align: "center", fill: fond, bordure: true };
     const eur: Style = { ...nb, numFmt: FMT_EUR };
-    ecrire(wsSynth, `A${r}`, nom(id), { bold: true, fill: fond, bordure: true });
+    ecrire(wsSynth, `A${r}`, nom(id), { ...sm, bold: true, fill: fond, bordure: true });
     const cnt = (colDetail: string, crit: string) =>
       `COUNTIFS(${D(colDetail)},$A${r},${D("C")},"${crit}")`;
     ecrire(wsSynth, `B${r}`, f(cnt("D", "Reco*"), s.recosDonnees), nb);
@@ -600,6 +671,8 @@ export async function exportRecommandationsClasseur(opts: ExportRecosOptions): P
       eur,
     );
     ecrire(wsSynth, `J${r}`, f(`B${r}+E${r}+H${r}`, s.recosDonnees + s.tete + s.mercisDonnes), nb);
+    // Valeur issue des pointages de présence (pas de la feuille Détail) : pas de formule.
+    ecrire(wsSynth, `K${r}`, presences.get(id)?.taux ?? null, { ...nb, numFmt: FMT_PCT });
   });
 
   const rTotal = derSynth + 1;
@@ -624,7 +697,12 @@ export async function exportRecommandationsClasseur(opts: ExportRecosOptions): P
       align: "center",
     }),
   );
-  wsSynth.autoFilter = `A8:J${derSynth}`;
+  ecrire(wsSynth, `K${rTotal}`, tauxGroupe, {
+    ...STYLE_TOTAL,
+    numFmt: FMT_PCT,
+    align: "center",
+  });
+  wsSynth.autoFilter = `A8:K${derSynth}`;
 
   const barres: [string, string][] = [
     ["B", COUL.barreTeal],
@@ -654,6 +732,8 @@ export async function exportRecommandationsClasseur(opts: ExportRecosOptions): P
     "• Tête-à-tête : chaque membre déclare les siens (pas de double crédit automatique).",
     "• CA apporté = montants des « merci pour le business » où le membre est remercié. CA reçu = montants qu'il a déclarés en remerciant les autres.",
     "• Total déclarations = recos données + tête-à-tête + mercis donnés. Tous les chiffres se recalculent à partir de la feuille « Détail ».",
+    "• Taux de présence = réunions pointées présent / réunions dues sur la période (issu des présences, ne se recalcule pas). Total = moyenne pondérée du groupe.",
+    "• Membres en gris italique : anciens membres (inactifs).",
   ];
   ecrire(wsSynth, `A${rTotal + 2}`, "Lecture :", { size: 9, bold: true, color: COUL.gris });
   lecture.forEach((t, i) =>
@@ -688,8 +768,9 @@ export async function exportRecommandationsClasseur(opts: ExportRecosOptions): P
       ecrire(ws, `${col(ws, j + 2)}4`, nom(id), {
         size: 8,
         bold: true,
+        italic: inactif(id),
         color: COUL.blanc,
-        fill: COUL.teal,
+        fill: inactif(id) ? COUL.enteteInactif : COUL.teal,
         align: "center",
         rotation: 90,
       }),
@@ -706,7 +787,7 @@ export async function exportRecommandationsClasseur(opts: ExportRecosOptions): P
     const totauxCol = new Array<number>(n).fill(0);
     agg.membres.forEach((idLigne, i) => {
       const r = 5 + i;
-      ecrire(ws, `A${r}`, nom(idLigne), { size: 9, bold: true });
+      ecrire(ws, `A${r}`, nom(idLigne), { ...styleMembre(idLigne), size: 9, bold: true });
       let totalLigne = 0;
       agg.membres.forEach((idCol, j) => {
         const v = cfg.valeurs.get(idLigne)?.get(idCol) ?? 0;
