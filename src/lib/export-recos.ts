@@ -259,7 +259,7 @@ function construireLignes(
       concerneId: r.membre_cible_id,
       contact: r.contact_externe ?? "",
       montant: r.montant == null ? null : Number(r.montant),
-      notes: r.notes ?? "",
+      notes: r.notes === AUTO_RECO_DB ? NOTE_AUTO_RECO : (r.notes ?? ""),
     };
     const parts = r.type === "tete_a_tete" ? donnees.participants.get(r.id) : undefined;
     return parts?.length ? parts.map((pid) => ({ ...base, concerneId: pid })) : [base];
@@ -280,6 +280,17 @@ function construireLignes(
 // --- 3. Agrégations -----------------------------------------------------------
 
 const estReco = (t: TypeReco) => t === "reco_interne" || t === "reco_externe";
+
+/**
+ * Auto-reco : reco interne où le déclarant s'est recommandé LUI-MÊME auprès du
+ * membre ciblé (notes = "auto_reco" en base). Comptée dans les recos données,
+ * mais ni dans les recos reçues ni dans la matrice qui → qui, comme sur le
+ * tableau de bord. Affichée « Auto-reco » dans la colonne Notes du Détail, que
+ * les formules excluent via le critère NOTE_AUTO_RECO.
+ */
+const AUTO_RECO_DB = "auto_reco";
+const NOTE_AUTO_RECO = "Auto-reco";
+const critereHorsAutoReco = (plageNotes: string) => `${plageNotes},"<>${NOTE_AUTO_RECO}"`;
 
 type StatsMembre = {
   recosDonnees: number;
@@ -369,7 +380,7 @@ function agreger(
     const montant = l.montant ?? 0;
     if (estReco(l.type)) decl.recosDonnees++;
     if (l.type === "reco_externe") decl.dontExternes++;
-    if (l.type === "reco_interne" && conc) {
+    if (l.type === "reco_interne" && conc && l.notes !== NOTE_AUTO_RECO) {
       conc.recosRecues++;
       ajouter(matriceRecos, l.declarantId, l.concerneId!, 1);
     }
@@ -655,7 +666,15 @@ export async function exportRecommandationsClasseur(opts: ExportRecosOptions): P
       `COUNTIFS(${D(colDetail)},$A${r},${D("C")},"${crit}")`;
     ecrire(wsSynth, `B${r}`, f(cnt("D", "Reco*"), s.recosDonnees), nb);
     ecrire(wsSynth, `C${r}`, f(cnt("D", "Reco externe"), s.dontExternes), nb);
-    ecrire(wsSynth, `D${r}`, f(cnt("E", "Reco interne"), s.recosRecues), nb);
+    ecrire(
+      wsSynth,
+      `D${r}`,
+      f(
+        `COUNTIFS(${D("E")},$A${r},${D("C")},"Reco interne",${critereHorsAutoReco(D("H"))})`,
+        s.recosRecues,
+      ),
+      nb,
+    );
     ecrire(wsSynth, `E${r}`, f(cnt("D", "Tête-à-tête"), s.tete), nb);
     ecrire(wsSynth, `F${r}`, f(cnt("E", "Merci*"), s.mercisRecus), nb);
     ecrire(
@@ -738,7 +757,7 @@ export async function exportRecommandationsClasseur(opts: ExportRecosOptions): P
   );
 
   const lecture = [
-    "• Recos données / reçues : recommandations internes entre membres (externes = vers un contact hors groupe, comptées dans « données » uniquement).",
+    "• Recos données / reçues : recommandations internes entre membres (externes = vers un contact hors groupe, comptées dans « données » uniquement). Les auto-recos (le déclarant se recommande lui-même, note « Auto-reco ») comptent dans « données » mais pas dans « reçues ».",
     "• Tête-à-tête : chaque membre déclare les siens (pas de double crédit automatique).",
     "• CA apporté = montants des « merci pour le business » où le membre est remercié. CA reçu = montants qu'il a déclarés en remerciant les autres.",
     "• Total déclarations = recos données + tête-à-tête + mercis donnés. Tous les chiffres se recalculent à partir de la feuille « Détail ».",
@@ -856,9 +875,10 @@ export async function exportRecommandationsClasseur(opts: ExportRecosOptions): P
   ecrireMatrice(wsRecos, {
     titre: "OLB · Recos qui → qui",
     sousTitre:
-      "Ligne = membre qui donne la reco · Colonne = membre qui la reçoit · Recos internes uniquement",
+      "Ligne = membre qui donne la reco · Colonne = membre qui la reçoit · Recos internes uniquement, hors auto-recos",
     valeurs: agg.matriceRecos,
-    formule: (r, c) => `COUNTIFS(${D("D")},$A${r},${D("E")},${c}$4,${D("C")},"Reco interne")`,
+    formule: (r, c) =>
+      `COUNTIFS(${D("D")},$A${r},${D("E")},${c}$4,${D("C")},"Reco interne",${critereHorsAutoReco(D("H"))})`,
     numFmt: FMT_NB,
     couleurMax: COUL.echelleTeal,
   });
