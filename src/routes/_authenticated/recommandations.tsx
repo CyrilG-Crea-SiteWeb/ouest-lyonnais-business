@@ -384,7 +384,7 @@ function RecosPage() {
           </div>
 
           <Card>
-            <CardContent className="p-4 grid grid-cols-2 gap-3 lg:grid-cols-[1fr_1fr_auto] lg:items-end">
+            <CardContent className="p-4 grid grid-cols-2 gap-3 min-[1400px]:grid-cols-[1fr_1fr_auto] min-[1400px]:items-end">
               <div className="space-y-1.5">
                 <Label className="text-xs flex items-center gap-1">
                   <Filter className="h-3 w-3" /> Membre
@@ -420,7 +420,7 @@ function RecosPage() {
                 </Select>
               </div>
 
-              <div className="col-span-2 flex items-center gap-2 lg:col-span-1 lg:h-9">
+              <div className="col-span-2 flex items-center gap-2 min-[1400px]:col-span-1 min-[1400px]:h-9">
                 <Checkbox
                   id="f-mes-saisies"
                   checked={fMesSaisies}
@@ -525,7 +525,7 @@ function AnneeBlock({
         </p>
         {/* grid-flow-row-dense : le panneau (pleine largeur) se place sous la ligne du mois
             cliqué, et les tuiles suivantes de cette ligne remontent combler les trous. */}
-        <div className="grid grid-flow-row-dense grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-6">
+        <div className="grid grid-flow-row-dense grid-cols-2 gap-3 sm:grid-cols-3 min-[1400px]:grid-cols-4 2xl:grid-cols-6">
           {mois.map((m) => (
             <Fragment key={m.mois}>
               <MoisTuile
@@ -586,13 +586,11 @@ function MoisTuile({
           : "bg-card hover:-translate-y-0.5")
       }
     >
-      <div className="flex items-start gap-2">
+      {/* Badge sous le nom : à côté, il débordait des tuiles étroites (« Septembre »). */}
+      <div className="flex flex-col items-start gap-1">
         <span className="font-semibold leading-tight">{MOIS_FR[mois]}</span>
         {enCours && (
-          <Badge
-            variant={selected ? "secondary" : "default"}
-            className="ml-auto shrink-0 text-[10px]"
-          >
+          <Badge variant={selected ? "secondary" : "default"} className="text-[10px]">
             En cours
           </Badge>
         )}
@@ -605,7 +603,7 @@ function MoisTuile({
       </div>
       <span
         className={
-          "mt-auto flex items-center gap-1 text-xs font-medium " +
+          "mt-auto flex items-center gap-1 whitespace-nowrap text-xs font-medium " +
           (selected ? "text-primary-foreground" : "text-primary")
         }
       >
