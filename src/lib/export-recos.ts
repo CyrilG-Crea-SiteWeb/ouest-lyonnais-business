@@ -574,7 +574,7 @@ export async function exportRecommandationsClasseur(opts: ExportRecosOptions): P
     `Période : ${opts.periodeLibelle}${bornes} · Filtres : ${opts.filtresLibelle} · ` +
       `Généré le ${format(new Date(), "dd/MM/yyyy")} depuis l'appli OLB`,
   );
-  [26, 12, 11, 12, 11, 12, 16, 12, 16, 13, 13].forEach(
+  [26, 12, 11, 12, 11, 12, 16, 12, 16, 13, 11, 13].forEach(
     (w, i) => (wsSynth.getColumn(i + 1).width = w),
   );
 
@@ -636,6 +636,7 @@ export async function exportRecommandationsClasseur(opts: ExportRecosOptions): P
     "Mercis donnés\n(nb)",
     "CA reçu du groupe (€)",
     "Total déclarations",
+    "Présences",
     "Taux de présence",
   ].forEach((h, i) => ecrire(wsSynth, `${col(wsSynth, i + 1)}8`, h, STYLE_ENTETE));
   wsSynth.getRow(8).height = 42;
@@ -672,7 +673,10 @@ export async function exportRecommandationsClasseur(opts: ExportRecosOptions): P
     );
     ecrire(wsSynth, `J${r}`, f(`B${r}+E${r}+H${r}`, s.recosDonnees + s.tete + s.mercisDonnes), nb);
     // Valeur issue des pointages de présence (pas de la feuille Détail) : pas de formule.
-    ecrire(wsSynth, `K${r}`, presences.get(id)?.taux ?? null, { ...nb, numFmt: FMT_PCT });
+    // « 12 / 16 » : présences / réunions dues, pour lire le taux à sa juste mesure.
+    const p = presences.get(id);
+    ecrire(wsSynth, `K${r}`, p ? `${p.nbPresent} / ${p.nbDues}` : null, nb);
+    ecrire(wsSynth, `L${r}`, p?.taux ?? null, { ...nb, numFmt: FMT_PCT });
   });
 
   const rTotal = derSynth + 1;
@@ -697,12 +701,18 @@ export async function exportRecommandationsClasseur(opts: ExportRecosOptions): P
       align: "center",
     }),
   );
-  ecrire(wsSynth, `K${rTotal}`, tauxGroupe, {
+  ecrire(
+    wsSynth,
+    `K${rTotal}`,
+    presGroupe.dues ? `${presGroupe.present} / ${presGroupe.dues}` : null,
+    { ...STYLE_TOTAL, align: "center" },
+  );
+  ecrire(wsSynth, `L${rTotal}`, tauxGroupe, {
     ...STYLE_TOTAL,
     numFmt: FMT_PCT,
     align: "center",
   });
-  wsSynth.autoFilter = `A8:K${derSynth}`;
+  wsSynth.autoFilter = `A8:L${derSynth}`;
 
   const barres: [string, string][] = [
     ["B", COUL.barreTeal],
@@ -732,7 +742,7 @@ export async function exportRecommandationsClasseur(opts: ExportRecosOptions): P
     "• Tête-à-tête : chaque membre déclare les siens (pas de double crédit automatique).",
     "• CA apporté = montants des « merci pour le business » où le membre est remercié. CA reçu = montants qu'il a déclarés en remerciant les autres.",
     "• Total déclarations = recos données + tête-à-tête + mercis donnés. Tous les chiffres se recalculent à partir de la feuille « Détail ».",
-    "• Taux de présence = réunions pointées présent / réunions dues sur la période (issu des présences, ne se recalcule pas). Total = moyenne pondérée du groupe.",
+    "• Présences = réunions pointées présent / réunions dues sur la période, et taux correspondant (issu des présences, ne se recalcule pas). Total = moyenne pondérée du groupe.",
     "• Membres en gris italique : anciens membres (inactifs).",
   ];
   ecrire(wsSynth, `A${rTotal + 2}`, "Lecture :", { size: 9, bold: true, color: COUL.gris });
