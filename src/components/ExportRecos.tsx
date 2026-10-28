@@ -11,8 +11,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Download } from "lucide-react";
-import { exportRecommandationsXlsx, type MembreLookup, type SemaineLookup } from "@/lib/exports";
+import { Download, Loader2 } from "lucide-react";
+import { exportRecommandationsClasseur, TYPE_RECO_LABEL, type TypeReco } from "@/lib/export-recos";
 import { toast } from "sonner";
 
 const ALL = "__all__";
@@ -32,166 +32,159 @@ const MOIS_FR = [
   "Décembre",
 ];
 
-type Granularite = "toutes" | "semaine" | "mois" | "annee";
+type Granularite = "toutes" | "semaine" | "mois" | "annee_olb" | "annee";
+
+/**
+ * Année OLB (1er juin → 31 mai) d'une date AAAA-MM-JJ, identifiée par l'année
+ * de son 1er juin : 2026-10-22 → 2026 (2026-2027), 2027-03-04 → 2026.
+ */
+const anneeOlbDe = (iso: string) => {
+  const annee = Number(iso.slice(0, 4));
+  return Number(iso.slice(5, 7)) >= 6 ? annee : annee - 1;
+};
+const anneeOlbCourante = () => {
+  const now = new Date();
+  return now.getMonth() >= 5 ? now.getFullYear() : now.getFullYear() - 1;
+};
 
 export function ExportRecos() {
-  const [granularite, setGranularite] = useState<Granularite>("toutes");
+  const [granularite, setGranularite] = useState<Granularite>("annee_olb");
   const [semaineId, setSemaineId] = useState<string>(ALL);
   const [moisKey, setMoisKey] = useState<string>(ALL); // format "YYYY-MM"
   const [anneeKey, setAnneeKey] = useState<string>(ALL); // format "YYYY"
+  const [anneeOlbKey, setAnneeOlbKey] = useState<string>(String(anneeOlbCourante()));
   const [membreId, setMembreId] = useState<string>(ALL);
   const [type, setType] = useState<string>(ALL);
+  const [enCours, setEnCours] = useState(false);
 
+  // La date de réunion d'une semaine est sa date_fin (jeudi) : mois, années
+  // civiles et années OLB sont calculés à partir de date_fin.
   const { data: semaines = [] } = useQuery({
     queryKey: ["export", "semaines"],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("semaines")
-        .select("id, libelle, date_debut")
-        .order("date_debut", { ascending: false });
+        .select("id, libelle, date_fin")
+        .order("date_fin", { ascending: false });
       if (error) throw error;
       return data ?? [];
     },
   });
 
+  // Inactifs compris : on peut exporter l'historique d'un ancien membre.
   const { data: membres = [] } = useQuery({
     queryKey: ["export", "membres"],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("membres")
-        .select("id, prenom, nom, entreprise")
+        .select("id, prenom, nom, statut")
         .order("nom");
       if (error) throw error;
       return data ?? [];
     },
   });
 
-  const membresMap: MembreLookup = useMemo(() => {
-    const m: MembreLookup = {};
-    membres.forEach((x: any) => {
-      m[x.id] = { prenom: x.prenom, nom: x.nom, entreprise: x.entreprise };
-    });
-    return m;
-  }, [membres]);
-
-  const semainesMap: SemaineLookup = useMemo(() => {
-    const m: SemaineLookup = {};
-    semaines.forEach((x: any) => {
-      m[x.id] = { libelle: x.libelle, date_debut: x.date_debut };
-    });
-    return m;
-  }, [semaines]);
-
   // Mois distincts présents (clé "YYYY-MM"), du plus récent au plus ancien.
   const moisOptions = useMemo(() => {
     const map = new Map<string, string>(); // key -> label
-    semaines.forEach((s: any) => {
-      const d = s.date_debut as string;
+    semaines.forEach((s) => {
+      const d = s.date_fin;
       if (!d) return;
-      const key = d.slice(0, 7); // YYYY-MM
-      const annee = Number(d.slice(0, 4));
-      const mois = Number(d.slice(5, 7)) - 1;
-      map.set(key, `${MOIS_FR[mois]} ${annee}`);
+      map.set(d.slice(0, 7), `${MOIS_FR[Number(d.slice(5, 7)) - 1]} ${d.slice(0, 4)}`);
     });
     return Array.from(map.entries()).sort((a, b) => b[0].localeCompare(a[0]));
   }, [semaines]);
 
-  // Années distinctes présentes, du plus récent au plus ancien.
+  // Années civiles distinctes présentes, du plus récent au plus ancien.
   const anneeOptions = useMemo(() => {
     const set = new Set<string>();
-    semaines.forEach((s: any) => {
-      const d = s.date_debut as string;
-      if (d) set.add(d.slice(0, 4));
-    });
+    semaines.forEach((s) => s.date_fin && set.add(s.date_fin.slice(0, 4)));
     return Array.from(set).sort((a, b) => b.localeCompare(a));
+  }, [semaines]);
+
+  // Années OLB distinctes (année de début), l'année en cours toujours proposée.
+  const anneeOlbOptions = useMemo(() => {
+    const set = new Set<number>([anneeOlbCourante()]);
+    semaines.forEach((s) => s.date_fin && set.add(anneeOlbDe(s.date_fin)));
+    return Array.from(set).sort((a, b) => b - a);
   }, [semaines]);
 
   // Ids de semaines correspondant à la portée période choisie.
   // Retourne null = "pas de filtre période" (toutes les semaines).
   const semaineIdsPortee = (): number[] | null => {
-    if (granularite === "toutes") return null;
-    if (granularite === "semaine") {
-      return semaineId === ALL ? null : [Number(semaineId)];
+    const filtrer = (pred: (dateFin: string) => boolean) =>
+      semaines.filter((s) => s.date_fin && pred(s.date_fin)).map((s) => s.id);
+    switch (granularite) {
+      case "toutes":
+        return null;
+      case "semaine":
+        return semaineId === ALL ? null : [Number(semaineId)];
+      case "mois":
+        return moisKey === ALL ? null : filtrer((d) => d.slice(0, 7) === moisKey);
+      case "annee":
+        return anneeKey === ALL ? null : filtrer((d) => d.slice(0, 4) === anneeKey);
+      case "annee_olb":
+        return filtrer((d) => anneeOlbDe(d) === Number(anneeOlbKey));
     }
-    if (granularite === "mois") {
-      if (moisKey === ALL) return null;
-      return semaines
-        .filter((s: any) => (s.date_debut as string)?.slice(0, 7) === moisKey)
-        .map((s: any) => s.id as number);
+  };
+
+  // Libellé (en tête de la Synthèse) et portion du nom de fichier.
+  const portee = (): { libelle: string; slug: string } => {
+    if (granularite === "semaine" && semaineId !== ALL) {
+      const libelle = semaines.find((s) => s.id === Number(semaineId))?.libelle ?? semaineId;
+      return {
+        libelle: `Semaine ${libelle}`,
+        slug: `semaine-${libelle.replace(/[^\p{L}\p{N}]+/gu, "-").toLowerCase()}`,
+      };
     }
-    // annee
-    if (anneeKey === ALL) return null;
-    return semaines
-      .filter((s: any) => (s.date_debut as string)?.slice(0, 4) === anneeKey)
-      .map((s: any) => s.id as number);
+    if (granularite === "mois" && moisKey !== ALL) {
+      const label = moisOptions.find(([k]) => k === moisKey)?.[1] ?? moisKey;
+      return { libelle: label, slug: moisKey };
+    }
+    if (granularite === "annee" && anneeKey !== ALL) {
+      return { libelle: `Année civile ${anneeKey}`, slug: anneeKey };
+    }
+    if (granularite === "annee_olb") {
+      const a = Number(anneeOlbKey);
+      return { libelle: `Année OLB ${a}-${a + 1}`, slug: `annee-OLB-${a}-${a + 1}` };
+    }
+    return { libelle: "Toutes les périodes", slug: "toutes-periodes" };
   };
 
   const handleExport = async () => {
+    const ids = semaineIdsPortee();
+    // Portée période choisie mais aucune semaine ne correspond → rien à exporter.
+    if (ids !== null && ids.length === 0) {
+      toast.info("Aucune semaine pour cette période.");
+      return;
+    }
+    const filtres: string[] = [];
+    if (membreId !== ALL) {
+      const m = membres.find((x) => x.id === membreId);
+      filtres.push(`Membre : ${m ? `${m.prenom} ${m.nom}` : membreId}`);
+    }
+    if (type !== ALL) filtres.push(`Type : ${TYPE_RECO_LABEL[type as TypeReco]}`);
+    const { libelle, slug } = portee();
+
+    setEnCours(true);
     try {
-      const ids = semaineIdsPortee();
-      // Portée période choisie mais aucune semaine ne correspond → rien à exporter.
-      if (ids !== null && ids.length === 0) {
-        toast.info("Aucune semaine pour cette période.");
-        return;
-      }
-
-      let q = supabase
-        .from("recommandations")
-        .select(
-          "id, type, membre_id, membre_cible_id, contact_externe, montant, valide, semaine_id, created_at",
-        )
-        .order("created_at", { ascending: false });
-      if (ids !== null) q = q.in("semaine_id", ids);
-      if (membreId !== ALL) q = q.eq("membre_id", membreId);
-      if (type !== ALL) q = q.eq("type", type as any);
-
-      const { data, error } = await q;
-      if (error) throw error;
-      if (!data?.length) {
+      const nbLignes = await exportRecommandationsClasseur({
+        semaineIds: ids,
+        membreId: membreId === ALL ? null : membreId,
+        type: type === ALL ? null : (type as TypeReco),
+        periodeLibelle: libelle,
+        filtresLibelle: filtres.length ? filtres.join(" · ") : "aucun",
+        filenameSlug: slug,
+      });
+      if (nbLignes === 0) {
         toast.info("Aucune recommandation à exporter pour ces filtres.");
         return;
       }
-
-      // Tête-à-tête : récupérer les participants pour émettre une ligne par
-      // participant dans l'export.
-      const teteIds = (data as any[])
-        .filter((r) => r.type === "tete_a_tete")
-        .map((r) => r.id as number);
-      let participants: Record<number, string[]> | undefined;
-      if (teteIds.length > 0) {
-        const { data: rp, error: rpErr } = await supabase
-          .from("reco_participants")
-          .select("recommandation_id, membre_id")
-          .in("recommandation_id", teteIds);
-        if (rpErr) throw rpErr;
-        participants = {};
-        (rp ?? []).forEach((row: any) => {
-          (participants![row.recommandation_id] ??= []).push(row.membre_id);
-        });
-      }
-
-      // Suffixe de nom de fichier selon la portée.
-      let suffixe = new Date().toISOString().slice(0, 10);
-      if (granularite === "semaine" && semaineId !== ALL) {
-        suffixe = (semainesMap[Number(semaineId)]?.libelle ?? `semaine-${semaineId}`)
-          .replace(/\s+/g, "-")
-          .toLowerCase();
-      } else if (granularite === "mois" && moisKey !== ALL) {
-        suffixe = moisKey;
-      } else if (granularite === "annee" && anneeKey !== ALL) {
-        suffixe = anneeKey;
-      }
-
-      const nbLignes = exportRecommandationsXlsx({
-        recos: data as any,
-        membres: membresMap,
-        semaines: semainesMap,
-        filename: `recommandations-${suffixe}.xlsx`,
-        participants,
-      });
-      toast.success(`${nbLignes} ligne(s) exportée(s).`);
-    } catch (e: any) {
-      toast.error(e.message ?? "Erreur d'export");
+      toast.success(`Classeur généré : ${nbLignes} lignes de détail.`);
+    } catch (e) {
+      toast.error((e as { message?: string })?.message ?? "Erreur d'export");
+    } finally {
+      setEnCours(false);
     }
   };
 
@@ -216,6 +209,7 @@ export function ExportRecos() {
                 setSemaineId(ALL);
                 setMoisKey(ALL);
                 setAnneeKey(ALL);
+                setAnneeOlbKey(String(anneeOlbCourante()));
               }}
             >
               <SelectTrigger>
@@ -225,7 +219,8 @@ export function ExportRecos() {
                 <SelectItem value="toutes">Toutes les périodes</SelectItem>
                 <SelectItem value="semaine">Par semaine</SelectItem>
                 <SelectItem value="mois">Par mois</SelectItem>
-                <SelectItem value="annee">Par année</SelectItem>
+                <SelectItem value="annee_olb">Année OLB (juin → mai)</SelectItem>
+                <SelectItem value="annee">Par année civile</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -240,7 +235,7 @@ export function ExportRecos() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value={ALL}>Toutes les semaines</SelectItem>
-                  {semaines.map((s: any) => (
+                  {semaines.map((s) => (
                     <SelectItem key={s.id} value={String(s.id)}>
                       {s.libelle}
                     </SelectItem>
@@ -269,6 +264,24 @@ export function ExportRecos() {
             </div>
           )}
 
+          {granularite === "annee_olb" && (
+            <div>
+              <Label className="text-xs">Année OLB</Label>
+              <Select value={anneeOlbKey} onValueChange={setAnneeOlbKey}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {anneeOlbOptions.map((a) => (
+                    <SelectItem key={a} value={String(a)}>
+                      {a}-{a + 1}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
           {granularite === "annee" && (
             <div>
               <Label className="text-xs">Année</Label>
@@ -288,7 +301,7 @@ export function ExportRecos() {
             </div>
           )}
 
-          {/* Membre */}
+          {/* Membre : déclarant OU concerné */}
           <div>
             <Label className="text-xs">Membre</Label>
             <Select value={membreId} onValueChange={setMembreId}>
@@ -297,9 +310,10 @@ export function ExportRecos() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value={ALL}>Tous</SelectItem>
-                {membres.map((m: any) => (
+                {membres.map((m) => (
                   <SelectItem key={m.id} value={m.id}>
                     {m.prenom} {m.nom}
+                    {m.statut !== "actif" && " (ancien)"}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -324,10 +338,19 @@ export function ExportRecos() {
           </div>
         </div>
 
-        <Button onClick={handleExport} className="w-full md:w-auto">
-          <Download className="h-4 w-4 mr-2" />
-          Télécharger .xlsx
-        </Button>
+        <div className="space-y-1">
+          <Button onClick={handleExport} disabled={enCours} className="w-full md:w-auto">
+            {enCours ? (
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+            ) : (
+              <Download className="h-4 w-4 mr-2" />
+            )}
+            {enCours ? "Génération…" : "Télécharger .xlsx"}
+          </Button>
+          <p className="text-xs text-muted-foreground">
+            Classeur de 6 feuilles : Synthèse, Détail, matrices, évolution.
+          </p>
+        </div>
       </CardContent>
     </Card>
   );
