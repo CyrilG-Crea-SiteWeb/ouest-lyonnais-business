@@ -33,6 +33,7 @@ import {
   Legend,
 } from "recharts";
 import { useProfile } from "@/hooks/use-profile";
+import { fetchAllIn } from "@/lib/supabase-fetch-all";
 
 const TEAL = "#006875";
 const ORANGE = "#F6A000";
@@ -71,22 +72,24 @@ function bornesMois(decalage = 0) {
 }
 
 /**
- * KPIs groupe d'un mois : toutes les semaines OLB dont le début tombe dans le
- * mois calendaire, comme pour le graphe d'évolution.
+ * KPIs groupe d'un mois : toutes les semaines OLB dont la réunion (date_fin,
+ * le jeudi) tombe dans le mois calendaire, comme pour le graphe d'évolution
+ * et l'export Excel. Un « merci pour le business » compte dans le CA dès sa
+ * saisie, validé ou non.
  */
 async function kpisMois(decalage: number) {
   const { debut, fin } = bornesMois(decalage);
   const { data: semaines, error: e1 } = await supabase
     .from("semaines")
     .select("id")
-    .gte("date_debut", debut)
-    .lt("date_debut", fin);
+    .gte("date_fin", debut)
+    .lt("date_fin", fin);
   if (e1) throw e1;
   const ids = (semaines ?? []).map((s) => s.id);
   if (!ids.length) return { nbTeteATete: 0, nbRecos: 0, ca: 0 };
   const { data, error } = await supabase
     .from("recommandations")
-    .select("id, type, montant, valide")
+    .select("id, type, montant")
     .in("semaine_id", ids);
   if (error) throw error;
   const rows = data ?? [];
@@ -94,7 +97,7 @@ async function kpisMois(decalage: number) {
     nbTeteATete: await compterTeteATete(rows),
     nbRecos: rows.filter((r) => r.type === "reco_interne" || r.type === "reco_externe").length,
     ca: rows
-      .filter((r) => r.type === "merci_business" && r.valide)
+      .filter((r) => r.type === "merci_business")
       .reduce((s, r) => s + Number(r.montant ?? 0), 0),
   };
 }
@@ -295,7 +298,8 @@ function Dashboard() {
   const { data: evolution } = useQuery({
     queryKey: ["dashboard", "evolution-annee"],
     queryFn: async () => {
-      // Bornes de l'année OLB en cours : 1er juin -> 1er juin suivant
+      // Bornes de l'année OLB en cours : 1er juin -> 1er juin suivant, appliquées
+      // à la date de réunion (date_fin, le jeudi) comme dans l'export Excel.
       const now = new Date();
       const anneeDebut = now.getMonth() >= 5 ? now.getFullYear() : now.getFullYear() - 1;
       const debut = `${anneeDebut}-06-01`;
@@ -304,10 +308,10 @@ function Dashboard() {
       // Semaines de l'année OLB
       const { data: semaines, error: e1 } = await supabase
         .from("semaines")
-        .select("id, date_debut")
-        .gte("date_debut", debut)
-        .lt("date_debut", fin)
-        .order("date_debut", { ascending: true });
+        .select("id, date_fin")
+        .gte("date_fin", debut)
+        .lt("date_fin", fin)
+        .order("date_fin", { ascending: true });
       if (e1) throw e1;
       const ids = (semaines ?? []).map((s) => s.id);
 
@@ -336,25 +340,29 @@ function Dashboard() {
 
       if (!ids.length) return buckets;
 
-      const { data: recos, error: e2 } = await supabase
-        .from("recommandations")
-        .select("type, montant, valide, semaine_id")
-        .in("semaine_id", ids);
-      if (e2) throw e2;
+      // Paginé : l'année OLB dépasse la limite de 1 000 lignes par requête.
+      const recos = await fetchAllIn(ids, (paquet, from, to) =>
+        supabase
+          .from("recommandations")
+          .select("id, type, montant, semaine_id")
+          .in("semaine_id", paquet)
+          .order("id")
+          .range(from, to),
+      );
 
       const moisParSemaine = new Map<number, number>();
       (semaines ?? []).forEach((s) => {
-        moisParSemaine.set(s.id, new Date(s.date_debut as string).getMonth());
+        moisParSemaine.set(s.id, Number(s.date_fin.slice(5, 7)) - 1);
       });
 
-      (recos ?? []).forEach((r: any) => {
+      recos.forEach((r) => {
         const moisNum = moisParSemaine.get(r.semaine_id);
         if (moisNum === undefined) return;
         const b = buckets.find((x) => x.moisNum === moisNum);
         if (!b) return;
         if (r.type === "reco_interne" || r.type === "reco_externe") {
           b.recommandations += 1;
-        } else if (r.type === "merci_business" && r.valide) {
+        } else if (r.type === "merci_business") {
           b.ca += Number(r.montant ?? 0);
         }
       });
@@ -388,13 +396,13 @@ function Dashboard() {
       // Recos données
       const { data: donnees, error: e1 } = await supabase
         .from("recommandations")
-        .select("id, type, montant, valide")
+        .select("id, type, montant")
         .eq("membre_id", membreId!);
       if (e1) throw e1;
       // Recos reçues (en tant que cible)
       const { data: recues, error: e2 } = await supabase
         .from("recommandations")
-        .select("type, montant, valide")
+        .select("type, montant")
         .eq("membre_cible_id", membreId!);
       if (e2) throw e2;
       const recosDonnees = donnees.filter(
@@ -402,15 +410,15 @@ function Dashboard() {
       ).length;
       const recosRecues = recues.filter((r: any) => r.type === "reco_interne").length;
       const teteATete = await compterTeteATete(donnees as any);
-      // CA apporté AUX autres = "merci_business" validés où le membre a apporté
+      // CA apporté AUX autres = "merci_business" (validés ou non) où le membre a apporté
       // le business, c.-à-d. où il est la cible du remerciement (membre_cible_id → recues).
       const caApporte = recues
-        .filter((r: any) => r.type === "merci_business" && r.valide)
+        .filter((r: any) => r.type === "merci_business")
         .reduce((s: number, r: any) => s + Number(r.montant ?? 0), 0);
-      // CA perçu PAR le membre = "merci_business" validés où il est l'auteur du
+      // CA perçu PAR le membre = "merci_business" (validés ou non) où il est l'auteur du
       // remerciement, c.-à-d. celui qui a reçu le business (membre_id → donnees).
       const caPercu = donnees
-        .filter((r: any) => r.type === "merci_business" && r.valide)
+        .filter((r: any) => r.type === "merci_business")
         .reduce((s: number, r: any) => s + Number(r.montant ?? 0), 0);
       return { recosDonnees, recosRecues, teteATete, caApporte, caPercu };
     },
