@@ -33,6 +33,9 @@ import {
 import { toast } from "sonner";
 import { Comments } from "@/components/Comments";
 import { ExportRecos } from "@/components/ExportRecos";
+import { MembreCombobox } from "@/components/MembreCombobox";
+import { membreCorrespond } from "@/lib/membres-recherche";
+import { useMediaQuery } from "@/hooks/use-media-query";
 import { HelpButton } from "@/components/HelpButton";
 import {
   Handshake,
@@ -42,15 +45,17 @@ import {
   Trash2,
   Loader2,
   Check,
-  ClipboardCheck,
   ChevronRight,
   CalendarDays,
   Filter,
+  Search,
   X,
 } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/recommandations")({
   head: () => ({ meta: [{ title: "Recommandations — OLB" }] }),
+  // Page élargie sur grand écran (2 colonnes : saisie + historique), cf. AppShell.
+  staticData: { pageLarge: true },
   component: RecosPage,
 });
 
@@ -63,7 +68,6 @@ type Reco = {
   membre_cible_id: string | null;
   contact_externe: string | null;
   montant: number | null;
-  valide: boolean;
   semaine_id: number;
   notes: string | null;
   saisi_par?: string | null; // NULL pour les saisies antérieures à la colonne
@@ -310,10 +314,7 @@ function RecosPage() {
     return best?.id ?? null;
   }, [semaineIds, semainesMap]);
 
-  const aValider = useMemo(
-    () => recos.filter((r) => r.type === "merci_business" && !r.valide),
-    [recos],
-  );
+  const ecranLarge = useMediaQuery("(min-width: 1024px)");
 
   return (
     <div className="space-y-6">
@@ -351,128 +352,117 @@ function RecosPage() {
         </p>
       </header>
 
-      {isBureau && aValider.length > 0 && (
-        <Card className="border-amber-300 bg-amber-50/50">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base flex items-center gap-2">
-              <ClipboardCheck className="h-4 w-4" />À valider ({aValider.length})
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="pt-0 divide-y">
-            {aValider.map((r) => (
-              <AValiderRow
-                key={r.id}
-                reco={r}
-                emetteur={membresMap[r.membre_id]}
-                cible={r.membre_cible_id ? membresMap[r.membre_cible_id] : undefined}
-              />
-            ))}
-          </CardContent>
-        </Card>
-      )}
+      {/* PC : saisie à gauche (reste visible au défilement), historique à droite.
+          Mobile : une colonne, ordre inchangé. */}
+      <div className="grid grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-[minmax(340px,400px)_minmax(0,1fr)] lg:items-start">
+        <aside className="space-y-6 lg:sticky lg:top-4 lg:max-h-[calc(100vh-2rem)] lg:overflow-y-auto lg:pr-1">
+          <RecoForm
+            membres={membres.filter((m) => m.id !== profile?.id)}
+            allMembres={membres}
+            isBureau={isBureau}
+            isAdmin={isAdmin}
+            onCreated={() => {
+              qc.invalidateQueries({ queryKey: ["recos", "list"] });
+              qc.invalidateQueries({ queryKey: ["reco_participants", "all"] });
+            }}
+          />
+          {isBureau && ecranLarge && <ExportRecos />}
+        </aside>
 
-      <RecoForm
-        membres={membres.filter((m) => m.id !== profile?.id)}
-        allMembres={membres}
-        isBureau={isBureau}
-        isAdmin={isAdmin}
-        onCreated={() => {
-          qc.invalidateQueries({ queryKey: ["recos", "list"] });
-          qc.invalidateQueries({ queryKey: ["reco_participants", "all"] });
-        }}
-      />
+        <section className="min-w-0 space-y-4">
+          <div className="flex items-center justify-between gap-2">
+            <h2 className="text-lg font-semibold">Historique</h2>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={resetFiltres}
+              disabled={!filtresActifs}
+              className="h-8"
+            >
+              <X className="h-4 w-4 mr-1" /> Réinitialiser la recherche
+            </Button>
+          </div>
 
-      <section className="space-y-4">
-        <div className="flex items-center justify-between gap-2">
-          <h2 className="text-lg font-semibold">Historique</h2>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={resetFiltres}
-            disabled={!filtresActifs}
-            className="h-8"
-          >
-            <X className="h-4 w-4 mr-1" /> Réinitialiser la recherche
-          </Button>
-        </div>
-
-        <Card>
-          <CardContent className="p-4 grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <Label className="text-xs flex items-center gap-1">
-                <Filter className="h-3 w-3" /> Membre
-              </Label>
-              <Select value={fMembre} onValueChange={setFMembre} disabled={fMesSaisies}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="__all__">Tous les membres</SelectItem>
-                  {membres.map((m) => (
-                    <SelectItem key={m.id} value={m.id}>
-                      {m.prenom} {m.nom}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-1.5">
-              <Label className="text-xs">Type</Label>
-              <Select value={fType} onValueChange={setFType}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="__all__">Tous les types</SelectItem>
-                  <SelectItem value="tete_a_tete">Tête-à-tête</SelectItem>
-                  <SelectItem value="reco_interne">Reco interne</SelectItem>
-                  <SelectItem value="reco_externe">Reco externe</SelectItem>
-                  <SelectItem value="merci_business">Merci pour le business</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="col-span-2 flex items-center gap-2">
-              <Checkbox
-                id="f-mes-saisies"
-                checked={fMesSaisies}
-                onCheckedChange={(v) => toggleMesSaisies(v === true)}
-              />
-              <Label htmlFor="f-mes-saisies" className="text-sm font-normal cursor-pointer">
-                Voir mes dernières saisies
-              </Label>
-            </div>
-          </CardContent>
-        </Card>
-
-        {isLoading ? (
-          <p className="text-sm text-muted-foreground">Chargement…</p>
-        ) : annees.length === 0 ? (
           <Card>
-            <CardContent className="p-6 text-sm text-muted-foreground">
-              {filtresActifs ? "Aucune recommandation pour ces filtres." : "Aucune recommandation."}
+            <CardContent className="p-4 grid grid-cols-2 gap-3 lg:grid-cols-[1fr_1fr_auto] lg:items-end">
+              <div className="space-y-1.5">
+                <Label className="text-xs flex items-center gap-1">
+                  <Filter className="h-3 w-3" /> Membre
+                </Label>
+                <Select value={fMembre} onValueChange={setFMembre} disabled={fMesSaisies}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__all__">Tous les membres</SelectItem>
+                    {membres.map((m) => (
+                      <SelectItem key={m.id} value={m.id}>
+                        {m.prenom} {m.nom}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-1.5">
+                <Label className="text-xs">Type</Label>
+                <Select value={fType} onValueChange={setFType}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__all__">Tous les types</SelectItem>
+                    <SelectItem value="tete_a_tete">Tête-à-tête</SelectItem>
+                    <SelectItem value="reco_interne">Reco interne</SelectItem>
+                    <SelectItem value="reco_externe">Reco externe</SelectItem>
+                    <SelectItem value="merci_business">Merci pour le business</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="col-span-2 flex items-center gap-2 lg:col-span-1 lg:h-9">
+                <Checkbox
+                  id="f-mes-saisies"
+                  checked={fMesSaisies}
+                  onCheckedChange={(v) => toggleMesSaisies(v === true)}
+                />
+                <Label htmlFor="f-mes-saisies" className="text-sm font-normal cursor-pointer">
+                  Voir mes dernières saisies
+                </Label>
+              </div>
             </CardContent>
           </Card>
-        ) : (
-          annees.map((a) => (
-            <AnneeBlock
-              key={a.annee}
-              annee={a.annee}
-              mois={a.mois}
-              defaultOpen={a.annee === anneeCourante}
-              moisCourant={a.annee === anneeCourante ? moisCourant : -1}
-              membresMap={membresMap}
-              participantsMap={participantsMap}
-              profileId={profile?.id}
-              isBureau={isBureau}
-              semaineCouranteId={semaineCouranteId}
-            />
-          ))
-        )}
-      </section>
 
-      {isBureau && <ExportRecos />}
+          {isLoading ? (
+            <p className="text-sm text-muted-foreground">Chargement…</p>
+          ) : annees.length === 0 ? (
+            <Card>
+              <CardContent className="p-6 text-sm text-muted-foreground">
+                {filtresActifs
+                  ? "Aucune recommandation pour ces filtres."
+                  : "Aucune recommandation."}
+              </CardContent>
+            </Card>
+          ) : (
+            annees.map((a) => (
+              <AnneeBlock
+                key={a.annee}
+                annee={a.annee}
+                mois={a.mois}
+                defaultOpen={a.annee === anneeCourante}
+                moisCourant={a.annee === anneeCourante ? moisCourant : -1}
+                membresMap={membresMap}
+                participantsMap={participantsMap}
+                profileId={profile?.id}
+                isBureau={isBureau}
+                semaineCouranteId={semaineCouranteId}
+              />
+            ))
+          )}
+        </section>
+      </div>
+
+      {isBureau && !ecranLarge && <ExportRecos />}
     </div>
   );
 }
@@ -535,7 +525,7 @@ function AnneeBlock({
         </p>
         {/* grid-flow-row-dense : le panneau (pleine largeur) se place sous la ligne du mois
             cliqué, et les tuiles suivantes de cette ligne remontent combler les trous. */}
-        <div className="grid grid-flow-row-dense grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+        <div className="grid grid-flow-row-dense grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-6">
           {mois.map((m) => (
             <Fragment key={m.mois}>
               <MoisTuile
@@ -778,6 +768,7 @@ function RecoForm({
   const [type, setType] = useState<RecoType>("tete_a_tete");
   const [membreCible, setMembreCible] = useState<string>(""); // reco interne / externe / merci
   const [participants, setParticipants] = useState<string[]>([]); // tête-à-tête (multi)
+  const [rechercheParticipant, setRechercheParticipant] = useState(""); // filtre de la liste T-à-T
   const [autoReco, setAutoReco] = useState(false); // reco interne : "je me recommande"
   const [contactExterne, setContactExterne] = useState("");
   const [montant, setMontant] = useState("");
@@ -822,6 +813,12 @@ function RecoForm({
 
   // Liste des membres "cible" (destinataire / participants), excluant l'auteur effectif.
   const membresCibles = allMembres.filter((m) => m.id !== auteurEffectifId);
+  // Tête-à-tête : la recherche filtre l'affichage, les membres déjà cochés restent visibles.
+  const participantsVisibles = rechercheParticipant.trim()
+    ? membresCibles.filter(
+        (m) => participants.includes(m.id) || membreCorrespond(m, rechercheParticipant),
+      )
+    : membresCibles;
 
   const mutation = useMutation({
     mutationFn: async () => {
@@ -1076,8 +1073,21 @@ function RecoForm({
                 Membres rencontrés ({participants.length} sélectionné
                 {participants.length > 1 ? "s" : ""})
               </Label>
-              <div className="max-h-56 overflow-y-auto rounded-lg border divide-y">
-                {membresCibles.map((m) => {
+              <div className="relative">
+                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  value={rechercheParticipant}
+                  onChange={(e) => setRechercheParticipant(e.target.value)}
+                  placeholder="Rechercher un membre…"
+                  className="pl-9"
+                  aria-label="Rechercher un membre rencontré"
+                />
+              </div>
+              <div className="max-h-56 overflow-y-auto rounded-lg border divide-y lg:max-h-72">
+                {participantsVisibles.length === 0 && (
+                  <p className="px-3 py-2.5 text-sm text-muted-foreground">Aucun membre trouvé.</p>
+                )}
+                {participantsVisibles.map((m) => {
                   const checked = participants.includes(m.id);
                   return (
                     <button
@@ -1111,19 +1121,12 @@ function RecoForm({
               </button>
               <div className="space-y-1.5">
                 <Label>{membreLabel}</Label>
-                <Select value={membreCible} onValueChange={setMembreCible}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Choisir un membre…" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {membresCibles.map((m) => (
-                      <SelectItem key={m.id} value={m.id}>
-                        {m.prenom} {m.nom}
-                        {m.entreprise ? ` — ${m.entreprise}` : ""}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <MembreCombobox
+                  membres={membresCibles}
+                  value={membreCible}
+                  onChange={setMembreCible}
+                  placeholder="Choisir un membre…"
+                />
               </div>
             </>
           )}
@@ -1132,19 +1135,12 @@ function RecoForm({
           {type === "merci_business" && (
             <div className="space-y-1.5">
               <Label>{membreLabel}</Label>
-              <Select value={membreCible} onValueChange={setMembreCible}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Choisir un membre…" />
-                </SelectTrigger>
-                <SelectContent>
-                  {membresCibles.map((m) => (
-                    <SelectItem key={m.id} value={m.id}>
-                      {m.prenom} {m.nom}
-                      {m.entreprise ? ` — ${m.entreprise}` : ""}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <MembreCombobox
+                membres={membresCibles}
+                value={membreCible}
+                onChange={setMembreCible}
+                placeholder="Choisir un membre…"
+              />
               <p className="text-xs text-muted-foreground">Membre qui vous a apporté ce business</p>
             </div>
           )}
@@ -1164,19 +1160,12 @@ function RecoForm({
               </div>
               <div className="space-y-1.5">
                 <Label>{membreLabel}</Label>
-                <Select value={membreCible} onValueChange={setMembreCible}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="À qui transmettez-vous ce contact ?" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {membresCibles.map((m) => (
-                      <SelectItem key={m.id} value={m.id}>
-                        {m.prenom} {m.nom}
-                        {m.entreprise ? ` — ${m.entreprise}` : ""}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <MembreCombobox
+                  membres={membresCibles}
+                  value={membreCible}
+                  onChange={setMembreCible}
+                  placeholder="À qui transmettez-vous ce contact ?"
+                />
               </div>
             </>
           )}
@@ -1311,63 +1300,6 @@ function RecoRow({
         )}
       </div>
       <Comments typeContenu="recommandation" contenuId={reco.id} />
-    </div>
-  );
-}
-
-function AValiderRow({
-  reco,
-  emetteur,
-  cible,
-}: {
-  reco: Reco;
-  emetteur?: MembreLite;
-  cible?: MembreLite;
-}) {
-  const qc = useQueryClient();
-  const emName = emetteur ? `${emetteur.prenom} ${emetteur.nom}` : "—";
-  const cibleName = cible ? `${cible.prenom} ${cible.nom}` : "—";
-
-  const validate = useMutation({
-    mutationFn: async () => {
-      const { error } = await supabase
-        .from("recommandations")
-        .update({ valide: true })
-        .eq("id", reco.id);
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      toast.success("Montant validé");
-      qc.invalidateQueries({ queryKey: ["recos", "list"] });
-    },
-    onError: (e) => toast.error(e instanceof Error ? e.message : "Erreur"),
-  });
-
-  return (
-    <div className="flex items-center gap-3 py-3">
-      <div className="h-8 w-8 rounded-md flex items-center justify-center shrink-0 bg-fuchsia-100 text-fuchsia-800">
-        <Euro className="h-4 w-4" />
-      </div>
-      <div className="min-w-0 flex-1">
-        <div className="flex flex-wrap items-center gap-2">
-          <Badge variant="outline" className="text-[10px]">
-            Merci
-          </Badge>
-          {reco.montant != null && (
-            <Badge className="text-[10px]">
-              {new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR" }).format(
-                Number(reco.montant),
-              )}
-            </Badge>
-          )}
-        </div>
-        <p className="text-sm mt-0.5 truncate">
-          {cibleName} → {emName}
-        </p>
-      </div>
-      <Button size="sm" disabled={validate.isPending} onClick={() => validate.mutate()}>
-        {validate.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Valider"}
-      </Button>
     </div>
   );
 }

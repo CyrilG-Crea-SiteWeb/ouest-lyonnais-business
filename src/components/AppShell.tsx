@@ -1,6 +1,6 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { useState, type ReactNode } from "react";
-import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
+import { Link, useMatches, useNavigate, useRouterState } from "@tanstack/react-router";
 import {
   LayoutDashboard,
   Users,
@@ -26,6 +26,13 @@ import { cn } from "@/lib/utils";
 import { useProfile } from "@/hooks/use-profile";
 import { DefinirMdpBanner } from "@/components/DefinirMdpBanner";
 
+declare module "@tanstack/react-router" {
+  interface StaticDataRouteOption {
+    /** Page élargie sur grand écran (jusqu'à 1 536 px au lieu de 1 152 px). */
+    pageLarge?: boolean;
+  }
+}
+
 const NAV = [
   { to: "/", label: "Tableau de bord", icon: LayoutDashboard },
   { to: "/membres", label: "Membres", icon: Users },
@@ -42,6 +49,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const navigate = useNavigate();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const pageLarge = useMatches({ select: (ms) => ms.some((m) => m.staticData?.pageLarge) });
   const { data: profile } = useProfile();
   const queryClient = useQueryClient();
 
@@ -191,7 +199,12 @@ export function AppShell({ children }: { children: ReactNode }) {
             </p>
           </HelpButton>
         </header>
-        <div className="px-4 py-6 md:px-8 md:py-8 max-w-6xl mx-auto">
+        <div
+          className={cn(
+            "px-4 py-6 md:px-8 md:py-8 mx-auto",
+            pageLarge ? "max-w-[96rem]" : "max-w-6xl",
+          )}
+        >
           <DefinirMdpBanner />
           {children}
         </div>
