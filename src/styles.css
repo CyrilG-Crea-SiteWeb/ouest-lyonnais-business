@@ -5,6 +5,10 @@
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
+  /* Point de rupture « PC large » (1 400 px), entre xl (1 280) et 2xl (1 536) :
+     déclaré ici pour être trié avec les autres (un min-[1400px] arbitraire est
+     émis avant sm/lg et se fait écraser). */
+  --breakpoint-wide: 87.5rem;
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);

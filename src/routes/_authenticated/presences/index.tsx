@@ -30,10 +30,13 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
+import { useMediaQuery } from "@/hooks/use-media-query";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/presences/")({
   head: () => ({ meta: [{ title: "Présences — OLB" }] }),
+  // Page élargie sur grand écran (pointage + colonne taux / export), cf. AppShell.
+  staticData: { pageLarge: true },
   // Garde d'accès : réservé au bureau/admin (même pattern que /invites).
   beforeLoad: async () => {
     const { data: auth } = await supabase.auth.getUser();
@@ -200,14 +203,20 @@ function PresencesPage() {
   });
 
   // Pointage d'un membre. 'absent' => suppression de la ligne (convention).
+  // Bascule instantanée (mise à jour optimiste du cache) : l'écran change tout
+  // de suite, l'enregistrement part en arrière-plan et l'état est restauré en
+  // cas d'erreur. `scope` envoie les pointages un par un, dans l'ordre des
+  // clics, pour qu'un double clic rapide ne s'enregistre pas à l'envers.
+  type Pointage = { semaineId: number; membreId: string; statut: Statut };
   const setStatut = useMutation({
-    mutationFn: async ({ membreId, statut }: { membreId: string; statut: Statut }) => {
-      if (!selectedId) throw new Error("Aucune semaine sélectionnée");
+    mutationKey: ["presences", "pointage"],
+    scope: { id: "presences-pointage" },
+    mutationFn: async ({ semaineId, membreId, statut }: Pointage) => {
       if (statut === "absent") {
         const { error } = await supabase
           .from("presences")
           .delete()
-          .eq("semaine_id", selectedId)
+          .eq("semaine_id", semaineId)
           .eq("membre_id", membreId);
         if (error) throw error;
         return;
@@ -215,17 +224,42 @@ function PresencesPage() {
       const { error } = await supabase
         .from("presences")
         .upsert(
-          { semaine_id: selectedId, membre_id: membreId, statut },
+          { semaine_id: semaineId, membre_id: membreId, statut },
           { onConflict: "semaine_id,membre_id" },
         );
       if (error) throw error;
     },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["presences", "semaine", selectedId] });
-      qc.invalidateQueries({ queryKey: ["presences", "taux"] });
+    onMutate: async ({ semaineId, membreId, statut }: Pointage) => {
+      const cle = ["presences", "semaine", semaineId];
+      // Un rechargement en cours écraserait la valeur optimiste.
+      await qc.cancelQueries({ queryKey: cle });
+      const avant = qc.getQueryData<Presence[]>(cle);
+      qc.setQueryData<Presence[]>(cle, (old = []) => {
+        const autres = old.filter((p) => p.membre_id !== membreId);
+        return statut === "absent"
+          ? autres
+          : // id provisoire : la vraie ligne revient au rechargement.
+            [...autres, { id: -1, semaine_id: semaineId, membre_id: membreId, statut }];
+      });
+      return { cle, avant };
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error, _v, ctx) => {
+      if (ctx) qc.setQueryData(ctx.cle, ctx.avant);
+      toast.error(`Pointage non enregistré : ${e.message}`);
+    },
+    onSettled: (_d, _e, { semaineId }) => {
+      // On ne recharge qu'après le dernier pointage de la file, sinon le
+      // rechargement ferait clignoter les bascules encore en attente.
+      if (qc.isMutating({ mutationKey: ["presences", "pointage"] }) <= 1) {
+        qc.invalidateQueries({ queryKey: ["presences", "semaine", semaineId] });
+        qc.invalidateQueries({ queryKey: ["presences", "taux"] });
+      }
+    },
   });
+  const pointer = (membreId: string, statut: Statut) => {
+    if (selectedId == null) return;
+    setStatut.mutate({ semaineId: selectedId, membreId, statut });
+  };
 
   return (
     <div className="space-y-6">
@@ -235,9 +269,10 @@ function PresencesPage() {
       </div>
 
       {/* Sélecteur de semaine */}
+      {/* PC : semaine, option vacances et compteurs sur une seule ligne. */}
       <Card>
-        <CardContent className="p-4 space-y-4">
-          <div className="flex items-center justify-between gap-2">
+        <CardContent className="p-4 space-y-4 lg:flex lg:items-center lg:gap-4 lg:space-y-0">
+          <div className="flex items-center justify-between gap-2 lg:min-w-0 lg:flex-1">
             <Button
               variant="outline"
               size="icon"
@@ -266,7 +301,7 @@ function PresencesPage() {
             </Button>
           </div>
 
-          <div className="flex items-center justify-between gap-3 rounded-lg border p-3">
+          <div className="flex items-center justify-between gap-3 rounded-lg border p-3 lg:shrink-0">
             <div className="flex items-center gap-2 min-w-0">
               <Plane className="h-4 w-4 shrink-0 text-accent" />
               <Label htmlFor="sans-reunion" className="text-sm">
@@ -280,60 +315,90 @@ function PresencesPage() {
               onCheckedChange={(v) => toggleSansReunion.mutate(v)}
             />
           </div>
+
+          {!selected?.sans_reunion && (
+            <div className="hidden shrink-0 gap-2 lg:flex">
+              <SummaryTile label="Présents" value={nbPresent} tone="present" compact />
+              <SummaryTile label="Absents" value={nbAbsent} tone="absent" compact />
+            </div>
+          )}
         </CardContent>
       </Card>
 
-      {selected?.sans_reunion ? (
-        <Card>
-          <CardContent className="p-6 text-center text-sm text-muted-foreground">
-            <Plane className="h-6 w-6 mx-auto mb-2 text-accent" />
-            Semaine sans réunion, exclue des statistiques.
-          </CardContent>
-        </Card>
-      ) : (
-        <>
-          {/* Synthèse */}
-          <div className="grid grid-cols-2 gap-3">
-            <SummaryTile label="Présents" value={nbPresent} tone="present" />
-            <SummaryTile label="Absents" value={nbAbsent} tone="absent" />
-          </div>
+      {/* PC : pointage à gauche, taux de présence et export à droite (colonne
+          qui reste visible au défilement). Mobile : une colonne, ordre inchangé. */}
+      <div className="grid grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(340px,380px)] lg:items-start">
+        <div className="min-w-0 space-y-6">
+          {selected?.sans_reunion ? (
+            <Card>
+              <CardContent className="p-6 text-center text-sm text-muted-foreground">
+                <Plane className="h-6 w-6 mx-auto mb-2 text-accent" />
+                Semaine sans réunion, exclue des statistiques.
+              </CardContent>
+            </Card>
+          ) : (
+            <>
+              {/* Synthèse (mobile ; sur PC, les compteurs sont dans le bandeau) */}
+              <div className="grid grid-cols-2 gap-3 lg:hidden">
+                <SummaryTile label="Présents" value={nbPresent} tone="present" />
+                <SummaryTile label="Absents" value={nbAbsent} tone="absent" />
+              </div>
 
-          {/* Liste de pointage — grille de cartes à 3 colonnes (mobile inclus) */}
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-lg">Pointage des membres</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {membresQ.isLoading ? (
-                <Skeleton className="h-24 w-full" />
-              ) : membres.length === 0 ? (
-                <p className="text-sm text-muted-foreground">Aucun membre actif.</p>
-              ) : (
-                <div className="grid grid-cols-3 gap-2">
-                  {membres.map((mb) => {
-                    const current = presencesByMembre.get(mb.id)?.statut ?? "absent";
-                    return (
-                      <MembreCard
-                        key={mb.id}
-                        membre={mb}
-                        current={current}
-                        disabled={setStatut.isPending}
-                        onSet={(statut) => setStatut.mutate({ membreId: mb.id, statut })}
-                      />
-                    );
-                  })}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </>
-      )}
+              {/* Liste de pointage — mobile : 3 colonnes avec 2 boutons par membre ;
+              PC : grille dense où un clic sur la carte bascule présent / absent. */}
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-lg">Pointage des membres</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {membresQ.isLoading ? (
+                    <Skeleton className="h-24 w-full" />
+                  ) : membres.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">Aucun membre actif.</p>
+                  ) : (
+                    <>
+                      <div className="grid grid-cols-3 gap-2 lg:hidden">
+                        {membres.map((mb) => {
+                          const current = presencesByMembre.get(mb.id)?.statut ?? "absent";
+                          return (
+                            <MembreCard
+                              key={mb.id}
+                              membre={mb}
+                              current={current}
+                              onSet={(statut) => pointer(mb.id, statut)}
+                            />
+                          );
+                        })}
+                      </div>
+                      <div className="hidden gap-2 lg:grid lg:grid-cols-4 wide:grid-cols-5 2xl:grid-cols-6">
+                        {membres.map((mb) => {
+                          const current = presencesByMembre.get(mb.id)?.statut ?? "absent";
+                          return (
+                            <MembreBascule
+                              key={mb.id}
+                              membre={mb}
+                              current={current}
+                              onSet={(statut) => pointer(mb.id, statut)}
+                            />
+                          );
+                        })}
+                      </div>
+                    </>
+                  )}
+                </CardContent>
+              </Card>
+            </>
+          )}
+        </div>
 
-      {/* Taux de présence par membre */}
-      <TauxPresence />
+        <aside className="space-y-6 lg:sticky lg:top-4 lg:max-h-[calc(100vh-2rem)] lg:overflow-y-auto lg:pr-1">
+          {/* Taux de présence par membre */}
+          <TauxPresence />
 
-      {/* Export Excel sur une plage de dates */}
-      <ExportPresences />
+          {/* Export Excel sur une plage de dates */}
+          <ExportPresences />
+        </aside>
+      </div>
     </div>
   );
 }
@@ -341,12 +406,10 @@ function PresencesPage() {
 function MembreCard({
   membre,
   current,
-  disabled,
   onSet,
 }: {
   membre: MembreLite;
   current: Statut;
-  disabled: boolean;
   onSet: (statut: Statut) => void;
 }) {
   return (
@@ -365,7 +428,6 @@ function MembreCard({
             key={statut}
             statut={statut}
             active={current === statut}
-            disabled={disabled}
             onClick={() => onSet(statut)}
           />
         ))}
@@ -374,14 +436,70 @@ function MembreCard({
   );
 }
 
-function SummaryTile({ label, value, tone }: { label: string; value: number; tone: Statut }) {
+/** PC : carte cliquable qui bascule le membre entre présent et absent. */
+function MembreBascule({
+  membre,
+  current,
+  onSet,
+}: {
+  membre: MembreLite;
+  current: Statut;
+  onSet: (statut: Statut) => void;
+}) {
+  const present = current === "present";
+  const Icon = present ? UserCheck : UserX;
+  return (
+    <button
+      type="button"
+      aria-pressed={present}
+      onClick={() => onSet(present ? "absent" : "present")}
+      title={present ? "Cliquer pour marquer absent" : "Cliquer pour marquer présent"}
+      className={cn(
+        "flex min-w-0 flex-col items-start gap-0.5 rounded-lg border p-3 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1",
+        present
+          ? "border-primary bg-primary text-primary-foreground hover:bg-primary/90"
+          : "bg-card hover:border-primary hover:bg-primary/5",
+      )}
+    >
+      <span className="w-full truncate text-sm font-semibold" title={membre.prenom}>
+        {membre.prenom}
+      </span>
+      <span
+        className={cn(
+          "w-full truncate text-xs",
+          present ? "text-primary-foreground/80" : "text-muted-foreground",
+        )}
+        title={membre.nom}
+      >
+        {membre.nom || "\u00a0"}
+      </span>
+      <span className="mt-1.5 flex items-center gap-1 text-xs font-medium">
+        <Icon className="h-3.5 w-3.5 shrink-0" />
+        {present ? "Présent" : "Absent"}
+      </span>
+    </button>
+  );
+}
+
+function SummaryTile({
+  label,
+  value,
+  tone,
+  compact = false,
+}: {
+  label: string;
+  value: number;
+  tone: Statut;
+  /** Version réduite pour le bandeau PC. */
+  compact?: boolean;
+}) {
   const tones: Record<Statut, string> = {
     present: "bg-primary/10 text-primary",
     absent: "bg-muted text-muted-foreground",
   };
   return (
-    <div className={cn("rounded-lg p-4 text-center", tones[tone])}>
-      <p className="text-2xl font-bold">{value}</p>
+    <div className={cn("rounded-lg text-center", compact ? "px-4 py-1.5" : "p-4", tones[tone])}>
+      <p className={cn("font-bold", compact ? "text-xl leading-tight" : "text-2xl")}>{value}</p>
       <p className="text-xs font-medium uppercase tracking-wide">{label}</p>
     </div>
   );
@@ -404,12 +522,10 @@ const STATUT_META: Record<Statut, { label: string; icon: typeof UserCheck; activ
 function StatutButton({
   statut,
   active,
-  disabled,
   onClick,
 }: {
   statut: Statut;
   active: boolean;
-  disabled: boolean;
   onClick: () => void;
 }) {
   const meta = STATUT_META[statut];
@@ -419,7 +535,6 @@ function StatutButton({
       type="button"
       size="sm"
       variant={active ? "default" : "outline"}
-      disabled={disabled}
       onClick={onClick}
       className={cn(
         "h-auto w-full justify-center gap-1.5 px-1.5 py-3 text-xs",
@@ -459,7 +574,8 @@ function ExportPresences() {
         <CardTitle className="text-lg">Export Excel des présences</CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+        {/* PC : colonne étroite, dates côte à côte et bouton en dessous. */}
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-end lg:grid lg:grid-cols-2">
           <div className="space-y-1.5 sm:flex-1">
             <Label htmlFor="export-debut" className="text-xs">
               Du
@@ -485,7 +601,7 @@ function ExportPresences() {
           <Button
             onClick={handleExport}
             disabled={pending}
-            className="gap-1.5 bg-accent text-accent-foreground hover:bg-accent/90"
+            className="gap-1.5 bg-accent text-accent-foreground hover:bg-accent/90 lg:col-span-2"
           >
             <Download className="h-4 w-4" />
             Exporter (.xlsx)
@@ -497,7 +613,11 @@ function ExportPresences() {
 }
 
 function TauxPresence() {
-  const [open, setOpen] = useState(false);
+  // Replié par défaut sur mobile, déplié sur PC (colonne de droite) tant que
+  // l'utilisateur n'a pas choisi lui-même.
+  const ecranLarge = useMediaQuery("(min-width: 1024px)");
+  const [choix, setOpen] = useState<boolean | null>(null);
+  const open = choix ?? ecranLarge;
   const tauxQ = useQuery({
     queryKey: ["presences", "taux"],
     queryFn: async (): Promise<TauxRow[]> => {

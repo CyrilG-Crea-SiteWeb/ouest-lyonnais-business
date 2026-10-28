@@ -384,7 +384,7 @@ function RecosPage() {
           </div>
 
           <Card>
-            <CardContent className="p-4 grid grid-cols-2 gap-3 min-[1400px]:grid-cols-[1fr_1fr_auto] min-[1400px]:items-end">
+            <CardContent className="p-4 grid grid-cols-2 gap-3 wide:grid-cols-[1fr_1fr_auto] wide:items-end">
               <div className="space-y-1.5">
                 <Label className="text-xs flex items-center gap-1">
                   <Filter className="h-3 w-3" /> Membre
@@ -420,7 +420,7 @@ function RecosPage() {
                 </Select>
               </div>
 
-              <div className="col-span-2 flex items-center gap-2 min-[1400px]:col-span-1 min-[1400px]:h-9">
+              <div className="col-span-2 flex items-center gap-2 wide:col-span-1 wide:h-9">
                 <Checkbox
                   id="f-mes-saisies"
                   checked={fMesSaisies}
@@ -525,7 +525,7 @@ function AnneeBlock({
         </p>
         {/* grid-flow-row-dense : le panneau (pleine largeur) se place sous la ligne du mois
             cliqué, et les tuiles suivantes de cette ligne remontent combler les trous. */}
-        <div className="grid grid-flow-row-dense grid-cols-2 gap-3 sm:grid-cols-3 min-[1400px]:grid-cols-4 2xl:grid-cols-6">
+        <div className="grid grid-flow-row-dense grid-cols-2 gap-3 sm:grid-cols-3 wide:grid-cols-4 2xl:grid-cols-6">
           {mois.map((m) => (
             <Fragment key={m.mois}>
               <MoisTuile
