@@ -203,14 +203,20 @@ function PresencesPage() {
   });
 
   // Pointage d'un membre. 'absent' => suppression de la ligne (convention).
+  // Bascule instantanée (mise à jour optimiste du cache) : l'écran change tout
+  // de suite, l'enregistrement part en arrière-plan et l'état est restauré en
+  // cas d'erreur. `scope` envoie les pointages un par un, dans l'ordre des
+  // clics, pour qu'un double clic rapide ne s'enregistre pas à l'envers.
+  type Pointage = { semaineId: number; membreId: string; statut: Statut };
   const setStatut = useMutation({
-    mutationFn: async ({ membreId, statut }: { membreId: string; statut: Statut }) => {
-      if (!selectedId) throw new Error("Aucune semaine sélectionnée");
+    mutationKey: ["presences", "pointage"],
+    scope: { id: "presences-pointage" },
+    mutationFn: async ({ semaineId, membreId, statut }: Pointage) => {
       if (statut === "absent") {
         const { error } = await supabase
           .from("presences")
           .delete()
-          .eq("semaine_id", selectedId)
+          .eq("semaine_id", semaineId)
           .eq("membre_id", membreId);
         if (error) throw error;
         return;
@@ -218,17 +224,42 @@ function PresencesPage() {
       const { error } = await supabase
         .from("presences")
         .upsert(
-          { semaine_id: selectedId, membre_id: membreId, statut },
+          { semaine_id: semaineId, membre_id: membreId, statut },
           { onConflict: "semaine_id,membre_id" },
         );
       if (error) throw error;
     },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["presences", "semaine", selectedId] });
-      qc.invalidateQueries({ queryKey: ["presences", "taux"] });
+    onMutate: async ({ semaineId, membreId, statut }: Pointage) => {
+      const cle = ["presences", "semaine", semaineId];
+      // Un rechargement en cours écraserait la valeur optimiste.
+      await qc.cancelQueries({ queryKey: cle });
+      const avant = qc.getQueryData<Presence[]>(cle);
+      qc.setQueryData<Presence[]>(cle, (old = []) => {
+        const autres = old.filter((p) => p.membre_id !== membreId);
+        return statut === "absent"
+          ? autres
+          : // id provisoire : la vraie ligne revient au rechargement.
+            [...autres, { id: -1, semaine_id: semaineId, membre_id: membreId, statut }];
+      });
+      return { cle, avant };
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error, _v, ctx) => {
+      if (ctx) qc.setQueryData(ctx.cle, ctx.avant);
+      toast.error(`Pointage non enregistré : ${e.message}`);
+    },
+    onSettled: (_d, _e, { semaineId }) => {
+      // On ne recharge qu'après le dernier pointage de la file, sinon le
+      // rechargement ferait clignoter les bascules encore en attente.
+      if (qc.isMutating({ mutationKey: ["presences", "pointage"] }) <= 1) {
+        qc.invalidateQueries({ queryKey: ["presences", "semaine", semaineId] });
+        qc.invalidateQueries({ queryKey: ["presences", "taux"] });
+      }
+    },
   });
+  const pointer = (membreId: string, statut: Statut) => {
+    if (selectedId == null) return;
+    setStatut.mutate({ semaineId: selectedId, membreId, statut });
+  };
 
   return (
     <div className="space-y-6">
@@ -334,8 +365,7 @@ function PresencesPage() {
                               key={mb.id}
                               membre={mb}
                               current={current}
-                              disabled={setStatut.isPending}
-                              onSet={(statut) => setStatut.mutate({ membreId: mb.id, statut })}
+                              onSet={(statut) => pointer(mb.id, statut)}
                             />
                           );
                         })}
@@ -348,8 +378,7 @@ function PresencesPage() {
                               key={mb.id}
                               membre={mb}
                               current={current}
-                              disabled={setStatut.isPending}
-                              onSet={(statut) => setStatut.mutate({ membreId: mb.id, statut })}
+                              onSet={(statut) => pointer(mb.id, statut)}
                             />
                           );
                         })}
@@ -377,12 +406,10 @@ function PresencesPage() {
 function MembreCard({
   membre,
   current,
-  disabled,
   onSet,
 }: {
   membre: MembreLite;
   current: Statut;
-  disabled: boolean;
   onSet: (statut: Statut) => void;
 }) {
   return (
@@ -401,7 +428,6 @@ function MembreCard({
             key={statut}
             statut={statut}
             active={current === statut}
-            disabled={disabled}
             onClick={() => onSet(statut)}
           />
         ))}
@@ -414,12 +440,10 @@ function MembreCard({
 function MembreBascule({
   membre,
   current,
-  disabled,
   onSet,
 }: {
   membre: MembreLite;
   current: Statut;
-  disabled: boolean;
   onSet: (statut: Statut) => void;
 }) {
   const present = current === "present";
@@ -428,11 +452,10 @@ function MembreBascule({
     <button
       type="button"
       aria-pressed={present}
-      disabled={disabled}
       onClick={() => onSet(present ? "absent" : "present")}
       title={present ? "Cliquer pour marquer absent" : "Cliquer pour marquer présent"}
       className={cn(
-        "flex min-w-0 flex-col items-start gap-0.5 rounded-lg border p-3 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1 disabled:cursor-wait",
+        "flex min-w-0 flex-col items-start gap-0.5 rounded-lg border p-3 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1",
         present
           ? "border-primary bg-primary text-primary-foreground hover:bg-primary/90"
           : "bg-card hover:border-primary hover:bg-primary/5",
@@ -499,12 +522,10 @@ const STATUT_META: Record<Statut, { label: string; icon: typeof UserCheck; activ
 function StatutButton({
   statut,
   active,
-  disabled,
   onClick,
 }: {
   statut: Statut;
   active: boolean;
-  disabled: boolean;
   onClick: () => void;
 }) {
   const meta = STATUT_META[statut];
@@ -514,7 +535,6 @@ function StatutButton({
       type="button"
       size="sm"
       variant={active ? "default" : "outline"}
-      disabled={disabled}
       onClick={onClick}
       className={cn(
         "h-auto w-full justify-center gap-1.5 px-1.5 py-3 text-xs",
