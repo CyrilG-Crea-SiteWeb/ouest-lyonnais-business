@@ -45,7 +45,6 @@ import {
   Trash2,
   Loader2,
   Check,
-  ClipboardCheck,
   ChevronRight,
   CalendarDays,
   Filter,
@@ -69,7 +68,6 @@ type Reco = {
   membre_cible_id: string | null;
   contact_externe: string | null;
   montant: number | null;
-  valide: boolean;
   semaine_id: number;
   notes: string | null;
   saisi_par?: string | null; // NULL pour les saisies antérieures à la colonne
@@ -316,13 +314,7 @@ function RecosPage() {
     return best?.id ?? null;
   }, [semaineIds, semainesMap]);
 
-  const aValider = useMemo(
-    () => recos.filter((r) => r.type === "merci_business" && !r.valide),
-    [recos],
-  );
-
   const ecranLarge = useMediaQuery("(min-width: 1024px)");
-  const afficherAValider = isBureau && aValider.length > 0;
 
   return (
     <div className="space-y-6">
@@ -360,30 +352,10 @@ function RecosPage() {
         </p>
       </header>
 
-      {/* PC : saisie à gauche (reste visible au défilement), « À valider » et
-          historique à droite. Mobile : une colonne, ordre inchangé. */}
-      <div className="grid grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-[minmax(340px,400px)_minmax(0,1fr)] lg:grid-rows-[auto_1fr] lg:items-start">
-        {afficherAValider && (
-          <Card className="border-amber-300 bg-amber-50/50 lg:col-start-2 lg:row-start-1">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base flex items-center gap-2">
-                <ClipboardCheck className="h-4 w-4" />À valider ({aValider.length})
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="pt-0 divide-y lg:max-h-80 lg:overflow-y-auto">
-              {aValider.map((r) => (
-                <AValiderRow
-                  key={r.id}
-                  reco={r}
-                  emetteur={membresMap[r.membre_id]}
-                  cible={r.membre_cible_id ? membresMap[r.membre_cible_id] : undefined}
-                />
-              ))}
-            </CardContent>
-          </Card>
-        )}
-
-        <aside className="space-y-6 lg:sticky lg:top-4 lg:col-start-1 lg:row-span-2 lg:row-start-1 lg:max-h-[calc(100vh-2rem)] lg:overflow-y-auto lg:pr-1">
+      {/* PC : saisie à gauche (reste visible au défilement), historique à droite.
+          Mobile : une colonne, ordre inchangé. */}
+      <div className="grid grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-[minmax(340px,400px)_minmax(0,1fr)] lg:items-start">
+        <aside className="space-y-6 lg:sticky lg:top-4 lg:max-h-[calc(100vh-2rem)] lg:overflow-y-auto lg:pr-1">
           <RecoForm
             membres={membres.filter((m) => m.id !== profile?.id)}
             allMembres={membres}
@@ -397,12 +369,7 @@ function RecosPage() {
           {isBureau && ecranLarge && <ExportRecos />}
         </aside>
 
-        <section
-          className={
-            "min-w-0 space-y-4 lg:col-start-2 " +
-            (afficherAValider ? "lg:row-start-2" : "lg:row-start-1")
-          }
-        >
+        <section className="min-w-0 space-y-4">
           <div className="flex items-center justify-between gap-2">
             <h2 className="text-lg font-semibold">Historique</h2>
             <Button
@@ -1111,7 +1078,7 @@ function RecoForm({
                 <Input
                   value={rechercheParticipant}
                   onChange={(e) => setRechercheParticipant(e.target.value)}
-                  placeholder="Rechercher un nom ou une entreprise…"
+                  placeholder="Rechercher un membre…"
                   className="pl-9"
                   aria-label="Rechercher un membre rencontré"
                 />
@@ -1333,63 +1300,6 @@ function RecoRow({
         )}
       </div>
       <Comments typeContenu="recommandation" contenuId={reco.id} />
-    </div>
-  );
-}
-
-function AValiderRow({
-  reco,
-  emetteur,
-  cible,
-}: {
-  reco: Reco;
-  emetteur?: MembreLite;
-  cible?: MembreLite;
-}) {
-  const qc = useQueryClient();
-  const emName = emetteur ? `${emetteur.prenom} ${emetteur.nom}` : "—";
-  const cibleName = cible ? `${cible.prenom} ${cible.nom}` : "—";
-
-  const validate = useMutation({
-    mutationFn: async () => {
-      const { error } = await supabase
-        .from("recommandations")
-        .update({ valide: true })
-        .eq("id", reco.id);
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      toast.success("Montant validé");
-      qc.invalidateQueries({ queryKey: ["recos", "list"] });
-    },
-    onError: (e) => toast.error(e instanceof Error ? e.message : "Erreur"),
-  });
-
-  return (
-    <div className="flex items-center gap-3 py-3">
-      <div className="h-8 w-8 rounded-md flex items-center justify-center shrink-0 bg-fuchsia-100 text-fuchsia-800">
-        <Euro className="h-4 w-4" />
-      </div>
-      <div className="min-w-0 flex-1">
-        <div className="flex flex-wrap items-center gap-2">
-          <Badge variant="outline" className="text-[10px]">
-            Merci
-          </Badge>
-          {reco.montant != null && (
-            <Badge className="text-[10px]">
-              {new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR" }).format(
-                Number(reco.montant),
-              )}
-            </Badge>
-          )}
-        </div>
-        <p className="text-sm mt-0.5 truncate">
-          {cibleName} → {emName}
-        </p>
-      </div>
-      <Button size="sm" disabled={validate.isPending} onClick={() => validate.mutate()}>
-        {validate.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Valider"}
-      </Button>
     </div>
   );
 }

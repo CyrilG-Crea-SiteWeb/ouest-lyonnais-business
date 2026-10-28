@@ -58,7 +58,7 @@ export function MembreCombobox({
             return m && membreCorrespond(m, recherche) ? 1 : 0;
           }}
         >
-          <CommandInput placeholder="Rechercher un nom ou une entreprise…" />
+          <CommandInput placeholder="Rechercher un membre…" />
           <CommandList className="max-h-80">
             <CommandEmpty>Aucun membre trouvé.</CommandEmpty>
             {membres.map((m) => (
